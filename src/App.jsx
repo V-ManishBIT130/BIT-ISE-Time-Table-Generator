@@ -2,6 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './components/Login'
 import Dashboard from './components/Dashboard'
 import DashboardHome from './components/DashboardHome'
+import Teachers from './components/Teachers'
+import Subjects from './components/Subjects'
+import Labs from './components/Labs'
 import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 
@@ -31,9 +34,9 @@ function App() {
           <Route index element={<DashboardHome />} />
           
           {/* Phase 1: Master Data routes - Will create these next */}
-          <Route path="teachers" element={<div className="placeholder">Teachers Management Coming Soon...</div>} />
-          <Route path="subjects" element={<div className="placeholder">Subjects Management Coming Soon...</div>} />
-          <Route path="labs" element={<div className="placeholder">Labs Management Coming Soon...</div>} />
+          <Route path="teachers" element={<Teachers />} />
+          <Route path="subjects" element={<Subjects />} />
+          <Route path="labs" element={<Labs />} />
           <Route path="sections" element={<div className="placeholder">Sections Management Coming Soon...</div>} />
           <Route path="classrooms" element={<div className="placeholder">Classrooms Management Coming Soon...</div>} />
           <Route path="dept-labs" element={<div className="placeholder">Lab Rooms Management Coming Soon...</div>} />
