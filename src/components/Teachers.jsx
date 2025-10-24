@@ -20,8 +20,6 @@ function Teachers() {
   const [currentTeacher, setCurrentTeacher] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
-    email: '',
-    mobile_num: '',
     teacher_id: '',
     canTeach_subjects: [],
     labs_handled: [],
@@ -29,6 +27,7 @@ function Teachers() {
     teacher_position: ''
   })
   const [error, setError] = useState('')
+  const [expandedSemesters, setExpandedSemesters] = useState({})
 
   useEffect(() => {
     fetchData()
@@ -79,19 +78,37 @@ function Teachers() {
     })
   }
 
+  const toggleSemester = (semester) => {
+    setExpandedSemesters(prev => ({
+      ...prev,
+      [semester]: !prev[semester]
+    }))
+  }
+
+  const groupBySemester = (items, semesterKey) => {
+    const grouped = {}
+    items.forEach(item => {
+      const sem = item[semesterKey]
+      if (!grouped[sem]) {
+        grouped[sem] = []
+      }
+      grouped[sem].push(item)
+    })
+    return grouped
+  }
+
   const openAddModal = () => {
     setEditMode(false)
     setCurrentTeacher(null)
     setFormData({
       name: '',
-      email: '',
-      mobile_num: '',
       teacher_id: '',
       canTeach_subjects: [],
       labs_handled: [],
       hrs_per_week: '',
       teacher_position: ''
     })
+    setExpandedSemesters({})
     setShowModal(true)
     setError('')
   }
@@ -101,14 +118,13 @@ function Teachers() {
     setCurrentTeacher(teacher)
     setFormData({
       name: teacher.name,
-      email: teacher.email || '',
-      mobile_num: teacher.mobile_num || '',
       teacher_id: teacher.teacher_id,
       canTeach_subjects: teacher.canTeach_subjects?.map(s => s._id || s) || [],
       labs_handled: teacher.labs_handled?.map(l => l._id || l) || [],
       hrs_per_week: teacher.hrs_per_week,
       teacher_position: teacher.teacher_position
     })
+    setExpandedSemesters({})
     setShowModal(true)
     setError('')
   }
@@ -167,8 +183,6 @@ function Teachers() {
             <tr>
               <th>Teacher ID</th>
               <th>Name</th>
-              <th>Email</th>
-              <th>Mobile</th>
               <th>Position</th>
               <th>Hrs/Week</th>
               <th>Can Teach</th>
@@ -179,7 +193,7 @@ function Teachers() {
           <tbody>
             {teachers.length === 0 ? (
               <tr>
-                <td colSpan="9" style={{ textAlign: 'center', padding: '40px' }}>
+                <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
                   No teachers added yet. Click "Add Teacher" to get started.
                 </td>
               </tr>
@@ -188,8 +202,6 @@ function Teachers() {
                 <tr key={teacher._id}>
                   <td><strong>{teacher.teacher_id}</strong></td>
                   <td>{teacher.name}</td>
-                  <td>{teacher.email || '-'}</td>
-                  <td>{teacher.mobile_num || '-'}</td>
                   <td>{teacher.teacher_position}</td>
                   <td>{teacher.hrs_per_week} hrs</td>
                   <td>
@@ -269,29 +281,6 @@ function Teachers() {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="email@bit.edu"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Mobile Number</label>
-                  <input
-                    type="text"
-                    name="mobile_num"
-                    value={formData.mobile_num}
-                    onChange={handleInputChange}
-                    placeholder="+91-XXXXXXXXXX"
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
                   <label>Position *</label>
                   <select
                     name="teacher_position"
@@ -323,40 +312,124 @@ function Teachers() {
 
               <div className="form-group">
                 <label>Can Teach Subjects</label>
-                <div className="checkbox-grid">
+                <div className="semester-sections">
                   {subjects.length === 0 ? (
                     <p className="text-muted">No subjects available. Add subjects first.</p>
                   ) : (
-                    subjects.map(subject => (
-                      <label key={subject._id} className="checkbox-label">
-                        <input
-                          type="checkbox"
-                          checked={formData.canTeach_subjects.includes(subject._id)}
-                          onChange={() => handleSubjectToggle(subject._id)}
-                        />
-                        <span>{subject.subject_code} - {subject.subject_name}</span>
-                      </label>
-                    ))
+                    (() => {
+                      const subjectsBySem = groupBySemester(subjects, 'subject_sem')
+                      const semesters = Object.keys(subjectsBySem).sort((a, b) => a - b)
+                      
+                      return semesters.map(sem => {
+                        const semSubjects = subjectsBySem[sem]
+                        const selectedCount = semSubjects.filter(s => 
+                          formData.canTeach_subjects.includes(s._id)
+                        ).length
+                        const semType = parseInt(sem) % 2 === 0 ? 'Even' : 'Odd'
+                        
+                        return (
+                          <div key={sem} className="semester-group">
+                            <div 
+                              className="semester-header"
+                              onClick={() => toggleSemester(`subject-${sem}`)}
+                            >
+                              <div className="semester-info">
+                                <span className="semester-badge">{sem}{semType === 'Odd' ? '🔵' : '🟢'}</span>
+                                <span className="semester-title">Semester {sem} ({semType})</span>
+                                {selectedCount > 0 && (
+                                  <span className="selected-count">{selectedCount} selected</span>
+                                )}
+                              </div>
+                              <span className="toggle-icon">
+                                {expandedSemesters[`subject-${sem}`] ? '▼' : '▶'}
+                              </span>
+                            </div>
+                            
+                            {expandedSemesters[`subject-${sem}`] && (
+                              <div className="semester-content">
+                                <div className="checkbox-grid">
+                                  {semSubjects.map(subject => (
+                                    <label key={subject._id} className="checkbox-label">
+                                      <input
+                                        type="checkbox"
+                                        checked={formData.canTeach_subjects.includes(subject._id)}
+                                        onChange={() => handleSubjectToggle(subject._id)}
+                                      />
+                                      <span className="subject-info">
+                                        <strong>{subject.subject_code}</strong>
+                                        <span className="subject-name">{subject.subject_name}</span>
+                                      </span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })
+                    })()
                   )}
                 </div>
               </div>
 
               <div className="form-group">
                 <label>Labs Handled</label>
-                <div className="checkbox-grid">
+                <div className="semester-sections">
                   {labs.length === 0 ? (
                     <p className="text-muted">No labs available. Add labs first.</p>
                   ) : (
-                    labs.map(lab => (
-                      <label key={lab._id} className="checkbox-label">
-                        <input
-                          type="checkbox"
-                          checked={formData.labs_handled.includes(lab._id)}
-                          onChange={() => handleLabToggle(lab._id)}
-                        />
-                        <span>{lab.lab_code} - {lab.lab_name}</span>
-                      </label>
-                    ))
+                    (() => {
+                      const labsBySem = groupBySemester(labs, 'lab_sem')
+                      const semesters = Object.keys(labsBySem).sort((a, b) => a - b)
+                      
+                      return semesters.map(sem => {
+                        const semLabs = labsBySem[sem]
+                        const selectedCount = semLabs.filter(l => 
+                          formData.labs_handled.includes(l._id)
+                        ).length
+                        const semType = parseInt(sem) % 2 === 0 ? 'Even' : 'Odd'
+                        
+                        return (
+                          <div key={sem} className="semester-group">
+                            <div 
+                              className="semester-header"
+                              onClick={() => toggleSemester(`lab-${sem}`)}
+                            >
+                              <div className="semester-info">
+                                <span className="semester-badge">{sem}{semType === 'Odd' ? '🔵' : '🟢'}</span>
+                                <span className="semester-title">Semester {sem} ({semType})</span>
+                                {selectedCount > 0 && (
+                                  <span className="selected-count">{selectedCount} selected</span>
+                                )}
+                              </div>
+                              <span className="toggle-icon">
+                                {expandedSemesters[`lab-${sem}`] ? '▼' : '▶'}
+                              </span>
+                            </div>
+                            
+                            {expandedSemesters[`lab-${sem}`] && (
+                              <div className="semester-content">
+                                <div className="checkbox-grid">
+                                  {semLabs.map(lab => (
+                                    <label key={lab._id} className="checkbox-label">
+                                      <input
+                                        type="checkbox"
+                                        checked={formData.labs_handled.includes(lab._id)}
+                                        onChange={() => handleLabToggle(lab._id)}
+                                      />
+                                      <span className="subject-info">
+                                        <strong>{lab.lab_code}</strong>
+                                        <span className="subject-name">{lab.lab_name}</span>
+                                      </span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })
+                    })()
                   )}
                 </div>
               </div>

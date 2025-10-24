@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
     if (req.query.subject_id) filter.subject_id = req.query.subject_id
 
     const assignments = await TeacherSubjectAssignment.find(filter)
-      .populate('teacher_id', 'name teacher_id email')
+      .populate('teacher_id', 'name teacher_id teacher_position')
       .populate('subject_id', 'subject_code subject_name hrs_per_week')
       .populate('scheduled_slots.classroom_id', 'room_no')
       .sort({ sem: 1, section: 1 })
@@ -44,7 +44,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const assignment = await TeacherSubjectAssignment.findById(req.params.id)
-      .populate('teacher_id', 'name teacher_id email')
+      .populate('teacher_id', 'name teacher_id teacher_position')
       .populate('subject_id', 'subject_code subject_name hrs_per_week')
       .populate('scheduled_slots.classroom_id', 'room_no')
 
@@ -87,12 +87,26 @@ router.post('/', async (req, res) => {
       })
     }
 
-    // Skip teacher validation ONLY for project subjects (Major/Mini/Open Elective)
-    // Professional Elective has fixed schedule but STILL needs ISE teacher
-    if (subject.is_project || !subject.requires_teacher_assignment) {
+    // Skip teacher validation for subjects that don't require ISE teachers:
+    // 1. Project subjects (Major/Mini Project)
+    // 2. Non-ISE subjects (Maths, Physics, etc. handled by other departments)
+    // 3. Open Elective (taught by external teacher with fixed schedule)
+    // Note: Professional Elective DOES need ISE teacher (fixed schedule but ISE-taught)
+    if (subject.is_project || subject.is_non_ise_subject || subject.is_open_elective || !subject.requires_teacher_assignment) {
+      const reasonMap = {
+        is_open_elective: 'Open Elective is taught by an external teacher',
+        is_non_ise_subject: 'This subject is handled by another department',
+        is_project: 'Project subjects do not require ISE teacher assignment',
+        default: 'This subject does not require ISE teacher assignment'
+      }
+      const reason = subject.is_open_elective ? reasonMap.is_open_elective
+                   : subject.is_non_ise_subject ? reasonMap.is_non_ise_subject 
+                   : subject.is_project ? reasonMap.is_project 
+                   : reasonMap.default
+      
       return res.status(400).json({ 
         success: false, 
-        message: 'This subject does not require ISE teacher assignment (Project/Open Elective)' 
+        message: reason
       })
     }
 

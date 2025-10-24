@@ -9,13 +9,16 @@ const subjects_Schema = new mongoose.Schema(
     subject_sem_type: {type: String, required: true, enum: ['odd', 'even']}, //even sem or odd sem
     max_hrs_Day: {type: Number, default: 1}, //1 hr or 2 hrs max allocated for this subject per day, so total hours for a week must be same as the hrs_per_week
     duration_hours: {type: Number, default: 1}, // Theory always 1 hour
-    is_project: {type: Boolean, default: false}, // true for Major/Mini Projects - no teacher assignment needed
-    requires_teacher_assignment: {type: Boolean, default: true}, // false for projects/open electives, true for regular subjects
-    has_fixed_schedule: {type: Boolean, default: false}, // true for Open Elective, Professional Elective (7th sem special cases)
+    is_project: {type: Boolean, default: false}, // true for Major/Mini Projects - no teacher assignment needed (DEFAULT: false for regular ISE theory)
+    is_non_ise_subject: {type: Boolean, default: false}, // true for subjects handled by other departments like Maths, Physics, etc. - occupies timetable but no ISE teacher needed (DEFAULT: false for regular ISE theory)
+    is_open_elective: {type: Boolean, default: false}, // true for Open Elective (7th sem) - taught by external teacher, has fixed schedule, no ISE teacher needed
+    is_professional_elective: {type: Boolean, default: false}, // true for Professional Elective (7th sem) - taught by ISE teacher, has fixed schedule, needs ISE teacher
+    requires_teacher_assignment: {type: Boolean, default: true}, // false ONLY for projects/open electives/non-ISE subjects, true for regular ISE subjects and professional electives (DEFAULT: true)
+    has_fixed_schedule: {type: Boolean, default: false}, // true for Open Elective, Professional Elective (auto-set based on is_open_elective or is_professional_elective)
     fixed_schedule: [{
       day: {type: String, enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']},
-      start_time: {type: String}, // e.g., "08:00", "09:30"
-      end_time: {type: String}    // e.g., "09:30", "11:00"
+      start_time: {type: String}, // e.g., "08:00 AM", "09:30 AM"
+      end_time: {type: String}    // e.g., "09:30 AM", "11:00 AM"
     }] // Only used if has_fixed_schedule = true
   },
   { collection: 'Subjects', timestamps: true }
