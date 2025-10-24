@@ -78,6 +78,23 @@ router.post('/', async (req, res) => {
   try {
     const { teacher_id, subject_id, sem, sem_type, section } = req.body
 
+    // Validate subject exists
+    const subject = await Subject.findById(subject_id)
+    if (!subject) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Subject not found' 
+      })
+    }
+
+    // Skip teacher validation for project subjects (they don't need teacher assignment)
+    if (subject.is_project || !subject.requires_teacher_assignment) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Project subjects (Major/Mini Project) do not require teacher assignment' 
+      })
+    }
+
     // Validate teacher exists and can teach this subject
     const teacher = await Teacher.findById(teacher_id)
     if (!teacher) {
@@ -96,15 +113,6 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ 
         success: false, 
         message: 'Teacher is not eligible to teach this subject' 
-      })
-    }
-
-    // Validate subject exists
-    const subject = await Subject.findById(subject_id)
-    if (!subject) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Subject not found' 
       })
     }
 

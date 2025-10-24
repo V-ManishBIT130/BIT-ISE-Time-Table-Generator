@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const iseSections_schema = new mongoose.Schema(
   {
-    sem: {type: Number, required: true, min: 1, max: 8},
+    sem: {type: Number, required: true, min: 3, max: 8}, // Only semesters 3-8 (ISE department responsibility)
     sem_type: {type: String, required: true, enum: ['odd', 'even']}, // Match semester type
     section_name: {type: String, required: true}, 
     split_batches: {type: Number, required: true, min: 1}, // Number of batches (A1, A2, A3...)
