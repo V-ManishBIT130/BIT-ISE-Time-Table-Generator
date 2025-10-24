@@ -69,7 +69,7 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/teachers
 // Purpose: Create a new teacher
-// Body: { name, email, mobile_num, teacher_id, canTeach_subjects[], labs_handled[], hrs_per_week, teacher_position }
+// Body: { name, teacher_id, canTeach_subjects[], labs_handled[], hrs_per_week, teacher_position }
 // Returns: Created teacher document
 router.post('/', async (req, res) => {
   try {
@@ -102,7 +102,7 @@ router.post('/', async (req, res) => {
 
 // PUT /api/teachers/:id
 // Purpose: Update an existing teacher
-// Body: Any fields to update (name, email, canTeach_subjects, etc.)
+// Body: Any fields to update (name, teacher_id, canTeach_subjects, labs_handled, hrs_per_week, teacher_position)
 // Returns: Updated teacher document
 router.put('/:id', async (req, res) => {
   try {

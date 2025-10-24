@@ -27,7 +27,9 @@ function Subjects() {
     hrs_per_week: '',
     max_hrs_Day: '1',
     is_project: false,
-    has_fixed_schedule: false,
+    is_non_ise_subject: false,
+    is_open_elective: false,
+    is_professional_elective: false,
     fixed_schedule: []
   })
   const [error, setError] = useState('')
@@ -115,7 +117,9 @@ function Subjects() {
       hrs_per_week: '',
       max_hrs_Day: '1',
       is_project: false,
-      has_fixed_schedule: false,
+      is_non_ise_subject: false,
+      is_open_elective: false,
+      is_professional_elective: false,
       fixed_schedule: []
     })
     setShowModal(true)
@@ -132,7 +136,9 @@ function Subjects() {
       hrs_per_week: subject.hrs_per_week,
       max_hrs_Day: subject.max_hrs_Day,
       is_project: subject.is_project || false,
-      has_fixed_schedule: subject.has_fixed_schedule || false,
+      is_non_ise_subject: subject.is_non_ise_subject || false,
+      is_open_elective: subject.is_open_elective || false,
+      is_professional_elective: subject.is_professional_elective || false,
       fixed_schedule: subject.fixed_schedule || []
     })
     setShowModal(true)
@@ -148,15 +154,23 @@ function Subjects() {
       const semesterType = parseInt(formData.subject_sem) % 2 === 0 ? 'even' : 'odd'
       
       // Determine if teacher assignment is needed
-      // No teacher needed ONLY if: it's a project
-      // Fixed schedule subjects (like Professional Elective) still need teachers
-      // Only projects (which includes Open Elective marked as project) skip teacher assignment
-      const needsTeacher = !formData.is_project
+      // No teacher needed if:
+      // 1. It's a project (Major/Mini Project)
+      // 2. It's a non-ISE subject (Maths, Physics, etc. handled by other departments)
+      // 3. It's an Open Elective (taught by external teacher)
+      // Teacher needed for:
+      // - Regular ISE subjects
+      // - Professional Elective (ISE teacher with fixed schedule)
+      const needsTeacher = !formData.is_project && !formData.is_non_ise_subject && !formData.is_open_elective
+      
+      // Auto-set has_fixed_schedule flag
+      const hasFixedSchedule = formData.is_open_elective || formData.is_professional_elective
       
       const dataToSubmit = {
         ...formData,
         subject_sem_type: semesterType,
-        requires_teacher_assignment: needsTeacher
+        requires_teacher_assignment: needsTeacher,
+        has_fixed_schedule: hasFixedSchedule
       }
 
       if (editMode) {
@@ -278,8 +292,12 @@ function Subjects() {
                   <td>{subject.has_fixed_schedule ? 'Fixed' : `${subject.hrs_per_week} hrs`}</td>
                   <td>{subject.has_fixed_schedule ? 'Fixed' : `${subject.max_hrs_Day} hrs`}</td>
                   <td>
-                    {subject.has_fixed_schedule ? (
-                      <span className="badge badge-fixed">Fixed Schedule</span>
+                    {subject.is_open_elective ? (
+                      <span className="badge badge-open-elective">Open Elective</span>
+                    ) : subject.is_professional_elective ? (
+                      <span className="badge badge-prof-elective">Prof Elective</span>
+                    ) : subject.is_non_ise_subject ? (
+                      <span className="badge badge-non-ise">Other Dept</span>
                     ) : subject.is_project ? (
                       <span className="badge badge-project">Project</span>
                     ) : (
@@ -365,21 +383,164 @@ function Subjects() {
                   </select>
                   <small className="form-hint">Type will be auto-determined</small>
                 </div>
-                <div className="form-group">
-                  <label>
+              </div>
+
+              {/* Subject Category Section */}
+              <div className="form-section-header">
+                <h3>Subject Category</h3>
+                <p>Select the category that describes this subject</p>
+              </div>
+
+              <div className="category-options">
+                <div className="category-option">
+                  <label className="category-label">
+                    <input
+                      type="checkbox"
+                      checked={!formData.is_non_ise_subject && !formData.is_project && !formData.is_open_elective && !formData.is_professional_elective}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData({ 
+                            ...formData, 
+                            is_non_ise_subject: false,
+                            is_project: false,
+                            is_open_elective: false,
+                            is_professional_elective: false
+                          })
+                        }
+                      }}
+                      style={{ width: 'auto', marginRight: '12px' }}
+                    />
+                    <div className="category-content">
+                      <strong>Regular ISE Theory Subject</strong>
+                      <span className="category-badge badge-theory">Theory</span>
+                    </div>
+                  </label>
+                  <small className="category-hint">
+                    ✓ Normal ISE department subjects<br />
+                    ✓ Requires ISE teacher assignment<br />
+                    <strong>Example:</strong> Data Structures, OS, DBMS
+                  </small>
+                </div>
+
+                <div className="category-option">
+                  <label className="category-label">
+                    <input
+                      type="checkbox"
+                      name="is_non_ise_subject"
+                      checked={formData.is_non_ise_subject}
+                      onChange={(e) => {
+                        const checked = e.target.checked
+                        setFormData({ 
+                          ...formData, 
+                          is_non_ise_subject: checked,
+                          is_project: checked ? false : formData.is_project,
+                          is_open_elective: checked ? false : formData.is_open_elective,
+                          is_professional_elective: checked ? false : formData.is_professional_elective
+                        })
+                      }}
+                      style={{ width: 'auto', marginRight: '12px' }}
+                    />
+                    <div className="category-content">
+                      <strong>Other Department Subject</strong>
+                      <span className="category-badge badge-non-ise">Other Dept</span>
+                    </div>
+                  </label>
+                  <small className="category-hint">
+                    ✓ Handled by other departments<br />
+                    ✓ No ISE teacher needed<br />
+                    <strong>Example:</strong> Mathematics-III, Physics
+                  </small>
+                </div>
+
+                <div className="category-option">
+                  <label className="category-label">
                     <input
                       type="checkbox"
                       name="is_project"
                       checked={formData.is_project}
-                      onChange={(e) => setFormData({ ...formData, is_project: e.target.checked })}
-                      style={{ width: 'auto', marginRight: '8px' }}
+                      onChange={(e) => {
+                        const checked = e.target.checked
+                        setFormData({ 
+                          ...formData, 
+                          is_project: checked,
+                          is_non_ise_subject: checked ? false : formData.is_non_ise_subject,
+                          is_open_elective: checked ? false : formData.is_open_elective,
+                          is_professional_elective: checked ? false : formData.is_professional_elective
+                        })
+                      }}
+                      style={{ width: 'auto', marginRight: '12px' }}
                     />
-                    Project Subject (Major/Mini Project)
+                    <div className="category-content">
+                      <strong>Project Subject</strong>
+                      <span className="category-badge badge-project">Project</span>
+                    </div>
                   </label>
-                  <small className="form-hint" style={{ display: 'block', marginTop: '8px' }}>
-                    ✓ No teacher assignment needed<br />
-                    ✓ Allows higher hours/week (up to 20)<br />
-                    ✓ Still occupies timetable slots
+                  <small className="category-hint">
+                    ✓ Major/Mini Project<br />
+                    ✓ No teacher needed<br />
+                    <strong>Example:</strong> Major Project
+                  </small>
+                </div>
+
+                <div className="category-option">
+                  <label className="category-label">
+                    <input
+                      type="checkbox"
+                      name="is_open_elective"
+                      checked={formData.is_open_elective}
+                      onChange={(e) => {
+                        const checked = e.target.checked
+                        setFormData({ 
+                          ...formData, 
+                          is_open_elective: checked,
+                          is_non_ise_subject: checked ? false : formData.is_non_ise_subject,
+                          is_project: checked ? false : formData.is_project,
+                          is_professional_elective: checked ? false : formData.is_professional_elective
+                        })
+                      }}
+                      style={{ width: 'auto', marginRight: '12px' }}
+                    />
+                    <div className="category-content">
+                      <strong>Open Elective Course</strong>
+                      <span className="category-badge badge-open-elective">Open Elective</span>
+                    </div>
+                  </label>
+                  <small className="category-hint">
+                    ✓ Taught by external teacher<br />
+                    ✓ Fixed time slots (7th sem)<br />
+                    ✓ No ISE teacher needed<br />
+                    <strong>Example:</strong> Open Elective Course
+                  </small>
+                </div>
+
+                <div className="category-option">
+                  <label className="category-label">
+                    <input
+                      type="checkbox"
+                      name="is_professional_elective"
+                      checked={formData.is_professional_elective}
+                      onChange={(e) => {
+                        const checked = e.target.checked
+                        setFormData({ 
+                          ...formData, 
+                          is_professional_elective: checked,
+                          is_non_ise_subject: checked ? false : formData.is_non_ise_subject,
+                          is_project: checked ? false : formData.is_project,
+                          is_open_elective: checked ? false : formData.is_open_elective
+                        })
+                      }}
+                      style={{ width: 'auto', marginRight: '12px' }}
+                    />
+                    <div className="category-content">
+                      <strong>Professional Elective Course</strong>
+                      <span className="category-badge badge-prof-elective">Prof Elective</span>
+                    </div>
+                  </label>
+                  <small className="category-hint">
+                    ✓ Taught by ISE teacher<br />
+                    ✓ Fixed time slots (7th sem)<br />
+                    ✓ Requires ISE teacher assignment<br />
+                    <strong>Example:</strong> Professional Elective
                   </small>
                 </div>
               </div>
@@ -396,10 +557,10 @@ function Subjects() {
                     min="1"
                     max={formData.is_project ? "20" : "10"}
                     required
-                    disabled={formData.has_fixed_schedule}
+                    disabled={formData.is_open_elective || formData.is_professional_elective}
                   />
                   <small className="form-hint">
-                    {formData.has_fixed_schedule
+                    {formData.is_open_elective || formData.is_professional_elective
                       ? 'Auto-calculated from fixed time slots'
                       : formData.is_project 
                       ? 'Projects: 4 hrs (Mini) or 12 hrs (Major)' 
@@ -416,10 +577,10 @@ function Subjects() {
                     min="1"
                     max={formData.is_project ? "12" : "3"}
                     required
-                    disabled={formData.has_fixed_schedule}
+                    disabled={formData.is_open_elective || formData.is_professional_elective}
                   />
                   <small className="form-hint">
-                    {formData.has_fixed_schedule
+                    {formData.is_open_elective || formData.is_professional_elective
                       ? 'Auto-determined from fixed slots'
                       : formData.is_project 
                       ? 'Projects can have higher daily hours (up to 12)' 
@@ -429,26 +590,7 @@ function Subjects() {
               </div>
 
               {/* Fixed Schedule Section */}
-              <div className="form-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    name="has_fixed_schedule"
-                    checked={formData.has_fixed_schedule}
-                    onChange={(e) => setFormData({ ...formData, has_fixed_schedule: e.target.checked })}
-                    style={{ width: 'auto', marginRight: '8px' }}
-                  />
-                  Has Fixed Schedule (Open/Professional Elective)
-                </label>
-                <small className="form-hint" style={{ display: 'block', marginTop: '8px' }}>
-                  ✓ For 7th sem elective subjects<br />
-                  ✓ Specific day/time slots predefined<br />
-                  ✓ Professional Elective: Check this + needs ISE teacher<br />
-                  ✓ Open Elective: Check this + mark as Project (no ISE teacher)
-                </small>
-              </div>
-
-              {formData.has_fixed_schedule && (
+              {(formData.is_open_elective || formData.is_professional_elective) && (
                 <div className="fixed-schedule-section">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <label style={{ margin: 0, fontWeight: '600' }}>Fixed Time Slots</label>
