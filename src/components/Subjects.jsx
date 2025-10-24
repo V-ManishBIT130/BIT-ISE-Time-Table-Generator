@@ -26,7 +26,9 @@ function Subjects() {
     subject_sem: '',
     hrs_per_week: '',
     max_hrs_Day: '1',
-    is_project: false
+    is_project: false,
+    has_fixed_schedule: false,
+    fixed_schedule: []
   })
   const [error, setError] = useState('')
 
@@ -74,6 +76,35 @@ function Subjects() {
     setFormData({ ...formData, [name]: value })
   }
 
+  const addFixedScheduleSlot = () => {
+    setFormData({
+      ...formData,
+      fixed_schedule: [
+        ...formData.fixed_schedule,
+        { day: 'Monday', start_time: '08:00 AM', end_time: '09:00 AM' }
+      ]
+    })
+  }
+
+  const removeFixedScheduleSlot = (index) => {
+    const updated = formData.fixed_schedule.filter((_, i) => i !== index)
+    setFormData({ ...formData, fixed_schedule: updated })
+  }
+
+  const updateFixedScheduleSlot = (index, field, value) => {
+    const updated = [...formData.fixed_schedule]
+    updated[index][field] = value
+    setFormData({ ...formData, fixed_schedule: updated })
+  }
+
+  // Time options for 12-hour format
+  const timeOptions = [
+    '08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
+    '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM',
+    '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM',
+    '05:00 PM', '05:30 PM', '06:00 PM'
+  ]
+
   const openAddModal = () => {
     setEditMode(false)
     setCurrentSubject(null)
@@ -83,7 +114,9 @@ function Subjects() {
       subject_sem: '',
       hrs_per_week: '',
       max_hrs_Day: '1',
-      is_project: false
+      is_project: false,
+      has_fixed_schedule: false,
+      fixed_schedule: []
     })
     setShowModal(true)
     setError('')
@@ -98,7 +131,9 @@ function Subjects() {
       subject_sem: subject.subject_sem,
       hrs_per_week: subject.hrs_per_week,
       max_hrs_Day: subject.max_hrs_Day,
-      is_project: subject.is_project || false
+      is_project: subject.is_project || false,
+      has_fixed_schedule: subject.has_fixed_schedule || false,
+      fixed_schedule: subject.fixed_schedule || []
     })
     setShowModal(true)
     setError('')
@@ -111,10 +146,17 @@ function Subjects() {
     try {
       // Auto-determine semester type based on semester number
       const semesterType = parseInt(formData.subject_sem) % 2 === 0 ? 'even' : 'odd'
+      
+      // Determine if teacher assignment is needed
+      // No teacher needed ONLY if: it's a project
+      // Fixed schedule subjects (like Professional Elective) still need teachers
+      // Only projects (which includes Open Elective marked as project) skip teacher assignment
+      const needsTeacher = !formData.is_project
+      
       const dataToSubmit = {
         ...formData,
         subject_sem_type: semesterType,
-        requires_teacher_assignment: !formData.is_project // Projects don't need teacher assignment
+        requires_teacher_assignment: needsTeacher
       }
 
       if (editMode) {
@@ -233,10 +275,12 @@ function Subjects() {
                       {subject.subject_sem_type}
                     </span>
                   </td>
-                  <td>{subject.hrs_per_week} hrs</td>
-                  <td>{subject.max_hrs_Day} hrs</td>
+                  <td>{subject.has_fixed_schedule ? 'Fixed' : `${subject.hrs_per_week} hrs`}</td>
+                  <td>{subject.has_fixed_schedule ? 'Fixed' : `${subject.max_hrs_Day} hrs`}</td>
                   <td>
-                    {subject.is_project ? (
+                    {subject.has_fixed_schedule ? (
+                      <span className="badge badge-fixed">Fixed Schedule</span>
+                    ) : subject.is_project ? (
                       <span className="badge badge-project">Project</span>
                     ) : (
                       <span className="badge badge-theory">Theory</span>
@@ -352,9 +396,12 @@ function Subjects() {
                     min="1"
                     max={formData.is_project ? "20" : "10"}
                     required
+                    disabled={formData.has_fixed_schedule}
                   />
                   <small className="form-hint">
-                    {formData.is_project 
+                    {formData.has_fixed_schedule
+                      ? 'Auto-calculated from fixed time slots'
+                      : formData.is_project 
                       ? 'Projects: 4 hrs (Mini) or 12 hrs (Major)' 
                       : 'Regular subjects: 3-4 hours typical'}
                   </small>
@@ -369,14 +416,110 @@ function Subjects() {
                     min="1"
                     max={formData.is_project ? "12" : "3"}
                     required
+                    disabled={formData.has_fixed_schedule}
                   />
                   <small className="form-hint">
-                    {formData.is_project 
+                    {formData.has_fixed_schedule
+                      ? 'Auto-determined from fixed slots'
+                      : formData.is_project 
                       ? 'Projects can have higher daily hours (up to 12)' 
                       : 'Usually 1 hour (prevents back-to-back)'}
                   </small>
                 </div>
               </div>
+
+              {/* Fixed Schedule Section */}
+              <div className="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    name="has_fixed_schedule"
+                    checked={formData.has_fixed_schedule}
+                    onChange={(e) => setFormData({ ...formData, has_fixed_schedule: e.target.checked })}
+                    style={{ width: 'auto', marginRight: '8px' }}
+                  />
+                  Has Fixed Schedule (Open/Professional Elective)
+                </label>
+                <small className="form-hint" style={{ display: 'block', marginTop: '8px' }}>
+                  ✓ For 7th sem elective subjects<br />
+                  ✓ Specific day/time slots predefined<br />
+                  ✓ Professional Elective: Check this + needs ISE teacher<br />
+                  ✓ Open Elective: Check this + mark as Project (no ISE teacher)
+                </small>
+              </div>
+
+              {formData.has_fixed_schedule && (
+                <div className="fixed-schedule-section">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <label style={{ margin: 0, fontWeight: '600' }}>Fixed Time Slots</label>
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary" 
+                      onClick={addFixedScheduleSlot}
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                    >
+                      + Add Slot
+                    </button>
+                  </div>
+
+                  {formData.fixed_schedule.length === 0 ? (
+                    <p style={{ color: '#999', fontStyle: 'italic', padding: '12px', background: '#f5f5f5', borderRadius: '6px' }}>
+                      No fixed slots added. Click "+ Add Slot" to define specific timings.
+                    </p>
+                  ) : (
+                    formData.fixed_schedule.map((slot, index) => (
+                      <div key={index} className="fixed-slot-row" style={{ display: 'flex', gap: '12px', marginBottom: '12px', alignItems: 'flex-end' }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '13px', marginBottom: '6px', display: 'block' }}>Day</label>
+                          <select
+                            value={slot.day}
+                            onChange={(e) => updateFixedScheduleSlot(index, 'day', e.target.value)}
+                            style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }}
+                          >
+                            <option value="Monday">Monday</option>
+                            <option value="Tuesday">Tuesday</option>
+                            <option value="Wednesday">Wednesday</option>
+                            <option value="Thursday">Thursday</option>
+                            <option value="Friday">Friday</option>
+                            <option value="Saturday">Saturday</option>
+                          </select>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '13px', marginBottom: '6px', display: 'block' }}>Start Time</label>
+                          <select
+                            value={slot.start_time}
+                            onChange={(e) => updateFixedScheduleSlot(index, 'start_time', e.target.value)}
+                            style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }}
+                          >
+                            {timeOptions.map(time => (
+                              <option key={time} value={time}>{time}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '13px', marginBottom: '6px', display: 'block' }}>End Time</label>
+                          <select
+                            value={slot.end_time}
+                            onChange={(e) => updateFixedScheduleSlot(index, 'end_time', e.target.value)}
+                            style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }}
+                          >
+                            {timeOptions.map(time => (
+                              <option key={time} value={time}>{time}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeFixedScheduleSlot(index)}
+                          style={{ padding: '8px 12px', background: '#ffebee', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#c33' }}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
 
               {error && (
                 <div className="alert alert-danger">{error}</div>
