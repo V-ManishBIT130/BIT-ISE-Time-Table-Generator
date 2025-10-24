@@ -24,7 +24,6 @@ function Labs() {
     lab_code: '',
     lab_name: '',
     lab_sem: '',
-    lab_sem_type: '',
     duration_hours: 2,
     requires_two_teachers: true
   })
@@ -81,7 +80,6 @@ function Labs() {
       lab_code: '',
       lab_name: '',
       lab_sem: '',
-      lab_sem_type: '',
       duration_hours: 2,
       requires_two_teachers: true
     })
@@ -96,7 +94,6 @@ function Labs() {
       lab_code: lab.lab_code,
       lab_name: lab.lab_name,
       lab_sem: lab.lab_sem,
-      lab_sem_type: lab.lab_sem_type,
       duration_hours: lab.duration_hours,
       requires_two_teachers: lab.requires_two_teachers
     })
@@ -109,10 +106,17 @@ function Labs() {
     setError('')
 
     try {
+      // Auto-determine semester type based on semester number
+      const semesterType = parseInt(formData.lab_sem) % 2 === 0 ? 'even' : 'odd'
+      const dataToSubmit = {
+        ...formData,
+        lab_sem_type: semesterType
+      }
+
       if (editMode) {
-        await axios.put(`/api/labs/${currentLab._id}`, formData)
+        await axios.put(`/api/labs/${currentLab._id}`, dataToSubmit)
       } else {
-        await axios.post('/api/labs', formData)
+        await axios.post('/api/labs', dataToSubmit)
       }
       fetchLabs()
       setShowModal(false)
@@ -159,8 +163,6 @@ function Labs() {
             <label>Semester</label>
             <select name="semester" value={filters.semester} onChange={handleFilterChange}>
               <option value="">All Semesters</option>
-              <option value="1">1st Semester</option>
-              <option value="2">2nd Semester</option>
               <option value="3">3rd Semester</option>
               <option value="4">4th Semester</option>
               <option value="5">5th Semester</option>
@@ -302,28 +304,14 @@ function Labs() {
                     required
                   >
                     <option value="">Select Semester</option>
-                    <option value="1">1st Semester</option>
-                    <option value="2">2nd Semester</option>
-                    <option value="3">3rd Semester</option>
-                    <option value="4">4th Semester</option>
-                    <option value="5">5th Semester</option>
-                    <option value="6">6th Semester</option>
-                    <option value="7">7th Semester</option>
-                    <option value="8">8th Semester</option>
+                    <option value="3">3rd Semester (Odd)</option>
+                    <option value="4">4th Semester (Even)</option>
+                    <option value="5">5th Semester (Odd)</option>
+                    <option value="6">6th Semester (Even)</option>
+                    <option value="7">7th Semester (Odd)</option>
+                    <option value="8">8th Semester (Even)</option>
                   </select>
-                </div>
-                <div className="form-group">
-                  <label>Semester Type *</label>
-                  <select
-                    name="lab_sem_type"
-                    value={formData.lab_sem_type}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select Type</option>
-                    <option value="odd">Odd Semester</option>
-                    <option value="even">Even Semester</option>
-                  </select>
+                  <small className="form-hint">Type will be auto-determined</small>
                 </div>
               </div>
 

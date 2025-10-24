@@ -24,9 +24,9 @@ function Subjects() {
     subject_code: '',
     subject_name: '',
     subject_sem: '',
-    subject_sem_type: '',
     hrs_per_week: '',
-    max_hrs_Day: '1'
+    max_hrs_Day: '1',
+    is_project: false
   })
   const [error, setError] = useState('')
 
@@ -81,9 +81,9 @@ function Subjects() {
       subject_code: '',
       subject_name: '',
       subject_sem: '',
-      subject_sem_type: '',
       hrs_per_week: '',
-      max_hrs_Day: '1'
+      max_hrs_Day: '1',
+      is_project: false
     })
     setShowModal(true)
     setError('')
@@ -96,9 +96,9 @@ function Subjects() {
       subject_code: subject.subject_code,
       subject_name: subject.subject_name,
       subject_sem: subject.subject_sem,
-      subject_sem_type: subject.subject_sem_type,
       hrs_per_week: subject.hrs_per_week,
-      max_hrs_Day: subject.max_hrs_Day
+      max_hrs_Day: subject.max_hrs_Day,
+      is_project: subject.is_project || false
     })
     setShowModal(true)
     setError('')
@@ -109,10 +109,18 @@ function Subjects() {
     setError('')
 
     try {
+      // Auto-determine semester type based on semester number
+      const semesterType = parseInt(formData.subject_sem) % 2 === 0 ? 'even' : 'odd'
+      const dataToSubmit = {
+        ...formData,
+        subject_sem_type: semesterType,
+        requires_teacher_assignment: !formData.is_project // Projects don't need teacher assignment
+      }
+
       if (editMode) {
-        await axios.put(`/api/subjects/${currentSubject._id}`, formData)
+        await axios.put(`/api/subjects/${currentSubject._id}`, dataToSubmit)
       } else {
-        await axios.post('/api/subjects', formData)
+        await axios.post('/api/subjects', dataToSubmit)
       }
       fetchSubjects()
       setShowModal(false)
@@ -159,8 +167,6 @@ function Subjects() {
             <label>Semester</label>
             <select name="semester" value={filters.semester} onChange={handleFilterChange}>
               <option value="">All Semesters</option>
-              <option value="1">1st Semester</option>
-              <option value="2">2nd Semester</option>
               <option value="3">3rd Semester</option>
               <option value="4">4th Semester</option>
               <option value="5">5th Semester</option>
@@ -203,13 +209,14 @@ function Subjects() {
               <th>Type</th>
               <th>Hrs/Week</th>
               <th>Max Hrs/Day</th>
+              <th>Category</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredSubjects.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
+                <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
                   {subjects.length === 0 
                     ? 'No subjects added yet. Click "Add Subject" to get started.'
                     : 'No subjects match the selected filters.'}
@@ -228,6 +235,13 @@ function Subjects() {
                   </td>
                   <td>{subject.hrs_per_week} hrs</td>
                   <td>{subject.max_hrs_Day} hrs</td>
+                  <td>
+                    {subject.is_project ? (
+                      <span className="badge badge-project">Project</span>
+                    ) : (
+                      <span className="badge badge-theory">Theory</span>
+                    )}
+                  </td>
                   <td>
                     <div className="action-buttons">
                       <button 
@@ -298,28 +312,31 @@ function Subjects() {
                     required
                   >
                     <option value="">Select Semester</option>
-                    <option value="1">1st Semester</option>
-                    <option value="2">2nd Semester</option>
-                    <option value="3">3rd Semester</option>
-                    <option value="4">4th Semester</option>
-                    <option value="5">5th Semester</option>
-                    <option value="6">6th Semester</option>
-                    <option value="7">7th Semester</option>
-                    <option value="8">8th Semester</option>
+                    <option value="3">3rd Semester (Odd)</option>
+                    <option value="4">4th Semester (Even)</option>
+                    <option value="5">5th Semester (Odd)</option>
+                    <option value="6">6th Semester (Even)</option>
+                    <option value="7">7th Semester (Odd)</option>
+                    <option value="8">8th Semester (Even)</option>
                   </select>
+                  <small className="form-hint">Type will be auto-determined</small>
                 </div>
                 <div className="form-group">
-                  <label>Semester Type *</label>
-                  <select
-                    name="subject_sem_type"
-                    value={formData.subject_sem_type}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select Type</option>
-                    <option value="odd">Odd Semester</option>
-                    <option value="even">Even Semester</option>
-                  </select>
+                  <label>
+                    <input
+                      type="checkbox"
+                      name="is_project"
+                      checked={formData.is_project}
+                      onChange={(e) => setFormData({ ...formData, is_project: e.target.checked })}
+                      style={{ width: 'auto', marginRight: '8px' }}
+                    />
+                    Project Subject (Major/Mini Project)
+                  </label>
+                  <small className="form-hint" style={{ display: 'block', marginTop: '8px' }}>
+                    ✓ No teacher assignment needed<br />
+                    ✓ Allows higher hours/week (up to 20)<br />
+                    ✓ Still occupies timetable slots
+                  </small>
                 </div>
               </div>
 
@@ -331,12 +348,16 @@ function Subjects() {
                     name="hrs_per_week"
                     value={formData.hrs_per_week}
                     onChange={handleInputChange}
-                    placeholder="e.g., 4"
+                    placeholder={formData.is_project ? "e.g., 12 (for Major Project)" : "e.g., 4"}
                     min="1"
-                    max="10"
+                    max={formData.is_project ? "20" : "10"}
                     required
                   />
-                  <small className="form-hint">Typical: 3-4 hours</small>
+                  <small className="form-hint">
+                    {formData.is_project 
+                      ? 'Projects: 4 hrs (Mini) or 12 hrs (Major)' 
+                      : 'Regular subjects: 3-4 hours typical'}
+                  </small>
                 </div>
                 <div className="form-group">
                   <label>Max Hours per Day *</label>
@@ -346,10 +367,14 @@ function Subjects() {
                     value={formData.max_hrs_Day}
                     onChange={handleInputChange}
                     min="1"
-                    max="3"
+                    max={formData.is_project ? "12" : "3"}
                     required
                   />
-                  <small className="form-hint">Usually 1 hour (prevents back-to-back)</small>
+                  <small className="form-hint">
+                    {formData.is_project 
+                      ? 'Projects can have higher daily hours (up to 12)' 
+                      : 'Usually 1 hour (prevents back-to-back)'}
+                  </small>
                 </div>
               </div>
 
