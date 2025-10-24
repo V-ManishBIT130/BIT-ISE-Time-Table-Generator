@@ -87,11 +87,12 @@ router.post('/', async (req, res) => {
       })
     }
 
-    // Skip teacher validation for project subjects (they don't need teacher assignment)
+    // Skip teacher validation ONLY for project subjects (Major/Mini/Open Elective)
+    // Professional Elective has fixed schedule but STILL needs ISE teacher
     if (subject.is_project || !subject.requires_teacher_assignment) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Project subjects (Major/Mini Project) do not require teacher assignment' 
+        message: 'This subject does not require ISE teacher assignment (Project/Open Elective)' 
       })
     }
 
