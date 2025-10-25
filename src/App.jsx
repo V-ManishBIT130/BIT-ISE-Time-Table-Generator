@@ -5,6 +5,9 @@ import DashboardHome from './components/DashboardHome'
 import Teachers from './components/Teachers'
 import Subjects from './components/Subjects'
 import Labs from './components/Labs'
+import Sections from './components/Sections'
+import Classrooms from './components/Classrooms'
+import DeptLabs from './components/DeptLabs'
 import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 
@@ -33,13 +36,13 @@ function App() {
           {/* Nested Dashboard Routes */}
           <Route index element={<DashboardHome />} />
           
-          {/* Phase 1: Master Data routes - Will create these next */}
+          {/* Phase 1: Master Data routes */}
           <Route path="teachers" element={<Teachers />} />
           <Route path="subjects" element={<Subjects />} />
           <Route path="labs" element={<Labs />} />
-          <Route path="sections" element={<div className="placeholder">Sections Management Coming Soon...</div>} />
-          <Route path="classrooms" element={<div className="placeholder">Classrooms Management Coming Soon...</div>} />
-          <Route path="dept-labs" element={<div className="placeholder">Lab Rooms Management Coming Soon...</div>} />
+          <Route path="sections" element={<Sections />} />
+          <Route path="classrooms" element={<Classrooms />} />
+          <Route path="dept-labs" element={<DeptLabs />} />
           
           {/* Phase 2: Assignment routes */}
           <Route path="teacher-assignments" element={<div className="placeholder">Teacher Assignments Coming Soon...</div>} />

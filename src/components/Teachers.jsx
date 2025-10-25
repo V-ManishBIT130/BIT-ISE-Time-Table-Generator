@@ -21,6 +21,7 @@ function Teachers() {
   const [formData, setFormData] = useState({
     name: '',
     teacher_id: '',
+    teacher_shortform: '',
     canTeach_subjects: [],
     labs_handled: [],
     hrs_per_week: '',
@@ -40,7 +41,15 @@ function Teachers() {
         axios.get('/api/labs')
       ])
       setTeachers(teachersRes.data.data || [])
-      setSubjects(subjectsRes.data.data || [])
+      
+      // Filter subjects: Only show subjects that require ISE teacher assignment
+      // Exclude: Other dept subjects, Projects, Open Electives
+      // Include: Regular ISE subjects, Professional Electives
+      const filteredSubjects = (subjectsRes.data.data || []).filter(subject => 
+        subject.requires_teacher_assignment === true
+      )
+      
+      setSubjects(filteredSubjects)
       setLabs(labsRes.data.data || [])
       setLoading(false)
     } catch (err) {
@@ -95,6 +104,7 @@ function Teachers() {
     setFormData({
       name: '',
       teacher_id: '',
+      teacher_shortform: '',
       canTeach_subjects: [],
       labs_handled: [],
       hrs_per_week: '',
@@ -110,6 +120,7 @@ function Teachers() {
     setFormData({
       name: teacher.name,
       teacher_id: teacher.teacher_id,
+      teacher_shortform: teacher.teacher_shortform,
       canTeach_subjects: teacher.canTeach_subjects?.map(s => s._id || s) || [],
       labs_handled: teacher.labs_handled?.map(l => l._id || l) || [],
       hrs_per_week: teacher.hrs_per_week,
@@ -191,7 +202,12 @@ function Teachers() {
               teachers.map(teacher => (
                 <tr key={teacher._id}>
                   <td><strong>{teacher.teacher_id}</strong></td>
-                  <td>{teacher.name}</td>
+                  <td>
+                    {teacher.name}
+                    {teacher.teacher_shortform && (
+                      <span className="teacher-shortform"> ({teacher.teacher_shortform})</span>
+                    )}
+                  </td>
                   <td>{teacher.teacher_position}</td>
                   <td>{teacher.hrs_per_week} hrs</td>
                   <td>
@@ -271,6 +287,20 @@ function Teachers() {
 
               <div className="form-row">
                 <div className="form-group">
+                  <label>Short Form *</label>
+                  <input
+                    type="text"
+                    name="teacher_shortform"
+                    value={formData.teacher_shortform}
+                    onChange={handleInputChange}
+                    placeholder="e.g., DC, SK, RP"
+                    required
+                    maxLength="5"
+                    style={{ textTransform: 'uppercase' }}
+                  />
+                  <small className="form-hint">2-3 letter abbreviation of teacher's name</small>
+                </div>
+                <div className="form-group">
                   <label>Position *</label>
                   <select
                     name="teacher_position"
@@ -285,6 +315,9 @@ function Teachers() {
                     <option value="Guest Faculty">Guest Faculty</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="form-row">
                 <div className="form-group">
                   <label>Weekly Hours *</label>
                   <input
@@ -297,6 +330,9 @@ function Teachers() {
                     max="30"
                     required
                   />
+                </div>
+                <div className="form-group">
+                  {/* Empty div for grid alignment */}
                 </div>
               </div>
 
