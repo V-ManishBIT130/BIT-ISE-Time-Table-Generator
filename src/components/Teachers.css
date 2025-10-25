@@ -24,6 +24,14 @@
   margin: 0;
 }
 
+/* Teacher Shortform in Table */
+.teacher-shortform {
+  color: #667eea;
+  font-weight: 600;
+  font-size: 13px;
+  margin-left: 4px;
+}
+
 .loading {
   text-align: center;
   padding: 60px;

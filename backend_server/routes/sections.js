@@ -75,12 +75,13 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     // Auto-generate batch_names if not provided
-    if (!req.body.batch_names && req.body.section_name) {
+    if (!req.body.batch_names && req.body.section_name && req.body.sem) {
+      const sem = req.body.sem
       const section = req.body.section_name
       req.body.batch_names = [
-        `${section}1`,
-        `${section}2`,
-        `${section}3`
+        `${sem}${section}1`,
+        `${sem}${section}2`,
+        `${sem}${section}3`
       ]
     }
 
