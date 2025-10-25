@@ -23,6 +23,7 @@ function Labs() {
   const [formData, setFormData] = useState({
     lab_code: '',
     lab_name: '',
+    lab_shortform: '',
     lab_sem: '',
     duration_hours: 2,
     requires_two_teachers: true
@@ -79,6 +80,7 @@ function Labs() {
     setFormData({
       lab_code: '',
       lab_name: '',
+      lab_shortform: '',
       lab_sem: '',
       duration_hours: 2,
       requires_two_teachers: true
@@ -93,6 +95,7 @@ function Labs() {
     setFormData({
       lab_code: lab.lab_code,
       lab_name: lab.lab_name,
+      lab_shortform: lab.lab_shortform,
       lab_sem: lab.lab_sem,
       duration_hours: lab.duration_hours,
       requires_two_teachers: lab.requires_two_teachers
@@ -295,6 +298,18 @@ function Labs() {
               </div>
 
               <div className="form-row">
+                <div className="form-group">
+                  <label>Short Form *</label>
+                  <input
+                    type="text"
+                    name="lab_shortform"
+                    value={formData.lab_shortform}
+                    onChange={handleInputChange}
+                    placeholder="e.g., DSL, DBMSL, CNL"
+                    required
+                  />
+                  <small className="form-hint">Used for teacher selection display</small>
+                </div>
                 <div className="form-group">
                   <label>Semester *</label>
                   <select

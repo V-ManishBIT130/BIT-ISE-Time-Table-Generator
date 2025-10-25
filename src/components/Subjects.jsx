@@ -23,6 +23,7 @@ function Subjects() {
   const [formData, setFormData] = useState({
     subject_code: '',
     subject_name: '',
+    subject_shortform: '',
     subject_sem: '',
     hrs_per_week: '',
     max_hrs_Day: '1',
@@ -113,6 +114,7 @@ function Subjects() {
     setFormData({
       subject_code: '',
       subject_name: '',
+      subject_shortform: '',
       subject_sem: '',
       hrs_per_week: '',
       max_hrs_Day: '1',
@@ -132,6 +134,7 @@ function Subjects() {
     setFormData({
       subject_code: subject.subject_code,
       subject_name: subject.subject_name,
+      subject_shortform: subject.subject_shortform,
       subject_sem: subject.subject_sem,
       hrs_per_week: subject.hrs_per_week,
       max_hrs_Day: subject.max_hrs_Day,
@@ -365,6 +368,18 @@ function Subjects() {
               </div>
 
               <div className="form-row">
+                <div className="form-group">
+                  <label>Short Form *</label>
+                  <input
+                    type="text"
+                    name="subject_shortform"
+                    value={formData.subject_shortform}
+                    onChange={handleInputChange}
+                    placeholder="e.g., DS, DBMS, CN"
+                    required
+                  />
+                  <small className="form-hint">Used for teacher selection display</small>
+                </div>
                 <div className="form-group">
                   <label>Semester *</label>
                   <select

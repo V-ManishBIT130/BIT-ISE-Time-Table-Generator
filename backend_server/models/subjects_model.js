@@ -4,6 +4,7 @@ const subjects_Schema = new mongoose.Schema(
   {
     subject_code: {type: String, required: true, trim: true},
     subject_name: {type: String, required: true, trim: true},
+    subject_shortform: {type: String, required: true, trim: true},
     hrs_per_week: {type: Number, required: true, default: 3}, //basically credits
     subject_sem: {type: Number, required: true, min: 3, max: 8}, // Only semesters 3-8 (ISE department responsibility)
     subject_sem_type: {type: String, required: true, enum: ['odd', 'even']}, //even sem or odd sem
