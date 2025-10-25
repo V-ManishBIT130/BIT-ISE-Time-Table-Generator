@@ -27,7 +27,6 @@ function Teachers() {
     teacher_position: ''
   })
   const [error, setError] = useState('')
-  const [expandedSemesters, setExpandedSemesters] = useState({})
 
   useEffect(() => {
     fetchData()
@@ -78,13 +77,6 @@ function Teachers() {
     })
   }
 
-  const toggleSemester = (semester) => {
-    setExpandedSemesters(prev => ({
-      ...prev,
-      [semester]: !prev[semester]
-    }))
-  }
-
   const groupBySemester = (items, semesterKey) => {
     const grouped = {}
     items.forEach(item => {
@@ -108,7 +100,6 @@ function Teachers() {
       hrs_per_week: '',
       teacher_position: ''
     })
-    setExpandedSemesters({})
     setShowModal(true)
     setError('')
   }
@@ -124,7 +115,6 @@ function Teachers() {
       hrs_per_week: teacher.hrs_per_week,
       teacher_position: teacher.teacher_position
     })
-    setExpandedSemesters({})
     setShowModal(true)
     setError('')
   }
@@ -312,7 +302,7 @@ function Teachers() {
 
               <div className="form-group">
                 <label>Can Teach Subjects</label>
-                <div className="semester-sections">
+                <div className="compact-selection-container">
                   {subjects.length === 0 ? (
                     <p className="text-muted">No subjects available. Add subjects first.</p>
                   ) : (
@@ -328,42 +318,26 @@ function Teachers() {
                         const semType = parseInt(sem) % 2 === 0 ? 'Even' : 'Odd'
                         
                         return (
-                          <div key={sem} className="semester-group">
-                            <div 
-                              className="semester-header"
-                              onClick={() => toggleSemester(`subject-${sem}`)}
-                            >
-                              <div className="semester-info">
-                                <span className="semester-badge">{sem}{semType === 'Odd' ? '🔵' : '🟢'}</span>
-                                <span className="semester-title">Semester {sem} ({semType})</span>
-                                {selectedCount > 0 && (
-                                  <span className="selected-count">{selectedCount} selected</span>
-                                )}
-                              </div>
-                              <span className="toggle-icon">
-                                {expandedSemesters[`subject-${sem}`] ? '▼' : '▶'}
-                              </span>
+                          <div key={sem} className="compact-semester-group">
+                            <div className="compact-sem-header">
+                              <span className="compact-sem-badge">Sem {sem}</span>
+                              {selectedCount > 0 && (
+                                <span className="compact-count">{selectedCount}</span>
+                              )}
                             </div>
-                            
-                            {expandedSemesters[`subject-${sem}`] && (
-                              <div className="semester-content">
-                                <div className="checkbox-grid">
-                                  {semSubjects.map(subject => (
-                                    <label key={subject._id} className="checkbox-label">
-                                      <input
-                                        type="checkbox"
-                                        checked={formData.canTeach_subjects.includes(subject._id)}
-                                        onChange={() => handleSubjectToggle(subject._id)}
-                                      />
-                                      <span className="subject-info">
-                                        <strong>{subject.subject_code}</strong>
-                                        <span className="subject-name">{subject.subject_name}</span>
-                                      </span>
-                                    </label>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
+                            <div className="compact-items-grid">
+                              {semSubjects.map(subject => (
+                                <button
+                                  key={subject._id}
+                                  type="button"
+                                  className={`compact-item-btn ${formData.canTeach_subjects.includes(subject._id) ? 'selected' : ''}`}
+                                  onClick={() => handleSubjectToggle(subject._id)}
+                                  title={`${subject.subject_code} - ${subject.subject_name}`}
+                                >
+                                  {subject.subject_shortform || subject.subject_code}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         )
                       })
@@ -374,7 +348,7 @@ function Teachers() {
 
               <div className="form-group">
                 <label>Labs Handled</label>
-                <div className="semester-sections">
+                <div className="compact-selection-container">
                   {labs.length === 0 ? (
                     <p className="text-muted">No labs available. Add labs first.</p>
                   ) : (
@@ -390,42 +364,26 @@ function Teachers() {
                         const semType = parseInt(sem) % 2 === 0 ? 'Even' : 'Odd'
                         
                         return (
-                          <div key={sem} className="semester-group">
-                            <div 
-                              className="semester-header"
-                              onClick={() => toggleSemester(`lab-${sem}`)}
-                            >
-                              <div className="semester-info">
-                                <span className="semester-badge">{sem}{semType === 'Odd' ? '🔵' : '🟢'}</span>
-                                <span className="semester-title">Semester {sem} ({semType})</span>
-                                {selectedCount > 0 && (
-                                  <span className="selected-count">{selectedCount} selected</span>
-                                )}
-                              </div>
-                              <span className="toggle-icon">
-                                {expandedSemesters[`lab-${sem}`] ? '▼' : '▶'}
-                              </span>
+                          <div key={sem} className="compact-semester-group">
+                            <div className="compact-sem-header">
+                              <span className="compact-sem-badge">Sem {sem}</span>
+                              {selectedCount > 0 && (
+                                <span className="compact-count">{selectedCount}</span>
+                              )}
                             </div>
-                            
-                            {expandedSemesters[`lab-${sem}`] && (
-                              <div className="semester-content">
-                                <div className="checkbox-grid">
-                                  {semLabs.map(lab => (
-                                    <label key={lab._id} className="checkbox-label">
-                                      <input
-                                        type="checkbox"
-                                        checked={formData.labs_handled.includes(lab._id)}
-                                        onChange={() => handleLabToggle(lab._id)}
-                                      />
-                                      <span className="subject-info">
-                                        <strong>{lab.lab_code}</strong>
-                                        <span className="subject-name">{lab.lab_name}</span>
-                                      </span>
-                                    </label>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
+                            <div className="compact-items-grid">
+                              {semLabs.map(lab => (
+                                <button
+                                  key={lab._id}
+                                  type="button"
+                                  className={`compact-item-btn ${formData.labs_handled.includes(lab._id) ? 'selected' : ''}`}
+                                  onClick={() => handleLabToggle(lab._id)}
+                                  title={`${lab.lab_code} - ${lab.lab_name}`}
+                                >
+                                  {lab.lab_shortform || lab.lab_code}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         )
                       })
