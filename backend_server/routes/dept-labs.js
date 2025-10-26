@@ -8,7 +8,7 @@ const router = express.Router()
 router.get('/', async (req, res) => {
   try {
     const labs = await DeptLab.find()
-      .populate('lab_subjects_handled', 'lab_code lab_name') // Show which labs this room supports
+      .populate('lab_subjects_handled', 'lab_code lab_name lab_shortform') // Show which labs this room supports
       .sort({ labRoom_no: 1 })
 
     res.json({ 
@@ -31,7 +31,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const lab = await DeptLab.findById(req.params.id)
-      .populate('lab_subjects_handled', 'lab_code lab_name')
+      .populate('lab_subjects_handled', 'lab_code lab_name lab_shortform')
 
     if (!lab) {
       return res.status(404).json({ 
