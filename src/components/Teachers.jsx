@@ -24,7 +24,6 @@ function Teachers() {
     teacher_shortform: '',
     canTeach_subjects: [],
     labs_handled: [],
-    hrs_per_week: '',
     teacher_position: ''
   })
   const [error, setError] = useState('')
@@ -107,7 +106,6 @@ function Teachers() {
       teacher_shortform: '',
       canTeach_subjects: [],
       labs_handled: [],
-      hrs_per_week: '',
       teacher_position: ''
     })
     setShowModal(true)
@@ -123,7 +121,6 @@ function Teachers() {
       teacher_shortform: teacher.teacher_shortform,
       canTeach_subjects: teacher.canTeach_subjects?.map(s => s._id || s) || [],
       labs_handled: teacher.labs_handled?.map(l => l._id || l) || [],
-      hrs_per_week: teacher.hrs_per_week,
       teacher_position: teacher.teacher_position
     })
     setShowModal(true)
@@ -185,7 +182,6 @@ function Teachers() {
               <th>Teacher ID</th>
               <th>Name</th>
               <th>Position</th>
-              <th>Hrs/Week</th>
               <th>Can Teach</th>
               <th>Labs Handled</th>
               <th>Actions</th>
@@ -194,7 +190,7 @@ function Teachers() {
           <tbody>
             {teachers.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
+                <td colSpan="6" style={{ textAlign: 'center', padding: '40px' }}>
                   No teachers added yet. Click "Add Teacher" to get started.
                 </td>
               </tr>
@@ -209,7 +205,6 @@ function Teachers() {
                     )}
                   </td>
                   <td>{teacher.teacher_position}</td>
-                  <td>{teacher.hrs_per_week} hrs</td>
                   <td>
                     {teacher.canTeach_subjects?.length > 0 ? (
                       <span className="badge">{teacher.canTeach_subjects.length} subjects</span>
@@ -314,25 +309,6 @@ function Teachers() {
                     <option value="Assistant Professor">Assistant Professor</option>
                     <option value="Guest Faculty">Guest Faculty</option>
                   </select>
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Weekly Hours *</label>
-                  <input
-                    type="number"
-                    name="hrs_per_week"
-                    value={formData.hrs_per_week}
-                    onChange={handleInputChange}
-                    placeholder="18"
-                    min="1"
-                    max="30"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  {/* Empty div for grid alignment */}
                 </div>
               </div>
 

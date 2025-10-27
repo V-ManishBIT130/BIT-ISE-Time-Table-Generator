@@ -851,6 +851,13 @@ Teachers Page:
 - Teacher must have subject in `canTeach_subjects`
 - One teacher per subject per section
 
+**Teacher Workload:**
+- Teacher workload is NOT pre-constrained by max hours per week
+- Workload is naturally determined by Phase 2 assignments (subjects + labs assigned)
+- Post-generation analytics will calculate actual hours worked per teacher
+- Typical engineering teacher workload: 40-50 hours per week
+- Admin can review workload report after generation and reassign if needed
+
 ---
 
 ## 📝 **SUMMARY: CRITICAL CONSTRAINTS**
@@ -865,7 +872,7 @@ Teachers Page:
 6. **Lab Room Assignment in Phase 2:** ⭐ Rooms must be manually assigned in Phase 2, not auto-assigned (equipment constraints)
 7. **Project Subjects:** Time allocation only, no teacher/classroom assignment
 8. **Batch Naming:** Include semester prefix (3A1, not A1)
-9. **Teacher Capability ≠ Assignment:** Separate capability declaration from workload
+9. **Teacher Capability ≠ Assignment:** Separate capability declaration from workload (no upfront hour limits)
 10. **No Conflicts:** No teacher/room double-booking at same time
 11. **Atomic Sessions:** Lab sessions saved as complete units (all batches)
 12. **Three-Phase Workflow:** Master Data → Assignments (Teachers + Rooms) → Generation (Time Slots)
@@ -874,12 +881,14 @@ Teachers Page:
 
 **Critical Clarification:** Lab room assignments are FIXED in Phase 2 because different labs require different equipment/software. Phase 3 algorithm only finds TIME SLOTS, not room assignments.
 
+**Workload Management:** Teacher workload is determined by Phase 2 assignments. Post-generation reports show actual hours worked (typically 40-50 hrs/week for full-time faculty). No upfront hour limits are enforced during assignment or generation.
+
 ---
 
 ## 🎓 **END OF CONSTRAINTS DOCUMENT**
 
-**Version:** 1.0  
-**Last Updated:** Based on complete project discussion  
+**Version:** 1.1  
+**Last Updated:** Removed max_hours_per_week constraint - workload naturally determined by assignments  
 **Status:** Comprehensive - Covers all identified constraints
 
 **Note:** This document should be updated as new constraints are discovered during implementation and testing phases.
