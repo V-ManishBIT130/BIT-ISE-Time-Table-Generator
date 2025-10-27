@@ -116,6 +116,36 @@ Subject: Data Structures
 
 **Reason:** Improves readability in compact UIs, easier for users to identify subjects quickly.
 
+### 3.4 Subject Field Naming Convention ⚠️
+**Critical Implementation Detail:** Subject model uses prefixed field names.
+
+**Database Schema:**
+```javascript
+subject_sem: { type: Number }      // NOT "sem"
+subject_sem_type: { type: String } // NOT "sem_type"
+```
+
+**Common Mistake:**
+```javascript
+❌ WRONG: subject.sem === section.sem
+✅ CORRECT: subject.subject_sem === section.sem
+
+❌ WRONG: subject.sem_type === section.sem_type
+✅ CORRECT: subject.subject_sem_type === section.sem_type
+```
+
+**Why This Matters:**
+- Filters will return empty arrays if wrong field names used
+- No error thrown - silently fails with zero results
+- Always use prefixed names when filtering subjects
+
+**Implementation Checklist:**
+- ✅ Use `subject.subject_sem` for semester filtering
+- ✅ Use `subject.subject_sem_type` for odd/even filtering
+- ✅ Use `subject.subject_code` for subject code
+- ✅ Use `subject.subject_name` for subject name
+- ✅ Use `subject.subject_shortform` for display
+
 ---
 
 ## 🧪 **4. LAB CONSTRAINTS**
@@ -661,6 +691,36 @@ Semester 4 (Even):
 - `ref: 'Teacher'`, `ref: 'Subjects'`, `ref: 'ISE_Sections'`
 - Backend validation checks existence before creating assignments
 
+### 9.4 Hours Per Week vs Credits
+**Rule:** Use `hrs_per_week` field for workload calculations, not `credits`.
+
+**Reason:** 
+- `hrs_per_week` represents actual teaching time commitment
+- `credits` is an academic metric, not operational
+- Timetable generation needs actual hours, not credit values
+
+**Example:**
+```
+Subject: Data Structures
+├── hrs_per_week: 3 ✅ (3 hours of teaching per week)
+├── credits: 4 (academic credits - informational only)
+└── Use hrs_per_week for:
+    ├── Teacher workload calculations
+    ├── Timetable slot allocation
+    └── Scheduling constraints
+```
+
+**Implementation:**
+- Display `hrs_per_week` in assignment interfaces
+- Use `hrs_per_week` for teacher workload analytics
+- Hide `credits` from operational views (only show in subject master data)
+
+**UI Display:**
+```javascript
+✅ CORRECT: "{subject.hrs_per_week} hrs/week"
+❌ WRONG: "{subject.credits} credits"
+```
+
 ---
 
 ## 🎯 **10. BUSINESS LOGIC CONSTRAINTS**
@@ -750,7 +810,47 @@ Open Elective: Machine Learning
 
 ## 🔍 **11. UI/UX CONSTRAINTS**
 
-### 11.1 Compact Button Selection
+### 11.1 Debugging and Error Messages
+**Rule:** Provide clear, actionable debugging information when filters return empty results.
+
+**Implementation Pattern:**
+```javascript
+// Always log filter criteria and results
+console.log('Filter Criteria:', { sem, sem_type })
+console.log('Total Items:', items.length)
+console.log('Filtered Items:', filteredItems.length)
+
+// Show user-friendly empty state
+if (filteredItems.length === 0) {
+  return (
+    <div className="empty-state">
+      <p>⚠️ No items found</p>
+      <p>Criteria: Semester {sem} - {sem_type}</p>
+      <p>Troubleshooting:
+        • Check if items exist for this semester
+        • Verify field names match database schema
+        • Check browser console for detailed logs
+      </p>
+    </div>
+  )
+}
+```
+
+**Why This Matters:**
+- Silent failures are hard to debug
+- Empty dropdowns confuse users
+- Console logs help identify field name mismatches
+- Clear messages guide users to solution
+
+**Real Example from Development:**
+```
+Problem: Subject filter returned empty array
+Reason: Used subject.sem instead of subject.subject_sem
+Solution: Console logs revealed no subjects matched filter
+Fix: Corrected field name to subject.subject_sem
+```
+
+### 11.2 Compact Button Selection
 **Rule:** Use compact button UI with semester grouping for multi-select operations.
 
 **Example: Teacher Subject Selection**
@@ -761,7 +861,7 @@ Semester 5:  [AI] [CC] [CN] [SE]       (Selected: 1)
 
 **Reason:** Reduces scrolling, improves visibility, semester-based organization aligns with academic structure.
 
-### 11.2 Shortform Priority
+### 11.3 Shortform Priority
 **Rule:** Always display shortforms when available, fall back to codes if not.
 
 **Display Logic:**
@@ -770,7 +870,7 @@ Semester 5:  [AI] [CC] [CN] [SE]       (Selected: 1)
 // Example: "DS" instead of "BCS301"
 ```
 
-### 11.3 Auto-Uppercase Inputs
+### 11.4 Auto-Uppercase Inputs
 **Rule:** Classroom/Lab room numbers must be auto-converted to uppercase.
 
 **Implementation:**
@@ -781,7 +881,7 @@ Semester 5:  [AI] [CC] [CN] [SE]       (Selected: 1)
 />
 ```
 
-### 11.4 Stats Dashboards
+### 11.5 Stats Dashboards
 **Rule:** Every master data page should show summary statistics.
 
 **Example:**
@@ -793,6 +893,35 @@ Teachers Page:
 ```
 
 **Reason:** Provides quick overview, helps administrators track completion status.
+
+### 11.6 Workload Display - Hours Not Credits
+**Rule:** Show `hrs_per_week` in assignment interfaces, not `credits`.
+
+**Correct Display:**
+```javascript
+// In subject cards
+<div className="subject-hours">{subject.hrs_per_week} hrs/week</div>
+
+// In assignment tables
+<td>{assignment.subject_id.hrs_per_week} hrs</td>
+
+// In modal details
+<div className="detail-row">
+  <span className="label">Hours per Week:</span>
+  <span className="value">{subject.hrs_per_week}</span>
+</div>
+```
+
+**Wrong Display:**
+```javascript
+❌ <div>{subject.credits} credits</div>  // Don't show credits in operations
+```
+
+**Reason:**
+- Credits are academic metrics (for transcripts)
+- Hours per week are operational metrics (for scheduling)
+- Teachers/admins need to see actual time commitment
+- Workload calculations depend on hours, not credits
 
 ---
 
@@ -877,6 +1006,22 @@ Teachers Page:
 11. **Atomic Sessions:** Lab sessions saved as complete units (all batches)
 12. **Three-Phase Workflow:** Master Data → Assignments (Teachers + Rooms) → Generation (Time Slots)
 
+### 🔧 Critical Implementation Details:
+
+**Field Naming Convention:**
+- ⚠️ Subjects use prefixed fields: `subject_sem`, `subject_sem_type` (NOT `sem`, `sem_type`)
+- ⚠️ Always use full field names in filters to avoid silent failures
+
+**Workload vs Credits:**
+- ✅ Use `hrs_per_week` for scheduling and workload calculations
+- ❌ Don't use `credits` for operational decisions (academic metric only)
+- Display hours/week in assignment interfaces, not credits
+
+**Debugging Best Practices:**
+- Add console.log statements for filter criteria and results
+- Show empty state messages with troubleshooting hints
+- Verify field names match database schema exactly
+
 **Note:** Capacity fields (classroom/lab room/section students) are stored for informational purposes only and are NOT used for validation, scheduling, or any constraints.
 
 **Critical Clarification:** Lab room assignments are FIXED in Phase 2 because different labs require different equipment/software. Phase 3 algorithm only finds TIME SLOTS, not room assignments.
@@ -887,8 +1032,8 @@ Teachers Page:
 
 ## 🎓 **END OF CONSTRAINTS DOCUMENT**
 
-**Version:** 1.1  
-**Last Updated:** Removed max_hours_per_week constraint - workload naturally determined by assignments  
-**Status:** Comprehensive - Covers all identified constraints
+**Version:** 1.2  
+**Last Updated:** Added critical implementation lessons - field naming, debugging, hours vs credits  
+**Status:** Comprehensive - Covers all identified constraints + implementation gotchas
 
 **Note:** This document should be updated as new constraints are discovered during implementation and testing phases.
