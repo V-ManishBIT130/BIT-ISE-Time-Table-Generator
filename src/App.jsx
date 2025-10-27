@@ -9,6 +9,7 @@ import Sections from './components/Sections'
 import Classrooms from './components/Classrooms'
 import DeptLabs from './components/DeptLabs'
 import LabAssignments from './components/LabAssignments'
+import TeacherAssignments from './components/TeacherAssignments'
 import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 
@@ -46,7 +47,7 @@ function App() {
           <Route path="dept-labs" element={<DeptLabs />} />
           
           {/* Phase 2: Assignment routes */}
-          <Route path="teacher-assignments" element={<div className="placeholder">Teacher Assignments Coming Soon...</div>} />
+          <Route path="teacher-assignments" element={<TeacherAssignments />} />
           <Route path="lab-assignments" element={<LabAssignments />} />
           
           {/* Phase 3: Generation routes */}
