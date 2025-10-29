@@ -132,21 +132,36 @@ function TeacherAssignments() {
     try {
       setLoading(true)
 
-      const payload = {
-        teacher_id: selectedTeacher,
-        subject_id: selectedSubject._id,
-        sem: selectedSection.sem,
-        sem_type: selectedSection.sem_type,
-        section: selectedSection.section_name
-      }
+      console.log('=== SAVE ASSIGNMENT DEBUG ===')
+      console.log('isEditMode:', isEditMode)
+      console.log('currentAssignment:', currentAssignment)
+      console.log('selectedTeacher:', selectedTeacher)
+      console.log('selectedSubject:', selectedSubject)
 
       if (isEditMode && currentAssignment) {
-        // Update existing assignment
-        await axios.put(`http://localhost:5000/api/teacher-assignments/${currentAssignment._id}`, payload)
+        // Update existing assignment - ONLY send teacher_id to avoid unique constraint
+        const updatePayload = {
+          teacher_id: selectedTeacher
+        }
+        console.log('UPDATE MODE - Sending PUT request')
+        console.log('Assignment ID:', currentAssignment._id)
+        console.log('Update Payload:', updatePayload)
+        
+        await axios.put(`http://localhost:5000/api/teacher-assignments/${currentAssignment._id}`, updatePayload)
         alert('Assignment updated successfully!')
       } else {
-        // Create new assignment
-        await axios.post('http://localhost:5000/api/teacher-assignments', payload)
+        // Create new assignment - send full payload
+        const createPayload = {
+          teacher_id: selectedTeacher,
+          subject_id: selectedSubject._id,
+          sem: selectedSection.sem,
+          sem_type: selectedSection.sem_type,
+          section: selectedSection.section_name
+        }
+        console.log('CREATE MODE - Sending POST request')
+        console.log('Create Payload:', createPayload)
+        
+        await axios.post('http://localhost:5000/api/teacher-assignments', createPayload)
         alert('Assignment saved successfully!')
       }
 
@@ -155,6 +170,7 @@ function TeacherAssignments() {
       
     } catch (err) {
       console.error('Error saving assignment:', err)
+      console.error('Error response:', err.response?.data)
       alert(err.response?.data?.message || 'Failed to save assignment')
     } finally {
       setLoading(false)
@@ -278,6 +294,20 @@ function TeacherAssignments() {
                 const assignment = existingAssignments.find(a => a.subject_id._id === subject._id)
                 const isAssigned = !!assignment
                 
+                // Debug logging for assignment display
+                if (subject.subject_code === 'BCS302') {
+                  console.log('=== DDCO ASSIGNMENT DEBUG ===')
+                  console.log('Subject:', subject.subject_code, subject.subject_name)
+                  console.log('Assignment found:', assignment)
+                  console.log('isAssigned:', isAssigned)
+                  if (assignment) {
+                    console.log('Teacher ID object:', assignment.teacher_id)
+                    console.log('Teacher shortform:', assignment.teacher_id?.teacher_shortform)
+                    console.log('Teacher name:', assignment.teacher_id?.name)
+                  }
+                  console.log('===========================')
+                }
+                
                 return (
                   <button
                     key={subject._id}
@@ -290,10 +320,10 @@ function TeacherAssignments() {
                     <div className="subject-credits">{subject.hrs_per_week} hrs/week</div>
                     {isAssigned && (
                       <div className="assigned-teacher">
-                        ✓ {assignment.teacher_id.name}
-                        {assignment.teacher_id.teacher_shortform && 
-                          ` (${assignment.teacher_id.teacher_shortform})`
-                        }
+                        <span className="assignment-label">Current Assigned Teacher:</span>
+                        <span className="teacher-detail">
+                          {assignment.teacher_id.teacher_shortform || assignment.teacher_id.name}
+                        </span>
                       </div>
                     )}
                   </button>

@@ -19,9 +19,9 @@ router.get('/', async (req, res) => {
     if (req.query.subject_id) filter.subject_id = req.query.subject_id
 
     const assignments = await TeacherSubjectAssignment.find(filter)
-      .populate('teacher_id', 'name teacher_id teacher_position')
-      .populate('subject_id', 'subject_code subject_name hrs_per_week')
-      .populate('scheduled_slots.classroom_id', 'room_no')
+      .populate('teacher_id', 'name teacher_id teacher_position teacher_shortform')
+      .populate('subject_id', 'subject_code subject_name subject_shortform hrs_per_week')
+      .populate('scheduled_slots.classroom', 'room_no')
       .sort({ sem: 1, section: 1 })
 
     res.json({ 
@@ -44,9 +44,9 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const assignment = await TeacherSubjectAssignment.findById(req.params.id)
-      .populate('teacher_id', 'name teacher_id teacher_position')
-      .populate('subject_id', 'subject_code subject_name hrs_per_week')
-      .populate('scheduled_slots.classroom_id', 'room_no')
+      .populate('teacher_id', 'name teacher_id teacher_position teacher_shortform')
+      .populate('subject_id', 'subject_code subject_name subject_shortform hrs_per_week')
+      .populate('scheduled_slots.classroom', 'room_no')
 
     if (!assignment) {
       return res.status(404).json({ 
@@ -135,6 +135,8 @@ router.post('/', async (req, res) => {
     const assignment = await TeacherSubjectAssignment.create({
       teacher_id,
       subject_id,
+      teacher_name: teacher.name, // Store for quick display
+      subject_name: subject.subject_name, // Store for quick display
       sem,
       sem_type,
       section,
@@ -170,13 +172,62 @@ router.post('/', async (req, res) => {
 // Purpose: Update assignment (change teacher or add scheduled_slots in Phase 3)
 router.put('/:id', async (req, res) => {
   try {
+    console.log('=== PUT UPDATE ASSIGNMENT ===')
+    console.log('Assignment ID:', req.params.id)
+    console.log('Request Body:', req.body)
+    
+    // Validate teacher if being updated
+    if (req.body.teacher_id) {
+      const teacher = await Teacher.findById(req.body.teacher_id)
+      if (!teacher) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Teacher not found' 
+        })
+      }
+      
+      // Check if teacher can teach the subject
+      const currentAssignment = await TeacherSubjectAssignment.findById(req.params.id)
+      console.log('Current Assignment:', currentAssignment)
+      
+      if (currentAssignment) {
+        const canTeach = teacher.canTeach_subjects.some(
+          sub => sub.toString() === currentAssignment.subject_id.toString()
+        )
+        
+        console.log('Teacher can teach?', canTeach)
+        
+        if (!canTeach) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Teacher is not eligible to teach this subject' 
+          })
+        }
+      }
+      
+      req.body.teacher_name = teacher.name
+      console.log('Updated teacher_name:', req.body.teacher_name)
+    }
+    
+    // If subject_id is being updated, fetch subject name
+    if (req.body.subject_id) {
+      const subject = await Subject.findById(req.body.subject_id)
+      if (subject) {
+        req.body.subject_name = subject.subject_name
+      }
+    }
+
+    console.log('Final update payload:', req.body)
+
     const assignment = await TeacherSubjectAssignment.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     )
-      .populate('teacher_id', 'name teacher_id')
-      .populate('subject_id', 'subject_code subject_name')
+      .populate('teacher_id', 'name teacher_id teacher_shortform')
+      .populate('subject_id', 'subject_code subject_name subject_shortform hrs_per_week')
+
+    console.log('Updated assignment:', assignment)
 
     if (!assignment) {
       return res.status(404).json({ 
@@ -193,6 +244,15 @@ router.put('/:id', async (req, res) => {
 
   } catch (error) {
     console.error('Error updating assignment:', error)
+    
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Another assignment already exists with these details' 
+      })
+    }
+    
     res.status(400).json({ 
       success: false, 
       message: 'Error updating assignment',

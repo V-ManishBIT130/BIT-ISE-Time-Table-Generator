@@ -32,6 +32,35 @@
   margin-left: 4px;
 }
 
+/* Subject and Lab Tags in Table */
+.subjects-list,
+.labs-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 300px;
+}
+
+.subject-tag,
+.lab-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.subject-tag {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+.lab-tag {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+}
+
 .loading {
   text-align: center;
   padding: 60px;
