@@ -16,8 +16,8 @@ router.get('/', async (req, res) => {
     if (req.query.name) filter.name = new RegExp(req.query.name, 'i') // Case-insensitive search
 
     const teachers = await Teacher.find(filter)
-      .populate('canTeach_subjects', 'subject_code subject_name') // Populate subject details
-      .populate('labs_handled', 'lab_code lab_name') // Populate lab details
+      .populate('canTeach_subjects', 'subject_code subject_name subject_shortform') // Added subject_shortform
+      .populate('labs_handled', 'lab_code lab_name lab_shortform') // Added lab_shortform
       .sort({ name: 1 }) // Sort by name alphabetically
 
     res.json({ 
@@ -42,8 +42,8 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const teacher = await Teacher.findById(req.params.id)
-      .populate('canTeach_subjects', 'subject_code subject_name')
-      .populate('labs_handled', 'lab_code lab_name')
+      .populate('canTeach_subjects', 'subject_code subject_name subject_shortform')
+      .populate('labs_handled', 'lab_code lab_name lab_shortform')
 
     if (!teacher) {
       return res.status(404).json({ 

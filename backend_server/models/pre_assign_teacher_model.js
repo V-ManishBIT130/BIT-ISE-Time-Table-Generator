@@ -4,6 +4,8 @@ const TeacherSubjectAssignmentSchema = new mongoose.Schema(
   {
     teacher_id: {type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', required: true},
     subject_id: {type: mongoose.Schema.Types.ObjectId, ref: 'Subjects', required: true},
+    teacher_name: {type: String}, // Denormalized for quick display
+    subject_name: {type: String}, // Denormalized for quick display
     sem: {type: Number, required: true},
     sem_type: {type: String, enum: ['odd', 'even'], required: true},
     section: {type: String, required: true}, // 'A', 'B', 'C'

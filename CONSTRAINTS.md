@@ -989,7 +989,147 @@ Teachers Page:
 
 ---
 
-## 📝 **SUMMARY: CRITICAL CONSTRAINTS**
+## � **11.7 Schema-Route Field Consistency**
+
+**Rule:** Database schema field names MUST exactly match populate path in routes.
+
+**Example Problem:**
+```javascript
+// ❌ WRONG - Schema has 'classroom' but route uses 'classroom_id'
+Schema: scheduled_slots: [{ classroom: ObjectId }]
+Route:  .populate('scheduled_slots.classroom_id', 'room_no')
+Error:  "Cannot populate path `scheduled_slots.classroom_id`"
+```
+
+**Correct Implementation:**
+```javascript
+// ✅ CORRECT - Field names match
+Schema: scheduled_slots: [{ classroom: ObjectId }]
+Route:  .populate('scheduled_slots.classroom', 'room_no')
+```
+
+**Debugging:**
+- Check exact field names in model definition
+- Copy field names from schema to populate calls
+- Error message will tell you which path failed to populate
+
+---
+
+## 🔄 **11.8 Update Payload Strategy for Unique Constraints**
+
+**Rule:** When updating records with unique constraints, send ONLY the fields being changed.
+
+**Problem:**
+```javascript
+// ❌ WRONG - Sends all fields including unchanged ones
+PUT /api/teacher-assignments/:id
+{
+  teacher_id: "new_teacher",
+  subject_id: "same_subject",  // Triggers unique constraint!
+  sem: 3,
+  sem_type: "odd",
+  section: "A"
+}
+// Unique index on (subject_id, sem, sem_type, section) fails
+```
+
+**Solution:**
+```javascript
+// ✅ CORRECT - Send only changed field
+PUT /api/teacher-assignments/:id
+{
+  teacher_id: "new_teacher"  // Only this changed
+}
+// MongoDB updates only teacher_id, unique constraint happy
+```
+
+**Implementation Pattern:**
+```javascript
+// Frontend: Separate payloads for create vs update
+if (isEditMode) {
+  const updatePayload = { teacher_id: selectedTeacher }  // Only changes
+  await axios.put(`/api/assignments/${id}`, updatePayload)
+} else {
+  const createPayload = {  // Full payload for creation
+    teacher_id: selectedTeacher,
+    subject_id: subject._id,
+    sem: section.sem,
+    sem_type: section.sem_type,
+    section: section.section_name
+  }
+  await axios.post('/api/assignments', createPayload)
+}
+```
+
+**Why This Matters:**
+- Unique indexes check if combination already exists
+- Sending unchanged fields makes MongoDB think you're creating duplicate
+- `findByIdAndUpdate` with minimal payload bypasses constraint
+
+---
+
+## 📊 **11.9 Display Priority: Shortforms First**
+
+**Rule:** Always display shortforms before full names for compact, consistent UI.
+
+**Example:**
+```javascript
+// ❌ WRONG - Shows full name first
+{assignment.teacher_id.name || assignment.teacher_id.teacher_shortform}
+// Result: "Dr. Shilpa M" (long, inconsistent)
+
+// ✅ CORRECT - Shows shortform first
+{assignment.teacher_id.teacher_shortform || assignment.teacher_id.name}
+// Result: "SMD" (compact, consistent)
+```
+
+**Rationale:**
+- Shortforms save screen space
+- Create visual consistency across cards
+- Fallback to full name if shortform missing
+
+**Apply Everywhere:**
+- Teacher displays
+- Subject displays  
+- Lab displays
+- Assignment cards
+- Table cells
+
+---
+
+## 🔍 **11.10 Console Logging Strategy**
+
+**Rule:** Add strategic console logs for debugging complex data flows.
+
+**What to Log:**
+```javascript
+// Filter criteria and counts
+console.log('=== DEBUG INFO ===')
+console.log('Filter criteria:', { sem, sem_type, section })
+console.log('Total items:', allItems.length)
+console.log('Filtered items:', filteredItems.length)
+console.log('Filtered items:', filteredItems.map(i => i.code))
+
+// Assignment state changes
+console.log('isEditMode:', isEditMode)
+console.log('currentAssignment:', currentAssignment)
+console.log('Payload:', payload)
+
+// Backend route execution
+console.log('=== PUT UPDATE ASSIGNMENT ===')
+console.log('Request Body:', req.body)
+console.log('Current Assignment:', currentAssignment)
+```
+
+**Best Practices:**
+- Use clear section headers (`=== TITLE ===`)
+- Log both inputs and outputs
+- Include relevant context (IDs, codes, names)
+- Remove logs after debugging (or add debug flag)
+
+---
+
+## �📝 **SUMMARY: CRITICAL CONSTRAINTS**
 
 ### Top 12 Most Important Constraints:
 
@@ -1011,16 +1151,28 @@ Teachers Page:
 **Field Naming Convention:**
 - ⚠️ Subjects use prefixed fields: `subject_sem`, `subject_sem_type` (NOT `sem`, `sem_type`)
 - ⚠️ Always use full field names in filters to avoid silent failures
+- ⚠️ Schema field names MUST match populate paths exactly (classroom not classroom_id)
 
 **Workload vs Credits:**
 - ✅ Use `hrs_per_week` for scheduling and workload calculations
 - ❌ Don't use `credits` for operational decisions (academic metric only)
 - Display hours/week in assignment interfaces, not credits
 
+**Update Strategy:**
+- ✅ For updates: Send ONLY changed fields to avoid unique constraint conflicts
+- ✅ For creates: Send full required payload
+- Different payloads for PUT vs POST operations
+
+**Display Best Practices:**
+- ✅ Always show shortforms before full names (compact, consistent)
+- ✅ Use fallback chain: `shortform || name` or `shortform || code`
+- ✅ Apply consistently across all UI components
+
 **Debugging Best Practices:**
 - Add console.log statements for filter criteria and results
 - Show empty state messages with troubleshooting hints
 - Verify field names match database schema exactly
+- Log both request and response data for API calls
 
 **Note:** Capacity fields (classroom/lab room/section students) are stored for informational purposes only and are NOT used for validation, scheduling, or any constraints.
 
@@ -1032,8 +1184,8 @@ Teachers Page:
 
 ## 🎓 **END OF CONSTRAINTS DOCUMENT**
 
-**Version:** 1.2  
-**Last Updated:** Added critical implementation lessons - field naming, debugging, hours vs credits  
-**Status:** Comprehensive - Covers all identified constraints + implementation gotchas
+**Version:** 1.3  
+**Last Updated:** Added schema-route consistency, update payload strategy, display priorities, console logging patterns  
+**Status:** Comprehensive - Covers all identified constraints + implementation gotchas + debugging strategies
 
 **Note:** This document should be updated as new constraints are discovered during implementation and testing phases.

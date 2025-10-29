@@ -207,14 +207,26 @@ function Teachers() {
                   <td>{teacher.teacher_position}</td>
                   <td>
                     {teacher.canTeach_subjects?.length > 0 ? (
-                      <span className="badge">{teacher.canTeach_subjects.length} subjects</span>
+                      <div className="subjects-list">
+                        {teacher.canTeach_subjects.map((subject, index) => (
+                          <span key={subject._id || index} className="subject-tag">
+                            {subject.subject_shortform || subject.subject_code || 'N/A'}
+                          </span>
+                        ))}
+                      </div>
                     ) : (
                       <span className="text-muted">None</span>
                     )}
                   </td>
                   <td>
                     {teacher.labs_handled?.length > 0 ? (
-                      <span className="badge">{teacher.labs_handled.length} labs</span>
+                      <div className="labs-list">
+                        {teacher.labs_handled.map((lab, index) => (
+                          <span key={lab._id || index} className="lab-tag">
+                            {lab.lab_shortform || lab.lab_code || 'N/A'}
+                          </span>
+                        ))}
+                      </div>
                     ) : (
                       <span className="text-muted">None</span>
                     )}
