@@ -19,8 +19,8 @@ router.get('/', async (req, res) => {
     if (req.query.lab_id) filter.lab_id = req.query.lab_id
 
     const assignments = await TeacherLabAssignment.find(filter)
-      .populate('teacher_ids', 'name teacher_id email')
-      .populate('lab_id', 'lab_code lab_name duration_hours')
+      .populate('teacher_ids', 'name teacher_id teacher_shortform email')
+      .populate('lab_id', 'lab_code lab_name lab_shortform duration_hours')
       .populate('assigned_lab_room', 'labRoom_no')
       .sort({ sem: 1, section: 1, batch_number: 1 })
 
@@ -44,8 +44,8 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const assignment = await TeacherLabAssignment.findById(req.params.id)
-      .populate('teacher_ids', 'name teacher_id email')
-      .populate('lab_id', 'lab_code lab_name')
+      .populate('teacher_ids', 'name teacher_id teacher_shortform email')
+      .populate('lab_id', 'lab_code lab_name lab_shortform')
       .populate('assigned_lab_room', 'labRoom_no')
 
     if (!assignment) {
@@ -72,13 +72,13 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/lab-assignments
 // Purpose: Assign 2 teachers to a lab-batch combination (Phase 2)
-// Body: { lab_id, sem, sem_type, section, batch_number, teacher_ids: [id1, id2] }
+// Body: { lab_id, sem, sem_type, section, batch_number, teacher_ids: [id1, id2], assigned_lab_room }
 // Validation: 
 // - Must be exactly 2 teachers
 // - Both teachers must have lab in labs_handled
 router.post('/', async (req, res) => {
   try {
-    const { lab_id, sem, sem_type, section, batch_number, teacher_ids } = req.body
+    const { lab_id, sem, sem_type, section, batch_number, teacher_ids, assigned_lab_room } = req.body
 
     // Validate exactly 2 teachers
     if (!teacher_ids || teacher_ids.length !== 2) {
@@ -121,7 +121,7 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Create assignment (schedule fields empty until Phase 3)
+    // Create assignment (schedule fields empty until Phase 3, but room assigned in Phase 2)
     const assignment = await TeacherLabAssignment.create({
       lab_id,
       sem,
@@ -129,15 +129,16 @@ router.post('/', async (req, res) => {
       section,
       batch_number,
       teacher_ids,
+      assigned_lab_room: assigned_lab_room || null,  // Accept lab room from request
       scheduled_day: null,
       scheduled_start_time: null,
-      scheduled_end_time: null,
-      assigned_lab_room: null
+      scheduled_end_time: null
     })
 
     const populatedAssignment = await TeacherLabAssignment.findById(assignment._id)
-      .populate('teacher_ids', 'name teacher_id')
+      .populate('teacher_ids', 'name teacher_id teacher_shortform')
       .populate('lab_id', 'lab_code lab_name')
+      .populate('assigned_lab_room', 'labRoom_no')
 
     res.status(201).json({ 
       success: true, 
@@ -165,7 +166,7 @@ router.post('/', async (req, res) => {
 })
 
 // PUT /api/lab-assignments/:id
-// Purpose: Update assignment (change teachers or add schedule in Phase 3)
+// Purpose: Update assignment (change teachers, room, or add schedule in Phase 3)
 router.put('/:id', async (req, res) => {
   try {
     const assignment = await TeacherLabAssignment.findByIdAndUpdate(
@@ -173,8 +174,8 @@ router.put('/:id', async (req, res) => {
       req.body,
       { new: true, runValidators: true }
     )
-      .populate('teacher_ids', 'name teacher_id')
-      .populate('lab_id', 'lab_code lab_name')
+      .populate('teacher_ids', 'name teacher_id teacher_shortform')
+      .populate('lab_id', 'lab_code lab_name lab_shortform')
       .populate('assigned_lab_room', 'labRoom_no')
 
     if (!assignment) {
