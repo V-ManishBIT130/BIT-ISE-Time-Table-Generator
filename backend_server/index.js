@@ -13,6 +13,7 @@ import classroomsRoutes from "./routes/classrooms.js"
 import deptLabsRoutes from "./routes/dept-labs.js"
 import teacherAssignmentsRoutes from "./routes/teacher-assignments.js"
 import labAssignmentsRoutes from "./routes/lab-assignments.js"
+import timetablesRoutes from "./routes/timetables.js"
 
 // Connect to MongoDB
 conn();
@@ -43,6 +44,7 @@ app.use('/api/classrooms', classroomsRoutes)
 app.use('/api/dept-labs', deptLabsRoutes)
 app.use('/api/teacher-assignments', teacherAssignmentsRoutes)
 app.use('/api/lab-assignments', labAssignmentsRoutes)
+app.use('/api/timetables', timetablesRoutes)
 
 // 404 handler for unknown routes
 app.use((req, res) => {
