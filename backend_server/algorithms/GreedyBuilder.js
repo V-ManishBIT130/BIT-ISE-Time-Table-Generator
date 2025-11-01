@@ -323,7 +323,6 @@ class GreedyBuilder {
     
     for (const assignment of sortedAssignments) {
       const subject = assignment.subject_id;
-      const section = assignment.section_id;
       const teacher = assignment.teacher_id;
       
       // Skip if no teacher needed (project, OEC, other dept)
@@ -337,7 +336,7 @@ class GreedyBuilder {
       // Split hours into sessions
       const sessions = this.splitTheoryHours(subject.hrs_per_week, subject.max_hrs_Day);
       
-      console.log(`    📝 ${subject.subject_shortform} (${section.section_name}): ${subject.hrs_per_week} hrs → ${sessions.length} sessions`);
+      console.log(`    📝 ${subject.subject_shortform} (${assignment.sem}${assignment.section}): ${subject.hrs_per_week} hrs → ${sessions.length} sessions`);
       
       let sessionsScheduled = 0;
       
@@ -368,8 +367,9 @@ class GreedyBuilder {
             subject_name: subject.subject_name,
             subject_shortform: subject.subject_shortform,
             subject_type: subject_type,
-            section_id: section._id,
-            section_name: section.section_name,
+            sem: assignment.sem,
+            sem_type: assignment.sem_type,
+            section: assignment.section,
             teacher_id: teacher._id,
             teacher_name: teacher.name,
             teacher_shortform: teacher.teacher_shortform,
