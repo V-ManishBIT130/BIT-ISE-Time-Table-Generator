@@ -65,20 +65,25 @@ class BatchSyncValidator {
     
     // From theory slots
     for (const slot of timetable.theory_slots) {
-      if (!sectionMap.has(slot.section_id.toString())) {
-        sectionMap.set(slot.section_id.toString(), {
-          section_id: slot.section_id,
-          section_name: slot.section_name
+      const sectionKey = `${slot.sem}${slot.sem_type}${slot.section}`;
+      if (!sectionMap.has(sectionKey)) {
+        sectionMap.set(sectionKey, {
+          sem: slot.sem,
+          sem_type: slot.sem_type,
+          section: slot.section,
+          section_key: sectionKey
         });
       }
     }
     
     // From lab slots
     for (const slot of timetable.lab_slots) {
-      if (!sectionMap.has(slot.section_id.toString())) {
-        sectionMap.set(slot.section_id.toString(), {
+      const sectionKey = `${slot.section_id}`;  // Lab slots still use section_id
+      if (!sectionMap.has(sectionKey)) {
+        sectionMap.set(sectionKey, {
           section_id: slot.section_id,
-          section_name: slot.section_name
+          section_name: slot.section_name,
+          section_key: sectionKey
         });
       }
     }
