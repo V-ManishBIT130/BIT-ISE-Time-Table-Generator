@@ -165,6 +165,104 @@ router.get('/sections', async (req, res) => {
 });
 
 /**
+ * POST /api/timetables/generate-lab-assignments
+ * Regenerate fresh Phase 2 lab assignments for all sections
+ * This clears old assignments and creates new conflict-free assignments
+ */
+router.post('/generate-lab-assignments', async (req, res) => {
+  try {
+    console.log('\n🚀 Starting Fresh Lab Assignment Generation...\n');
+
+    // Dynamically import Phase2AutoAssigner
+    const { default: Phase2AutoAssigner } = await import('../algorithms/Phase2AutoAssigner.js');
+    const { default: ISESection } = await import('../models/ise_sections_model.js');
+
+    // Get all sections from database
+    const allSections = await ISESection.find({}).lean();
+    
+    if (allSections.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No sections found in database. Please add sections first.'
+      });
+    }
+
+    console.log(`Found ${allSections.length} sections in database`);
+    
+    // Get unique semester-type combinations
+    const semesterTypes = [...new Set(allSections.map(s => `${s.sem}-${s.sem_type}`))];
+    
+    const results = [];
+    let totalAssignments = 0;
+
+    // Process each semester
+    for (const semType of semesterTypes) {
+      const [sem, type] = semType.split('-');
+      
+      console.log(`\n${'='.repeat(70)}`);
+      console.log(`PROCESSING SEMESTER ${sem} (${type})`);
+      console.log('='.repeat(70));
+      
+      try {
+        const assigner = new Phase2AutoAssigner();
+        const result = await assigner.generateLabAssignments(parseInt(sem), type);
+        
+        results.push({
+          semester: parseInt(sem),
+          semesterType: type,
+          success: true,
+          assignments: result.assignments?.length || 0,
+          sections: result.sections || []
+        });
+
+        totalAssignments += result.assignments?.length || 0;
+        
+        console.log(`\n✅ Semester ${sem} (${type}) completed successfully!`);
+        
+      } catch (error) {
+        console.error(`\n❌ Error processing Semester ${sem} (${type}):`, error.message);
+        results.push({
+          semester: parseInt(sem),
+          semesterType: type,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+
+    console.log('\n' + '='.repeat(70));
+    console.log('🎉 LAB ASSIGNMENT GENERATION COMPLETE!');
+    console.log('='.repeat(70));
+    console.log(`Total Assignments Created: ${totalAssignments}`);
+
+    const successCount = results.filter(r => r.success).length;
+    const failureCount = results.filter(r => !r.success).length;
+
+    res.json({
+      success: failureCount === 0,
+      message: failureCount === 0 
+        ? `Successfully generated ${totalAssignments} lab assignments for ${successCount} semester(s)`
+        : `Generated assignments for ${successCount} semester(s) with ${failureCount} failure(s)`,
+      totalAssignments,
+      results,
+      statistics: {
+        totalSemesters: semesterTypes.length,
+        successful: successCount,
+        failed: failureCount
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Critical Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate lab assignments',
+      error: error.message
+    });
+  }
+});
+
+/**
  * GET /api/timetables/test
  * Test endpoint to verify the route is working
  */
@@ -175,7 +273,8 @@ router.get('/test', (req, res) => {
     endpoints: [
       'GET  /api/timetables/sections - List all sections',
       'POST /api/timetables/generate - Generate for all sections',
-      'POST /api/timetables/generate-section - Generate for single section'
+      'POST /api/timetables/generate-section - Generate for single section',
+      'POST /api/timetables/generate-lab-assignments - Regenerate fresh lab assignments (Phase 2)'
     ]
   });
 });

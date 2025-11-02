@@ -191,6 +191,22 @@ class Timetable {
   }
 
   // ==========================================
+  // METHOD: getFitness
+  // PURPOSE: Get fitness score (higher = better)
+  // ==========================================
+  getFitness() {
+    return this.fitness;
+  }
+
+  // ==========================================
+  // METHOD: setFitness
+  // PURPOSE: Update fitness score
+  // ==========================================
+  setFitness(score) {
+    this.fitness = score;
+  }
+
+  // ==========================================
   // METHOD: toString
   // PURPOSE: Human-readable summary for debugging
   // ==========================================
