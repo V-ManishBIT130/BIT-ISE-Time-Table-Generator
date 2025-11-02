@@ -206,15 +206,14 @@ function Labs() {
               <th>Lab Name</th>
               <th>Semester</th>
               <th>Type</th>
-              <th>Duration</th>
-              <th>Teachers Required</th>
+              <th>Handled By</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredLabs.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
+                <td colSpan="6" style={{ textAlign: 'center', padding: '40px' }}>
                   {labs.length === 0 
                     ? 'No labs added yet. Click "Add Lab" to get started.'
                     : 'No labs match the selected filters.'}
@@ -232,10 +231,17 @@ function Labs() {
                     </span>
                   </td>
                   <td>
-                    <span className="badge badge-duration">{lab.duration_hours} hours</span>
-                  </td>
-                  <td>
-                    <span className="badge badge-teachers">2 Teachers</span>
+                    <div className="teachers-list">
+                      {lab.handled_by && lab.handled_by.length > 0 ? (
+                        lab.handled_by.map((teacher, idx) => (
+                          <span key={idx} className="badge badge-teacher" title={teacher.name}>
+                            {teacher.teacher_shortform}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ color: '#999', fontSize: '12px' }}>No teachers assigned</span>
+                      )}
+                    </div>
                   </td>
                   <td>
                     <div className="action-buttons">

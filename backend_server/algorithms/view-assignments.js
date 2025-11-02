@@ -15,7 +15,11 @@ async function displayAssignments() {
   try {
     await mongoose.connect(process.env.MONGODB_URI);
 
+    // Import all required models
     const TeacherLabAssignment = (await import('../models/teacher_lab_assign_model.js')).default;
+    const SyllabusLabs = (await import('../models/syllabus_labs_model.js')).default;
+    const Teacher = (await import('../models/teachers_models.js')).default;
+    const DeptLabs = (await import('../models/dept_labs_model.js')).default;
     
     const assignments = await TeacherLabAssignment.find({})
       .populate('lab_id')

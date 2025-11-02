@@ -1,5 +1,6 @@
 import express from 'express'
 import SyllabusLab from '../models/syllabus_labs_model.js'
+import Teacher from '../models/teachers_models.js'
 
 const router = express.Router()
 
@@ -25,10 +26,24 @@ router.get('/', async (req, res) => {
     const labs = await SyllabusLab.find(filter)
       .sort({ lab_sem: 1, lab_code: 1 })
 
+    // For each lab, find teachers who can handle it
+    const labsWithTeachers = await Promise.all(
+      labs.map(async (lab) => {
+        const teachers = await Teacher.find({
+          labs_handled: lab._id
+        }).select('teacher_shortform name')
+        
+        return {
+          ...lab.toObject(),
+          handled_by: teachers
+        }
+      })
+    )
+
     res.json({ 
       success: true, 
-      count: labs.length,
-      data: labs 
+      count: labsWithTeachers.length,
+      data: labsWithTeachers 
     })
 
   } catch (error) {

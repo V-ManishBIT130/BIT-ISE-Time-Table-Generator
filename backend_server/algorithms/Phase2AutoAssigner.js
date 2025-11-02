@@ -40,6 +40,9 @@ class Phase2AutoAssigner {
     console.log(`Semester: ${semester} (${semesterType})\n`);
 
     try {
+      // CRITICAL: Reset assignments array for this semester
+      this.assignments = [];
+      
       // Step 1: Load master data
       await this.loadMasterData(semester, semesterType);
 
@@ -131,47 +134,125 @@ class Phase2AutoAssigner {
 
   /**
    * STEP 3: Assign labs for a single section
-   * KEY INSIGHT: Batches rotate through time slots
-   * In each slot, all batches run simultaneously but do DIFFERENT labs
-   * CRITICAL: Each BATCH must use different rooms to avoid conflicts in same time slot!
+   * KEY INSIGHT: Batches rotate through time slots (rounds)
+   * In each round/slot, all batches run simultaneously but do DIFFERENT labs
+   * CRITICAL FIX: Track which teachers are assigned in EACH ROUND to prevent conflicts!
    */
   async assignLabsForSection(section) {
     const numBatches = section.split_batches;
+    const numLabs = this.syllabusLabs.length;
 
     console.log(`   Batches: ${numBatches} (${section.batch_names.join(', ')})`);
-    console.log(`   Labs required: ${this.syllabusLabs.length}`);
+    console.log(`   Labs required: ${numLabs}`);
+    console.log(`   Rounds needed: ${numLabs} (each batch does all ${numLabs} labs)`);
 
-    // For each lab, assign to all batches
-    for (const lab of this.syllabusLabs) {
-      console.log(`\n   🔬 Assigning ${lab.lab_shortform}...`);
-
-      // Get all suitable rooms for this lab once
-      const suitableRooms = this.labRooms.filter(room => {
-        if (!room.lab_subjects_handled || room.lab_subjects_handled.length === 0) return false;
-        return room.lab_subjects_handled.some(supportedLab => 
-          supportedLab._id.toString() === lab._id.toString()
-        );
-      });
-
-      if (suitableRooms.length === 0) {
-        throw new Error(`❌ No rooms support ${lab.lab_shortform}`);
+    // Process assignments ROUND by ROUND (not lab by lab)
+    // In each round, all batches run simultaneously with different labs
+    for (let round = 0; round < numLabs; round++) {
+      console.log(`\n   ⏰ Round ${round + 1}/${numLabs}:`);
+      
+      // Track teachers used in THIS ROUND (across all batches)
+      const teachersUsedInRound = new Set();
+      
+      // SMARTER APPROACH: Calculate how many times each lab appears in this round
+      // PC-LAB might appear 3 times (needs 6 teachers), BDA-LAB might appear 2 times (needs 4 teachers)
+      const labDemand = new Map(); // lab ID -> number of batches needing it
+      for (let batchNum = 1; batchNum <= numBatches; batchNum++) {
+        const labIndex = (round + batchNum - 1) % numLabs;
+        const lab = this.syllabusLabs[labIndex];
+        const labId = lab._id.toString();
+        labDemand.set(labId, (labDemand.get(labId) || 0) + 1);
+      }
+      
+      // Identify teachers who are CRITICAL (needed by high-demand labs with limited pools)
+      const criticalTeachers = new Set();
+      for (const [labId, demandCount] of labDemand.entries()) {
+        const lab = this.syllabusLabs.find(l => l._id.toString() === labId);
+        const qualifiedCount = this.teachers.filter(t => 
+          t.labs_handled && t.labs_handled.some(l => l._id.toString() === labId)
+        ).length;
+        
+        // Calculate teacher need: demand * 2 (teachers per batch)
+        const teachersNeeded = demandCount * 2;
+        
+        // If this lab needs > 60% of its qualified teachers, mark those teachers as critical
+        // But only mark as critical if there's actually scarcity (≤8 qualified teachers total)
+        const utilizationRate = teachersNeeded / qualifiedCount;
+        if (qualifiedCount <= 8 && utilizationRate > 0.60) {
+          this.teachers.forEach(t => {
+            if (t.labs_handled && t.labs_handled.some(l => l._id.toString() === labId)) {
+              criticalTeachers.add(t._id.toString());
+            }
+          });
+        }
       }
 
-      // Sort rooms by name for consistency
-      suitableRooms.sort((a, b) => (a.labRoom_no || '').localeCompare(b.labRoom_no || ''));
-
+      // SMART ORDERING: Build batch-lab pairings, then sort by teacher availability
+      const batchAssignments = [];
       for (let batchNum = 1; batchNum <= numBatches; batchNum++) {
+        const labIndex = (round + batchNum - 1) % numLabs;
+        const lab = this.syllabusLabs[labIndex];
+        
+        // Count how many teachers can handle this lab
+        const teacherCount = this.teachers.filter(t => 
+          t.labs_handled && t.labs_handled.some(l => l._id.toString() === lab._id.toString())
+        ).length;
+        
+        batchAssignments.push({ batchNum, lab, teacherCount });
+      }
+      
+      // Sort by teacher count ascending (assign labs with fewer teachers FIRST)
+      batchAssignments.sort((a, b) => a.teacherCount - b.teacherCount);
+      
+      // Now process batches in priority order
+      for (const { batchNum, lab, teacherCount } of batchAssignments) {
         const batchName = `${section.sem}${section.section_name}${batchNum}`;
-
-        // Find 2 available teachers for this lab
-        const teachers = this.findAvailableTeachers(lab, 2);
-
-        if (teachers.length < 2) {
-          throw new Error(`❌ Not enough teachers for ${lab.lab_shortform} batch ${batchName}. Need 2, found ${teachers.length}`);
+        
+        // DEBUG: Show lab info for PC-related labs
+        if (lab.lab_name && lab.lab_name.includes('Parallel')) {
+          console.log(`      🔍 DEBUG - Processing ${lab.lab_name} (${lab.lab_shortform}) for batch ${batchNum}, Lab ID: ${lab._id}`);
         }
 
-        // CRITICAL: Use batch number to cycle through rooms
-        // This ensures Batch 1, 2, 3 all get DIFFERENT rooms for the same lab!
+        // Get suitable rooms for this lab
+        const suitableRooms = this.labRooms.filter(room => {
+          if (!room.lab_subjects_handled || room.lab_subjects_handled.length === 0) return false;
+          return room.lab_subjects_handled.some(supportedLab => 
+            supportedLab._id.toString() === lab._id.toString()
+          );
+        });
+
+        if (suitableRooms.length === 0) {
+          throw new Error(`❌ No rooms support ${lab.lab_shortform}`);
+        }
+
+        // Sort rooms by name for consistency
+        suitableRooms.sort((a, b) => (a.labRoom_no || '').localeCompare(b.labRoom_no || ''));
+
+        // CRITICAL FIX: Find teachers NOT already used in this round
+        // Check if THIS lab is critical (needs all/most of its teachers in this round)
+        const labId = lab._id.toString();
+        const labDemandCount = labDemand.get(labId) || 1;
+        const qualifiedCount = this.teachers.filter(t => 
+          t.labs_handled && t.labs_handled.some(l => l._id.toString() === labId)
+        ).length;
+        const isCurrentLabCritical = (labDemandCount * 2) >= qualifiedCount;
+        
+        const teachers = this.findAvailableTeachersForRound(lab, 2, teachersUsedInRound, criticalTeachers, isCurrentLabCritical);
+
+        if (teachers.length < 2) {
+          // FALLBACK: If not enough unique teachers in this round, allow reuse
+          console.log(`      ⚠️  Insufficient unique teachers - allowing reuse for ${lab.lab_shortform}`);
+          const fallbackTeachers = this.findAvailableTeachers(lab, 2);
+          
+          if (fallbackTeachers.length < 2) {
+            throw new Error(`❌ Not enough teachers for ${lab.lab_shortform} batch ${batchName} in round ${round + 1}. Need 2, found ${fallbackTeachers.length}`);
+          }
+          
+          teachers.length = 0;
+          teachers.push(...fallbackTeachers);
+        }
+
+        // Use batch number to cycle through rooms
         const roomIndex = (batchNum - 1) % suitableRooms.length;
         const room = suitableRooms[roomIndex];
 
@@ -194,10 +275,13 @@ class Phase2AutoAssigner {
 
         this.assignments.push(assignment);
 
-        // Mark teachers as used (for fair distribution)
+        // Mark teachers as used IN THIS ROUND
+        teachers.forEach(t => teachersUsedInRound.add(t._id.toString()));
+
+        // Mark teachers as used OVERALL (for fair distribution)
         this.markTeachersUsed(teachers, lab._id, batchNum);
 
-        console.log(`      ${batchName}: ${teachers[0].teacher_shortform} + ${teachers[1].teacher_shortform} → ${room.labRoom_no}`);
+        console.log(`      ${batchName} (${lab.lab_shortform}): ${teachers[0].teacher_shortform} + ${teachers[1].teacher_shortform} → ${room.labRoom_no}`);
       }
     }
   }
@@ -220,6 +304,53 @@ class Phase2AutoAssigner {
     if (qualifiedTeachers.length < count) {
       console.log(`      ⚠️  Warning: Only ${qualifiedTeachers.length} teachers can handle ${lab.lab_shortform}`);
       console.log(`         Available: ${qualifiedTeachers.map(t => t.teacher_shortform).join(', ')}`);
+    }
+
+    // Sort by usage count (least used first) for fair distribution
+    qualifiedTeachers.sort((a, b) => {
+      const usageA = (a.usageCount || 0);
+      const usageB = (b.usageCount || 0);
+      return usageA - usageB;
+    });
+
+    return qualifiedTeachers.slice(0, count);
+  }
+
+  /**
+   * CRITICAL NEW METHOD: Find teachers for a specific round
+   * Excludes teachers already assigned in this round (prevents simultaneous conflicts)
+   */
+  findAvailableTeachersForRound(lab, count, teachersUsedInRound, criticalTeachers = new Set(), isCurrentLabCritical = false) {
+    // Find teachers who can handle this lab
+    const qualifiedTeachers = this.teachers.filter(teacher => {
+      if (!teacher.labs_handled || teacher.labs_handled.length === 0) return false;
+      
+      // Check if teacher can handle this lab
+      const canHandle = teacher.labs_handled.some(handledLab => 
+        handledLab._id.toString() === lab._id.toString()
+      );
+      
+      if (!canHandle) return false;
+
+      // CRITICAL: Check if teacher already used in this round
+      const teacherId = teacher._id.toString();
+      if (teachersUsedInRound.has(teacherId)) {
+        return false; // Skip - already assigned in this time slot!
+      }
+
+      // NEW: Reserve critical teachers for labs that desperately need them
+      // If this lab is NOT critical (doesn't need most/all of its teachers), don't use critical teachers
+      if (!isCurrentLabCritical && criticalTeachers.has(teacherId)) {
+        return false; // Skip - this teacher is reserved for labs that need all their resources
+      }
+      
+      return true;
+    });
+
+    // DEBUG: Show all qualified teachers for this lab
+    if (qualifiedTeachers.length < count) {
+      console.log(`      ⚠️  Warning: Only ${qualifiedTeachers.length} teachers available for ${lab.lab_shortform} in this round`);
+      console.log(`         Qualified: ${qualifiedTeachers.map(t => t.teacher_shortform).join(', ')}`);
     }
 
     // Sort by usage count (least used first) for fair distribution

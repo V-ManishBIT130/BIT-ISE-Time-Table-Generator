@@ -3,8 +3,8 @@
  * TIMETABLE GENERATOR - MAIN CONTROLLER
  * ============================================================================
  * PURPOSE: Generate timetables for all sections using Triple Hybrid Algorithm
- * ARCHITECTURE: Greedy → Genetic Algorithm → Bees Algorithm
- * PHASES: 0 (Initialization) → 1 (Evolution) → 2 (Refinement)
+ * ARCHITECTURE: Greedy → Genetic Algorithm → Bee Algorithm (Adaptive)
+ * PHASES: 0 (Initialization) → 1 (Evolution/Bee Optimization) → 2 (Validation)
  * 
  * AUTHOR: Built with love for BIT ISE Department ❤️
  * DATE: November 2025
@@ -12,15 +12,35 @@
  */
 
 import GreedyBuilder from './GreedyBuilder.js';
+import GeneticAlgorithm from './GeneticAlgorithm.js';
+import BeeAlgorithm from './BeeAlgorithm.js';
 import DataLoaderDB from './utils/DataLoaderDB.js';
 import TeacherConflictValidator from './validators/TeacherConflictValidator.js';
 import RoomConflictValidator from './validators/RoomConflictValidator.js';
 import BatchSyncValidator from './validators/BatchSyncValidator.js';
 
 class TimetableGenerator {
-  constructor() {
+  constructor(options = {}) {
     this.greedyBuilder = new GreedyBuilder();
-    // Note: Validators use static methods, no need to instantiate
+    
+    // Configure optimization algorithm
+    this.useAlgorithm = options.algorithm || 'both'; // 'genetic', 'bee', or 'both'
+    
+    this.geneticAlgorithm = new GeneticAlgorithm({
+      populationSize: 100,
+      maxGenerations: 300,
+      crossoverRate: 0.7,
+      mutationRate: 0.4
+    });
+    
+    this.beeAlgorithm = new BeeAlgorithm({
+      colonySize: 50,
+      maxCycles: 300,
+      limit: 50,
+      neighborhoodSize: 3
+    });
+    
+    console.log(`🤖 Optimization Mode: ${this.useAlgorithm.toUpperCase()}`);
   }
 
   /**
@@ -90,40 +110,102 @@ class TimetableGenerator {
 
           // PHASE 0: Greedy Initialization
           console.log('\n   🔧 PHASE 0: Greedy Initialization...');
-          const timetable = await this.greedyBuilder.build(
+          const greedyTimetable = await this.greedyBuilder.build(
             sectionTheoryAssignments,
             sectionLabAssignments,
             phase2Data.classrooms,
             section
           );
 
-          // Validate generated timetable
-          console.log('   🔍 Validating timetable...');
-          const validation = this.validateTimetable(timetable);
+          // Check if greedy already achieved zero conflicts
+          const greedyValidation = this.validateTimetable(greedyTimetable);
+          
+          let finalTimetable = greedyTimetable;
+          
+          if (!greedyValidation.isValid) {
+            const initialFitness = greedyTimetable.getFitness();
+            const initialConflicts = greedyValidation.errors.length;
+            
+            console.log(`\n   ⚠️  Greedy fitness: ${initialFitness} (${initialConflicts} conflicts)`);
+            
+            // PHASE 1A: Genetic Algorithm Optimization (if selected)
+            if (this.useAlgorithm === 'genetic' || this.useAlgorithm === 'both') {
+              console.log('\n   🧬 PHASE 1A: Genetic Algorithm Optimization...');
+              
+              finalTimetable = await this.geneticAlgorithm.evolve(
+                greedyTimetable,
+                {
+                  theory_assignments: sectionTheoryAssignments,
+                  lab_assignments: sectionLabAssignments,
+                  classrooms: phase2Data.classrooms,
+                  section
+                }
+              );
+              
+              const gaValidation = this.validateTimetable(finalTimetable);
+              console.log(`      GA Result: Fitness ${finalTimetable.getFitness()} (${gaValidation.errors.length} conflicts)`);
+            }
+            
+            // PHASE 1B: Bee Colony Optimization (if selected)
+            if (this.useAlgorithm === 'bee' || this.useAlgorithm === 'both') {
+              const postGaValidation = this.validateTimetable(finalTimetable);
+              
+              if (!postGaValidation.isValid || this.useAlgorithm === 'bee') {
+                console.log('\n   🐝 PHASE 1B: Bee Colony Optimization...');
+                
+                const beeTimetable = await this.beeAlgorithm.optimize(
+                  finalTimetable,
+                  {
+                    theory_assignments: sectionTheoryAssignments,
+                    lab_assignments: sectionLabAssignments,
+                    classrooms: phase2Data.classrooms,
+                    section
+                  }
+                );
+                
+                const beeValidation = this.validateTimetable(beeTimetable);
+                console.log(`      Bee Result: Fitness ${beeTimetable.getFitness()} (${beeValidation.errors.length} conflicts)`);
+                
+                // Use bee result if better or equal
+                if (beeTimetable.getFitness() >= finalTimetable.getFitness()) {
+                  finalTimetable = beeTimetable;
+                  console.log('      ✨ Bee algorithm produced better/equal result!');
+                }
+              } else {
+                console.log('\n   ✅ GA already perfect! Skipping Bee optimization...');
+              }
+            }
+          } else {
+            console.log('\n   🎉 Greedy already perfect! Skipping optimization...');
+          }
+
+          // Validate final timetable
+          console.log('   🔍 Final Validation...');
+          const validation = this.validateTimetable(finalTimetable);
 
           if (validation.isValid) {
             console.log('   ✅ Timetable generated successfully!');
-            console.log(`      - Theory Slots: ${timetable.theory_slots.length}`);
-            console.log(`      - Lab Slots: ${timetable.lab_slots.length}`);
+            console.log(`      - Theory Slots: ${finalTimetable.theory_slots.length}`);
+            console.log(`      - Lab Slots: ${finalTimetable.lab_slots.length}`);
             console.log(`      - Total Violations: 0`);
 
             results.timetables.push({
               section: section.section_name,
               semester: section.sem,
-              timetable: timetable,
+              timetable: finalTimetable,
               validation: validation
             });
 
             results.statistics.successful++;
-            results.statistics.total_slots += timetable.getTotalSlots();
+            results.statistics.total_slots += finalTimetable.getTotalSlots();
             
             // Calculate hours
-            for (const slot of timetable.theory_slots) {
+            for (const slot of finalTimetable.theory_slots) {
               const hours = (new Date(`2000-01-01 ${slot.end_time}`) - new Date(`2000-01-01 ${slot.start_time}`)) / 3600000;
               results.statistics.total_theory_hours += hours;
             }
             
-            for (const slot of timetable.lab_slots) {
+            for (const slot of finalTimetable.lab_slots) {
               const hours = (new Date(`2000-01-01 ${slot.end_time}`) - new Date(`2000-01-01 ${slot.start_time}`)) / 3600000;
               results.statistics.total_lab_hours += hours;
             }

@@ -211,6 +211,7 @@ class GreedyBuilder {
     
     // Schedule labs in rounds (each round = one time slot)
     let slotIndex = 0;
+    let roundOffset = 0; // Track offset to avoid teacher conflicts
     
     for (let round = 0; round < maxLabsPerBatch; round++) {
       console.log(`\n  🔄 Round ${round + 1}: Scheduling different lab for each batch...`);
@@ -223,37 +224,76 @@ class GreedyBuilder {
         continue;
       }
       
-      // In this time slot, each batch does a different lab
-      const batchActivities = [];
+      // SMART SCHEDULING: Check for teacher conflicts before finalizing this round
+      let attemptOffset = roundOffset;
+      let maxAttempts = maxLabsPerBatch; // Try different offsets
+      let validCombination = false;
+      let batchActivities = [];
       
-      let batchIndex = 0;
-      for (const batch of batches) {
-        // CRITICAL: Offset each batch so they start with different labs
-        // Batch 1 starts at lab[0], Batch 2 starts at lab[1], Batch 3 starts at lab[2]
-        const labIndex = (round + batchIndex) % batch.labs.length;
-        const lab = batch.labs[labIndex];
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        batchActivities = [];
+        const teachersInThisSlot = new Set();
+        let hasConflict = false;
         
-        if (lab) {
-          batchActivities.push({
-            batch_number: batch.batch_number,
-            batch_name: batch.batch_name,
-            lab_id: lab.lab_id?._id || lab.lab_id,
-            lab_name: lab.lab_name,
-            lab_shortform: lab.lab_shortform,
-            teacher1_id: lab.teacher1_id?._id || lab.teacher1_id,
-            teacher2_id: lab.teacher2_id?._id || lab.teacher2_id,
-            teacher1_name: lab.teacher1_name,
-            teacher2_name: lab.teacher2_name,
-            teacher1_shortform: lab.teacher1_id?.teacher_shortform || 'UNK',
-            teacher2_shortform: lab.teacher2_id?.teacher_shortform || 'UNK',
-            lab_room_id: lab.lab_room_id?._id || lab.lab_room_id,
-            lab_room_name: lab.room_name
-          });
-          
-          console.log(`    ${batch.batch_name}: ${lab.lab_shortform} in ${lab.room_name} (${lab.teacher1_name}, ${lab.teacher2_name})`);
+        let batchIndex = 0;
+        for (const batch of batches) {
+          // Use attemptOffset to try different lab combinations
+          const labIndex = (round + attemptOffset + batchIndex) % batch.labs.length;
+          const lab = batch.labs[labIndex];
+        
+          if (lab) {
+            // Check for teacher conflicts
+            const teacher1Key = lab.teacher1_id?._id?.toString() || lab.teacher1_id?.toString();
+            const teacher2Key = lab.teacher2_id?._id?.toString() || lab.teacher2_id?.toString();
+            
+            if (teachersInThisSlot.has(teacher1Key) || teachersInThisSlot.has(teacher2Key)) {
+              console.log(`    ⚠️  Attempt ${attempt + 1}: Teacher conflict detected (${lab.teacher1_name} or ${lab.teacher2_name} already scheduled)`);
+              hasConflict = true;
+              break;
+            }
+            
+            teachersInThisSlot.add(teacher1Key);
+            teachersInThisSlot.add(teacher2Key);
+            
+            batchActivities.push({
+              batch_number: batch.batch_number,
+              batch_name: batch.batch_name,
+              lab_id: lab.lab_id?._id || lab.lab_id,
+              lab_name: lab.lab_name,
+              lab_shortform: lab.lab_shortform,
+              teacher1_id: lab.teacher1_id?._id || lab.teacher1_id,
+              teacher2_id: lab.teacher2_id?._id || lab.teacher2_id,
+              teacher1_name: lab.teacher1_name,
+              teacher2_name: lab.teacher2_name,
+              teacher1_shortform: lab.teacher1_id?.teacher_shortform || 'UNK',
+              teacher2_shortform: lab.teacher2_id?.teacher_shortform || 'UNK',
+              lab_room_id: lab.lab_room_id?._id || lab.lab_room_id,
+              lab_room_name: lab.room_name
+            });
+          }
+        
+          batchIndex++;
         }
         
-        batchIndex++;
+        if (!hasConflict) {
+          validCombination = true;
+          roundOffset = attemptOffset + 1; // Use next offset for next round
+          console.log(`    ✅ Found conflict-free combination (attempt ${attempt + 1})`);
+          break;
+        }
+        
+        // Try next offset
+        attemptOffset++;
+      }
+      
+      if (!validCombination) {
+        console.log(`    ⚠️  Could not find conflict-free combination after ${maxAttempts} attempts`);
+        // Use the last attempt anyway (will be caught by validators)
+      }
+      
+      // Log scheduled labs
+      for (const activity of batchActivities) {
+        console.log(`    ${activity.batch_name}: ${activity.lab_shortform} in ${activity.lab_room_name} (${activity.teacher1_name}, ${activity.teacher2_name})`);
       }
       
       // Add this multi-batch lab slot to timetable
