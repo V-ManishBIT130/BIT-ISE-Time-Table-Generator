@@ -10,6 +10,8 @@ import Classrooms from './components/Classrooms'
 import DeptLabs from './components/DeptLabs'
 import LabAssignments from './components/LabAssignments'
 import TeacherAssignments from './components/TeacherAssignments'
+import TimetableGenerator from './components/TimetableGenerator'
+import TimetableViewer from './components/TimetableViewer'
 import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 
@@ -51,8 +53,8 @@ function App() {
           <Route path="lab-assignments" element={<LabAssignments />} />
           
           {/* Phase 3: Generation routes */}
-          <Route path="generate" element={<div className="placeholder">Generate Timetable Coming Soon...</div>} />
-          <Route path="view" element={<div className="placeholder">View Timetable Coming Soon...</div>} />
+          <Route path="generate" element={<TimetableGenerator />} />
+          <Route path="view" element={<TimetableViewer />} />
         </Route>
 
         {/* Catch all - redirect to login */}
