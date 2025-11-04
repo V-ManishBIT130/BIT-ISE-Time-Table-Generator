@@ -27,4 +27,46 @@ const subjects_Schema = new mongoose.Schema(
 
 subjects_Schema.index({ subject_code: 1, subject_sem: 1 }, { unique: true })
 
+// Pre-save hook to auto-set has_fixed_schedule based on fixed_schedule array
+subjects_Schema.pre('save', function(next) {
+  // Auto-set has_fixed_schedule if fixed_schedule array has items
+  if (this.fixed_schedule && this.fixed_schedule.length > 0) {
+    this.has_fixed_schedule = true;
+  } else {
+    this.has_fixed_schedule = false;
+  }
+  
+  // Auto-set requires_teacher_assignment based on subject type
+  if (this.is_project || this.is_open_elective || this.is_non_ise_subject) {
+    this.requires_teacher_assignment = false;
+  } else if (this.is_professional_elective) {
+    this.requires_teacher_assignment = true; // PEC needs ISE teacher
+  }
+  
+  next();
+});
+
+// Pre-update hook to handle findOneAndUpdate
+subjects_Schema.pre('findOneAndUpdate', function(next) {
+  const update = this.getUpdate();
+  
+  // Handle fixed_schedule updates
+  if (update.fixed_schedule) {
+    if (Array.isArray(update.fixed_schedule) && update.fixed_schedule.length > 0) {
+      update.has_fixed_schedule = true;
+    } else {
+      update.has_fixed_schedule = false;
+    }
+  }
+  
+  // Handle requires_teacher_assignment updates
+  if (update.is_project || update.is_open_elective || update.is_non_ise_subject) {
+    update.requires_teacher_assignment = false;
+  } else if (update.is_professional_elective) {
+    update.requires_teacher_assignment = true;
+  }
+  
+  next();
+});
+
 export default mongoose.model('Subjects', subjects_Schema); // Singular model name

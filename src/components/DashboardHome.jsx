@@ -17,7 +17,7 @@ function DashboardHome() {
     classrooms: 0,
     deptLabs: 0,
     teacherAssignments: 0,
-    labAssignments: 0,
+    labRoomAssignments: 0, // Changed from labAssignments
     loading: true
   })
 
@@ -35,7 +35,7 @@ function DashboardHome() {
         classrooms,
         deptLabs,
         teacherAssignments,
-        labAssignments
+        labRoomAssignments // Changed from labAssignments
       ] = await Promise.all([
         axios.get('/api/teachers'),
         axios.get('/api/subjects'),
@@ -44,7 +44,7 @@ function DashboardHome() {
         axios.get('/api/classrooms'),
         axios.get('/api/dept-labs'),
         axios.get('/api/teacher-assignments'),
-        axios.get('/api/lab-assignments')
+        axios.get('/api/lab-room-assignments') // Changed route
       ])
 
       setStats({
@@ -55,7 +55,7 @@ function DashboardHome() {
         classrooms: classrooms.data.count || 0,
         deptLabs: deptLabs.data.count || 0,
         teacherAssignments: teacherAssignments.data.count || 0,
-        labAssignments: labAssignments.data.count || 0,
+        labRoomAssignments: labRoomAssignments.data.count || 0, // Changed from labAssignments
         loading: false
       })
     } catch (error) {
@@ -80,7 +80,7 @@ function DashboardHome() {
                          stats.deptLabs > 0
 
   const phase2Complete = stats.teacherAssignments > 0 && 
-                         stats.labAssignments > 0
+                         stats.labRoomAssignments > 0 // Changed from labAssignments
 
   return (
     <div className="dashboard-home">
@@ -165,14 +165,14 @@ function DashboardHome() {
             <div className="stat-icon">📝</div>
             <div className="stat-content">
               <h3>{stats.teacherAssignments}</h3>
-              <p>Subject Assignments</p>
+              <p>Theory Subject Assignments</p>
             </div>
           </div>
           <div className="stat-card">
             <div className="stat-icon">🧬</div>
             <div className="stat-content">
-              <h3>{stats.labAssignments}</h3>
-              <p>Lab Assignments</p>
+              <h3>{stats.labRoomAssignments}</h3>
+              <p>Lab Room Assignments</p>
             </div>
           </div>
         </div>

@@ -8,7 +8,7 @@ const syllabus_lab_Schema = new mongoose.Schema(
     lab_sem: {type: Number, required: true, min: 3, max: 8}, // Only semesters 3-8 (ISE department responsibility)
     lab_sem_type: {type: String, required: true, enum: ['odd', 'even']}, // Match odd/even semester type
     credits: {type: Number, required: true, default: 2}, // Weekly hours needed (always 2hrs per session typically)
-    requires_two_teachers: {type: Boolean, default: true}, // Constraint: labs need 2 teachers
+    ideal_teacher_count: {type: Number, default: 2}, // Ideal: 2 teachers, but flexible (1 acceptable, 0 flagged)
     duration_hours: {type: Number, default: 2} // Always 2 hours per lab session
   },
   { collection: 'Syllabus_Labs', timestamps: true }

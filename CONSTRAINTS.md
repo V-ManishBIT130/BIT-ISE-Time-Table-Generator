@@ -24,6 +24,178 @@ This document outlines all the constraints and rules for generating timetables f
 
 ---
 
+### 1.2 Semester Type Separation (CRITICAL!)
+**Rule:** Odd and Even semester timetables are COMPLETELY SEPARATE and generated at different times of the year.
+
+**Academic Year Structure:**
+```
+First Half (Aug-Dec): ODD SEMESTERS
+├── Semester 3 (Odd) - Sections: 3A, 3B, 3C
+├── Semester 5 (Odd) - Sections: 5A, 5B, 5C
+└── Semester 7 (Odd) - Sections: 7A, 7B, 7C
+
+Second Half (Jan-May): EVEN SEMESTERS
+├── Semester 4 (Even) - Sections: 4A, 4B, 4C
+├── Semester 6 (Even) - Sections: 6A, 6B, 6C
+└── Semester 8 (Even) - Sections: 8A, 8B, 8C
+```
+
+**Generation Scope:**
+- **When generating ODD sems:** Include ONLY odd semester sections (3A, 3B, 3C, 5A, 5B, 5C, 7A, 7B, 7C)
+- **When generating EVEN sems:** Include ONLY even semester sections (4A, 4B, 4C, 6A, 6B, 6C, 8A, 8B, 8C)
+- **Never mix:** Odd and even semesters never run simultaneously
+
+**Example:**
+```
+Admin Action: "Generate Timetable for Odd Semesters"
+
+Algorithm processes:
+├── ALL sections from Semester 3 (odd)
+├── ALL sections from Semester 5 (odd)
+├── ALL sections from Semester 7 (odd)
+└── Generates conflict-free timetables for each section
+
+Output:
+├── Timetable for Section 3A ✅
+├── Timetable for Section 3B ✅
+├── Timetable for Section 3C ✅
+├── Timetable for Section 5A ✅
+├── Timetable for Section 5B ✅
+├── Timetable for Section 5C ✅
+├── Timetable for Section 7A ✅
+├── Timetable for Section 7B ✅
+└── Timetable for Section 7C ✅
+
+All 9 timetables are globally conflict-free!
+```
+
+---
+
+### 1.3 Timetable Generation Strategy (THE MAIN GOAL)
+**Rule:** Generate SEPARATE timetable documents (one per section) in ONE algorithm run that checks conflicts across ALL sections.
+
+**Main Goal:** **ALL CONFLICT-FREE TIMETABLES ACROSS ALL SECTIONS** ⭐
+
+**Critical Requirements:**
+
+**1. Cross-Section Teacher Conflict Prevention:**
+```
+Example:
+Prof. DC teaches:
+├── Data Structures → Section 3A
+└── AI → Section 5A
+
+❌ INVALID: DC scheduled at Monday 10-12 for BOTH 3A and 5A
+✅ VALID: DC scheduled at Monday 10-12 for 3A, then Monday 2-4 for 5A
+
+Algorithm MUST ensure:
+- Prof. DC is never in two places at the same time
+- Check ALL sections before assigning teacher to time slot
+```
+
+**2. Cross-Section Room Conflict Prevention:**
+```
+Example:
+Lab Room ISE-301 assigned to:
+├── Batch 3A1 (DSL Lab)
+└── Batch 5B2 (CN Lab)
+
+❌ INVALID: Both batches using ISE-301 at Monday 8-10 AM
+✅ VALID: 3A1 uses ISE-301 Monday 8-10, 5B2 uses ISE-301 Tuesday 10-12
+
+Algorithm MUST ensure:
+- No lab room double-booking across ALL sections
+- Check ALL sections before assigning room to time slot
+```
+
+**3. Cross-Section Theory Classroom Conflict Prevention:**
+```
+Example:
+Classroom ISE-LH1 needed for:
+├── Section 3B: DBMS Theory
+└── Section 5A: AI Theory
+
+❌ INVALID: Both sections using ISE-LH1 at Monday 10-12
+✅ VALID: 3B uses ISE-LH1 Monday 10-12, 5A uses ISE-LH1 Tuesday 9-11
+
+Algorithm MUST ensure:
+- No classroom double-booking across ALL sections
+- Check ALL sections before assigning classroom to time slot
+```
+
+**4. Individual Section Output:**
+```
+Output Structure:
+├── One timetable document per section
+├── Each timetable is complete and independent
+├── But all timetables are globally conflict-free
+└── Can be viewed/printed separately per section
+
+Example:
+- Section 3A timetable (standalone document)
+- Section 3B timetable (standalone document)
+- Section 5A timetable (standalone document)
+... (all conflict-free when checked together)
+```
+
+**Implementation:**
+```javascript
+// Phase 3 Algorithm
+function generateTimetables(semesterType) {
+  // Load ALL sections of this semester type
+  const sections = getSections({ sem_type: semesterType })
+  // Example for 'odd': [3A, 3B, 3C, 5A, 5B, 5C, 7A, 7B, 7C]
+  
+  // Generate timetables for ALL sections simultaneously
+  // Conflict checking spans ALL sections
+  const timetables = {}
+  
+  for (const section of sections) {
+    timetables[section.id] = {
+      section_id: section.id,
+      section_name: section.name,
+      sem: section.sem,
+      theory_slots: [],
+      lab_slots: []
+    }
+  }
+  
+  // Schedule activities checking conflicts across ALL sections
+  scheduleAllActivities(timetables, sections)
+  
+  // Save each section's timetable as separate document
+  for (const sectionId in timetables) {
+    saveTimetable(timetables[sectionId])
+  }
+  
+  return timetables
+}
+```
+
+**Validation:**
+```javascript
+// Before assigning any resource (teacher/room/classroom) at a time slot
+function canAssignResource(resource, timeSlot, currentSection, allSections) {
+  // Check if resource is free across ALL sections at this time
+  for (const section of allSections) {
+    if (isResourceBusy(resource, timeSlot, section)) {
+      return false // ❌ Conflict found!
+    }
+  }
+  return true // ✅ Safe to assign
+}
+```
+
+**Benefits:**
+- ✅ Zero resource conflicts across all sections
+- ✅ Realistic timetables (teachers can't be in two places)
+- ✅ Efficient resource utilization
+- ✅ Each section gets independent timetable document
+- ✅ Easy to view/print per section
+- ✅ Globally consistent and conflict-free
+
+---
+
 ## 👥 **2. SECTION & BATCH CONSTRAINTS**
 
 ### 2.1 Section Structure
@@ -433,23 +605,28 @@ DSL Lab (Data Structures):
 - UI shows only compatible rooms in dropdown for each lab
 
 ### 4.2 Lab Teacher Requirement
-**Rule:** Every lab session MUST have exactly 2 teachers supervising.
+**Rule:** Lab sessions should ideally have 2 teachers supervising, but can function with 1 teacher if necessary.
 
-**Reason:** Safety, supervision quality, and hands-on assistance for students.
+**Reason:** Two teachers provide better supervision quality and hands-on assistance, but flexibility is needed to accommodate teacher availability constraints.
+
+**Priority Order:**
+1. **Ideal:** 2 qualified teachers ✅✅ (preferred)
+2. **Acceptable:** 1 qualified teacher ✅ (if 2nd not available)
+3. **Flagged:** 0 teachers ⚠️ (needs admin attention)
 
 **Example:**
 ```
 Lab Session: Data Structures Lab (DSL)
 ├── Batch 3A1
-├── Teacher 1: Prof. Deeksha Chandra (DC) ✅
-├── Teacher 2: Prof. Arjun Kumar (AK) ✅
-└── Invalid: Only 1 teacher ❌
+├── Scenario A (Ideal): Teacher 1: DC + Teacher 2: AK ✅✅
+├── Scenario B (Acceptable): Teacher 1: DC only ✅
+└── Scenario C (Needs Review): No teachers assigned ⚠️
 ```
 
 **Implementation:**
-- `syllabus_labs_model.js`: `requires_two_teachers: { default: true }`
-- `teacher_lab_assign_model.js`: Pre-save validation ensures exactly 2 teachers
-- `lab_session_model.js`: Validates 2 teachers per batch in session
+- Teachers are assigned AFTER time slots are finalized in Phase 3
+- Algorithm attempts 2 teachers first, falls back to 1 if needed
+- Unassigned labs are flagged in generation report for admin review
 
 ### 4.3 Lab Duration
 **Rule:** Every lab session is exactly 2 hours (no exceptions).
@@ -496,55 +673,136 @@ Lab Room 612A:
 - **Reason:** Equipment/software constraints require manual room selection
 
 ### 4.5 Lab Room Assignment Constraint
-**Rule:** Lab rooms must be assigned in Phase 2 (not auto-assigned in Phase 3).
+**Rule:** Lab rooms are automatically assigned in Phase 2 based on equipment compatibility and even distribution strategy.
 
-**Reason:** Not all lab rooms can support all labs due to equipment/software requirements.
+**Reason:** 
+- Lab rooms are constrained by equipment/software requirements
+- Automatic assignment ensures even distribution across available rooms
+- Minimizes conflicts during Phase 3 scheduling
+- Teachers are assigned later in Phase 3 for maximum flexibility
 
-**Example:**
+**Automatic Assignment Strategy:**
+
+**Step 1: Filter Compatible Rooms**
 ```
-Scenario: Section 5A needs DV Lab (Data Visualization)
+For each section's lab (e.g., Section 5A, DV Lab):
+├── Query dept_labs where lab_subjects_handled includes "DV Lab"
+├── Result: Compatible rooms [612A, 612B, 612C, 604A]
+└── These rooms have required equipment (graphics cards, visualization software)
 
-Available Rooms for DV:
-├── 612A ✅ (has visualization software + graphics card)
-├── 612B ✅ (has visualization software)
-├── 612C ✅ (has visualization software)
-├── 604A ✅ (newly equipped)
-└── ISE-301 ❌ (general lab, no graphics software)
-
-Phase 2 Assignment:
-├── Batch 5A1 → Teachers: DC+AK → Room: 612A (admin chooses based on equipment)
-├── Batch 5A2 → Teachers: Rajeev+Suman → Room: 612B
-└── Batch 5A3 → Teachers: Arjun+Priya → Room: 604A
-
-Why Fixed in Phase 2?
-1. DV lab requires special graphics software (not in all rooms)
-2. Admin knows which rooms have working equipment
-3. Some rooms may be under maintenance
-4. Can't be auto-assigned - requires human knowledge of equipment status
+Example Filters:
+DV Lab → Rooms: [612A, 612B, 612C, 604A] (4 rooms with graphics)
+CN Lab → Rooms: [ISE-301, ISE-302, ISE-303, ISE-304] (4 general rooms)
+DSL Lab → Rooms: [ISE-301, ISE-302, ISE-303, ISE-304, ISE-305] (5 general rooms)
 ```
 
-**Another Example:**
+**Step 2: Even Distribution (Round-Robin)**
 ```
-DVP Lab (Data Visualization Project):
-├── Can use: 612A, 612C, 604A ✅
-└── Cannot use: 612B ❌ (doesn't have project collaboration tools)
+For each section's lab, assign rooms to batches evenly:
 
-DSL Lab (Data Structures):
-├── Can use: ANY general-purpose lab ✅
-└── No special equipment needed
+Section 5A, DV Lab (3 batches):
+Compatible Rooms: [612A, 612B, 612C, 604A]
+
+Assignment:
+├── Batch 5A1 → Room: 612A (rooms[0 % 4] = rooms[0])
+├── Batch 5A2 → Room: 612B (rooms[1 % 4] = rooms[1])
+└── Batch 5A3 → Room: 612C (rooms[2 % 4] = rooms[2])
+
+Section 5B, DV Lab (3 batches):
+Compatible Rooms: [612A, 612B, 612C, 604A]
+
+Assignment:
+├── Batch 5B1 → Room: 604A (rooms[3 % 4] = rooms[3]) ← Starts from next available
+├── Batch 5B2 → Room: 612A (rooms[4 % 4] = rooms[0]) ← Wraps around
+└── Batch 5B3 → Room: 612B (rooms[5 % 4] = rooms[1])
+
+✅ Even distribution: Each room used roughly equally
+✅ Minimizes conflicts: Different sections tend to get different rooms
 ```
 
-**Implementation in Workflow:**
-```
-Phase 2 (LabAssignments.jsx):
-└── Admin MUST select:
-    ├── 2 Teachers per batch ✅
-    └── 1 Lab Room per batch ✅ (FIXED, not optional!)
+**Step 3: Global Room Distribution Tracking**
+```javascript
+// Track global room usage across all sections
+roomUsageCounter = {
+  "612A": 0,
+  "612B": 0,
+  "612C": 0,
+  "604A": 0
+}
 
-Phase 3 (Timetable Generation):
-└── Algorithm ONLY finds TIME SLOT
-    (Teachers + Rooms already decided in Phase 2)
+// For each batch assignment, pick least-used compatible room
+function assignRoom(batch, lab, compatibleRooms) {
+  // Sort rooms by usage count (ascending)
+  sortedRooms = compatibleRooms.sort((a, b) => 
+    roomUsageCounter[a] - roomUsageCounter[b]
+  )
+  
+  // Pick least-used room
+  assignedRoom = sortedRooms[0]
+  roomUsageCounter[assignedRoom]++
+  
+  return assignedRoom
+}
+
+Result:
+├── Batch 5A1, DV Lab → 612A (usage: 0 → 1)
+├── Batch 5A2, DV Lab → 612B (usage: 0 → 1)
+├── Batch 5A3, DV Lab → 612C (usage: 0 → 1)
+├── Batch 5B1, DV Lab → 604A (usage: 0 → 1)
+├── Batch 5B2, DV Lab → 612A (usage: 1 → 2) ← Least used
+└── Batch 5B3, DV Lab → 612B (usage: 1 → 2)
+
+✅ Fair distribution across all rooms
 ```
+
+**Example Output:**
+```
+Phase 2 Automatic Room Assignments:
+
+Section 5A:
+├── Batch 5A1, CN Lab → Room: ISE-301 ✅
+├── Batch 5A2, CN Lab → Room: ISE-302 ✅
+├── Batch 5A3, CN Lab → Room: ISE-303 ✅
+├── Batch 5A1, DV Lab → Room: 612A ✅
+├── Batch 5A2, DV Lab → Room: 612B ✅
+└── Batch 5A3, DV Lab → Room: 612C ✅
+
+Section 5B:
+├── Batch 5B1, CN Lab → Room: ISE-304 ✅ (next available)
+├── Batch 5B2, CN Lab → Room: ISE-301 ✅ (wrap around)
+├── Batch 5B3, CN Lab → Room: ISE-302 ✅
+├── Batch 5B1, DV Lab → Room: 604A ✅ (next available)
+├── Batch 5B2, DV Lab → Room: 612A ✅ (wrap around, least used)
+└── Batch 5B3, DV Lab → Room: 612B ✅
+
+All assignments automatically generated!
+```
+
+**Benefits:**
+- ✅ Automatic: No manual selection needed
+- ✅ Equipment-compatible: Only assigns suitable rooms
+- ✅ Even distribution: Rooms used fairly across sections
+- ✅ Conflict minimization: Different sections likely get different rooms
+- ✅ Predictable: Deterministic algorithm (repeatable results)
+- ✅ Scalable: Works for any number of sections/labs/rooms
+
+**Algorithm Implementation:**
+- Location: `backend_server/algorithms/auto_lab_room_assignment.js`
+- Functions:
+  - `autoAssignLabRooms(semType, academicYear)` → Performs actual assignment & saves to DB
+  - `previewLabRoomAssignments(semType, academicYear)` → Preview without saving (testing)
+
+**Why Room Assignment Before Phase 3:**
+1. Equipment constraints are hard (cannot be changed during scheduling)
+2. Pre-assignment simplifies Phase 3 (only need to find time slots)
+3. Even distribution prevents bottlenecks
+4. Reduces Phase 3 complexity (fewer variables to optimize)
+
+**Why Teachers NOT Assigned in Phase 2:**
+1. Teacher availability varies with time slots (soft constraint)
+2. Pre-assigning creates rigid constraints that reduce scheduling success
+3. Dynamic assignment in Phase 3 maximizes flexibility
+4. Teacher conflicts can be resolved by trying different teachers
 
 ### 4.6 Lab Shortforms
 **Rule:** Every lab must have a shortform for compact display.
@@ -629,6 +887,99 @@ Wednesday 2:00-4:00 - Section 5A:
 - Algorithm must track: Which labs each batch has been assigned
 - Before finalizing timetable: Verify all batches have all required labs
 - Warning if any lab missing for any batch
+
+---
+
+### 4.8 No Consecutive Lab Sessions (CRITICAL!)
+**Rule:** A section CANNOT have lab sessions in consecutive time slots on the same day.
+
+**Reason:** Lab sessions are physically and mentally intensive. Students need a break or theory class between lab sessions for better learning and to avoid fatigue.
+
+**Invalid Examples:**
+```
+❌ INVALID - Section 3A Schedule (Monday):
+├── 8:00-10:00: Lab Session (DSL)
+└── 10:00-12:00: Lab Session (DBMS Lab) ❌ CONSECUTIVE!
+
+❌ INVALID - Section 5A Schedule (Tuesday):
+├── 10:00-12:00: Lab Session (CN Lab)
+└── 12:00-2:00: Lab Session (DV Lab) ❌ CONSECUTIVE!
+
+❌ INVALID - Section 7A Schedule (Wednesday):
+├── 2:00-4:00: Lab Session (AI Lab)
+└── 4:00-6:00: Lab Session (ML Lab) ❌ CONSECUTIVE!
+```
+
+**Valid Examples:**
+```
+✅ VALID - Section 3A Schedule (Monday):
+├── 8:00-10:00: Lab Session (DSL)
+├── 10:00-10:30: Break
+├── 10:30-12:30: Theory Class (Data Structures)
+└── 2:00-4:00: Lab Session (DBMS Lab) ✅ (Not consecutive, gap with theory)
+
+✅ VALID - Section 5A Schedule (Tuesday):
+├── 8:00-10:00: Theory Class (AI)
+├── 10:00-12:00: Lab Session (CN Lab) ✅
+├── 12:00-1:00: Theory Class (DBMS)
+└── 2:00-4:00: Lab Session (DV Lab) ✅ (Not consecutive, gap with theory)
+
+✅ VALID - Section 7A Schedule (Wednesday):
+├── 8:00-10:00: Lab Session (AI Lab)
+├── 10:00-10:30: Break
+├── 10:30-12:30: Theory Classes
+├── 12:30-1:00: Break
+└── 1:00-3:00: Theory Classes ✅ (No second lab session today)
+```
+
+**Definition of "Consecutive":**
+```
+Consecutive = Lab sessions with NO gap or ONLY a break (≤30 min) between them
+
+Examples:
+├── Lab 8-10, Lab 10-12 → ❌ Consecutive (no gap)
+├── Lab 8-10, Break 10-10:30, Lab 10:30-12:30 → ❌ Consecutive (only break)
+├── Lab 8-10, Theory 10-12, Lab 12-2 → ✅ Not consecutive (theory between)
+└── Lab 8-10, Theory 10-10:30, Lab 10:30-12:30 → ✅ Not consecutive (theory between)
+```
+
+**Algorithm Validation:**
+```javascript
+function hasConsecutiveLabSessions(section, day, schedule) {
+  const daySlots = schedule.filter(slot => slot.day === day)
+  daySlots.sort((a, b) => a.start_time - b.start_time)
+  
+  for (let i = 0; i < daySlots.length - 1; i++) {
+    const current = daySlots[i]
+    const next = daySlots[i + 1]
+    
+    // Check if both are lab sessions
+    if (current.type === 'lab' && next.type === 'lab') {
+      // Check if they're consecutive (end time of current = start time of next)
+      // OR only a short break (≤30 min) between them
+      const gap = calculateGap(current.end_time, next.start_time)
+      
+      if (gap <= 30) {
+        return true // ❌ Consecutive labs detected!
+      }
+    }
+  }
+  
+  return false // ✅ No consecutive labs
+}
+```
+
+**Implementation:**
+- Before assigning a lab session, check if previous/next slot is also a lab
+- If yes, ensure there's a theory class (>30 min) between them
+- Reject assignment if it creates consecutive lab sessions
+- Validation applies within same section's daily schedule
+
+**Benefits:**
+- ✅ Prevents student fatigue from continuous lab work
+- ✅ Allows mental break between hands-on sessions
+- ✅ Better learning outcomes with mixed schedule
+- ✅ More realistic and humane timetable
 
 ---
 
@@ -720,34 +1071,122 @@ Weekends: Saturday, Sunday (NO classes)
 
 **Note:** Actual time slot allocation is determined by algorithm during Phase 3 generation, within the 8 AM - 5 PM constraint.
 
-### 5.3 No Excessive Gaps
-**Rule:** There should be no gaps longer than 30 minutes between classes.
+### 5.3 Break Management (CRITICAL!)
+**Rule:** Each section should have breaks distributed across the day, with specific constraints.
 
-**Example:**
+**Break Constraints:**
+
+**1. Maximum Breaks Per Day:**
 ```
-Section 3A Schedule:
-├── 8:30-10:30: Data Structures Theory
-├── 10:30-11:00: Break (30 min) ✅
-├── 11:00-1:00: DBMS Theory
-├── 1:00-1:30: Lunch Break (30 min) ✅
+✅ Maximum: 2 breaks per day
+✅ Minimum: 1 break per day (if schedule is very tight)
+❌ Invalid: 3 or more breaks in one day
+```
+
+**2. Break Duration:**
+```
+✅ Each break: Exactly 30 minutes
+❌ Invalid: 60 minutes (one-hour breaks not allowed)
+❌ Invalid: 15 minutes (too short)
+❌ Invalid: 45 minutes (too long)
+```
+
+**3. Break Distribution:**
+```
+Ideal Distribution:
+├── Break 1: Before 12:00 noon (morning break)
+└── Break 2: After 12:00 noon (afternoon break)
+
+Example:
+├── 8:00-10:00: Lab Session
+├── 10:00-10:30: Break 1 (30 min) ✅ (before noon)
+├── 10:30-12:00: Theory Class
+├── 12:00-1:00: Theory Class
+├── 1:00-1:30: Break 2 (30 min) ✅ (after noon)
 └── 1:30-3:30: Lab Session
-
-✅ All gaps ≤ 30 minutes
 ```
 
-**Invalid:**
+**4. Flexible Break Placement:**
 ```
-Section 3A Schedule:
-├── 8:30-10:30: Data Structures Theory
-├── 10:30-12:00: GAP (90 min) ❌ TOO LONG!
-└── 12:00-2:00: DBMS Theory
+Breaks are NOT fixed for all sections
+- Section 3A might have breaks at: 10:00-10:30, 1:00-1:30
+- Section 3B might have breaks at: 10:30-11:00, 2:00-2:30
+- Section 5A might have breaks at: 9:30-10:00, 12:30-1:00
 
-❌ 90-minute gap violates constraint
+✅ Each section's breaks can be at different times
+✅ Algorithm decides optimal break placement based on schedule
 ```
 
-**Note:** Actual time slot allocation is determined by algorithm during Phase 3 generation, within the 8 AM - 5 PM constraint.
+**5. Back-to-Back Classes Allowed:**
+```
+If schedule is tight, back-to-back classes are acceptable:
 
-**Reason:** Maintains student engagement, efficient use of time, prevents idle periods.
+Example (Tight Schedule):
+├── 8:00-10:00: Lab Session
+├── 10:00-11:00: Theory Class (back-to-back) ✅
+├── 11:00-12:00: Theory Class (back-to-back) ✅
+├── 12:00-12:30: Break (30 min) ✅ (only 1 break today)
+├── 12:30-2:30: Lab Session
+└── 2:30-3:30: Theory Class (back-to-back) ✅
+
+✅ Valid: Only 1 break, but acceptable if schedule requires it
+```
+
+**6. Avoid Excessive Gaps:**
+```
+While breaks are allowed, avoid idle gaps:
+
+❌ Invalid:
+├── 8:00-10:00: Theory Class
+├── 10:00-11:00: GAP (60 min - too long!) ❌
+└── 11:00-1:00: Lab Session
+
+✅ Valid:
+├── 8:00-10:00: Theory Class
+├── 10:00-10:30: Break (30 min) ✅
+├── 10:30-12:30: Lab Session
+```
+
+**Algorithm Strategy:**
+```javascript
+For each section's daily schedule:
+  1. Identify natural break points (between classes)
+  2. Try to place 1 break before 12:00 noon
+  3. Try to place 1 break after 12:00 noon
+  4. Each break = 30 minutes exactly
+  5. If schedule is very tight:
+     - Allow back-to-back classes
+     - Use only 1 break (acceptable)
+  6. Never exceed 2 breaks per day
+  7. Avoid gaps > 30 minutes (unless it's a scheduled break)
+```
+
+**Break Representation in Timetable:**
+```javascript
+// Breaks are implicit (gaps between classes)
+// Not explicitly stored as separate slots
+
+Example:
+theory_slots: [
+  { start_time: "08:00", end_time: "10:00", ... },
+  { start_time: "10:30", end_time: "12:00", ... }, // 30-min gap before = Break 1
+  { start_time: "12:00", end_time: "13:00", ... },
+  { start_time: "13:30", end_time: "15:30", ... }  // 30-min gap before = Break 2
+]
+
+Implied breaks:
+├── 10:00-10:30: Break (before noon)
+└── 13:00-13:30: Break (after noon)
+```
+
+**Benefits:**
+- ✅ Students get adequate rest (1-2 breaks per day)
+- ✅ Breaks are short and efficient (30 min each)
+- ✅ Flexible placement per section (not fixed college-wide)
+- ✅ Maintains student engagement (no long idle periods)
+- ✅ Accommodates tight schedules (back-to-back classes if needed)
+
+**Reason:** Balances student wellbeing with efficient schedule utilization, prevents excessive idle time while ensuring adequate rest periods.
 
 ### 5.4 Fixed Time Slots for OEC and PEC (Semester 7 Only)
 **Rule:** Open Elective Courses (OEC) and Professional Elective Courses (PEC) have PRE-DECIDED fixed time slots that must be honored.
@@ -943,46 +1382,50 @@ Teachers: Prof. DC AND Prof. AK (Cannot have 2 teachers for same subject-section
 **Implementation:**
 - `pre_assign_teacher_model.js`: Unique index on `(subject_id, sem, sem_type, section)`
 
-### 8.2 Unique Assignment per Lab per Batch
-**Rule:** Each lab for a specific batch can have only ONE teacher pair AND one lab room assigned.
+### 8.2 Lab Room Assignment per Batch
+**Rule:** Each lab for a specific batch must have exactly ONE lab room assigned in Phase 2.
 
 **Example:**
 ```
 ✅ Valid:
 Lab: DSL
 Batch: 3A1
-Teachers: DC + AK
 Lab Room: ISE-301
 
 ❌ Invalid:
 Lab: DSL
 Batch: 3A1
-Multiple Assignments:
-├── Teachers: DC + AK, Room: ISE-301
-└── Teachers: Rajeev + Suman, Room: ISE-302 (Duplicate!)
+Multiple Room Assignments:
+├── Room: ISE-301
+└── Room: ISE-302 (Duplicate!)
 ```
 
+**Note:** Teachers are NOT assigned in Phase 2. They are dynamically assigned in Phase 3 after time slots are finalized.
+
 **Implementation:**
-- `teacher_lab_assign_model.js`: Unique index on `(lab_id, sem, sem_type, section, batch_number)`
-- Includes `assigned_lab_room` field (required in Phase 2)
+- Unique index on `(lab_id, sem, sem_type, section, batch_number)`
+- Only `assigned_lab_room` field required in Phase 2
+- Teacher fields (`teacher1_id`, `teacher2_id`) added during Phase 3
 
 ### 8.3 Teacher Eligibility Check
-**Rule:** Before assignment, verify teacher has declared capability for that subject/lab.
+**Rule:** Before assignment in Phase 3, verify teacher has declared capability for that lab.
 
 **Example:**
 ```
-Assignment Request:
-├── Subject: Web Development
-├── Section: 3A
-└── Teacher: Prof. DC
+Assignment Request (Phase 3):
+├── Lab: Data Structures Lab (DSL)
+├── Batch: 3A1
+└── Candidate Teacher: Prof. DC
 
 Check:
-├── Does DC's canTeach_subjects include "Web Development"?
-└── If NO → ❌ Reject assignment
-    If YES → ✅ Allow assignment
+├── Does DC's labs_handled include "DSL"?
+└── If NO → ❌ Skip this teacher, try next
+    If YES → ✅ Assign teacher
 ```
 
-**Implementation:** Backend validation in POST `/api/lab-assignments` and `/api/teacher-assignments`
+**Implementation:** 
+- Phase 3 algorithm filters teachers by capability before assignment
+- No backend validation needed in Phase 2 (teachers not assigned yet)
 
 ---
 
@@ -1074,33 +1517,58 @@ Input:
 ```
 Input:
 ├── Teacher-Subject Assignments (which teacher teaches which subject to which section)
-└── Teacher-Lab Assignments (which teachers + which lab room for which batch)
-    └── Includes lab room selection (FIXED due to equipment constraints)
+└── Lab Room Assignments (FULLY AUTOMATIC based on equipment & even distribution)
 
-Output: Complete assignment data (teachers + rooms, NO time slots yet)
+AUTOMATIC LAB ROOM ASSIGNMENT:
+Algorithm automatically assigns lab rooms based on:
+1. Equipment compatibility (query dept_labs.lab_subjects_handled)
+2. Even distribution (global room usage counter)
+3. Round-robin allocation (spreads load across rooms)
 
-Example:
-Section 5A, DV Lab:
-├── Batch 5A1: Teachers DC+AK → Room 612A ✅
-├── Batch 5A2: Teachers Rajeev+Suman → Room 612B ✅
-└── Batch 5A3: Teachers Arjun+Priya → Room 604A ✅
+Output: Assignment data (teachers for theory, rooms for labs, NO time slots yet)
 
-Status: Teachers + Rooms FIXED, Time slots pending
+Example - AUTOMATIC Room Assignment:
+Section 5A, DV Lab (3 batches):
+├── Query: dept_labs where "DV Lab" in lab_subjects_handled
+├── Compatible Rooms: [612A, 612B, 612C, 604A]
+├── Batch 5A1: Room 612A ✅ (auto-assigned, least used)
+├── Batch 5A2: Room 612B ✅ (auto-assigned, next least used)
+└── Batch 5A3: Room 612C ✅ (auto-assigned, next least used)
+
+Section 5B, DV Lab (3 batches):
+├── Batch 5B1: Room 604A ✅ (auto-assigned, next in rotation)
+├── Batch 5B2: Room 612A ✅ (auto-assigned, wrap around)
+└── Batch 5B3: Room 612B ✅ (auto-assigned, wrap around)
+
+Benefits:
+✅ No manual input needed
+✅ Even distribution prevents bottlenecks
+✅ Equipment-compatible rooms guaranteed
+✅ Minimizes conflicts for Phase 3 scheduling
+
+Status: Rooms FIXED (automatic), Teachers pending (Phase 3), Time slots pending (Phase 3)
 ```
 
 **Phase 3: Timetable Generation (Automated)**
 ```
-Input: Phase 2 assignments (teachers + rooms already decided)
-Algorithm: Constraint satisfaction, finds optimal TIME SLOTS only
-Output: Complete timetable with time slots
+Input: Phase 2 assignments (theory teachers + lab rooms already decided)
+
+Algorithm: 
+├── Step 1: Find optimal TIME SLOTS for all activities
+├── Step 2: Assign teachers to labs (2 if possible, 1 if needed)
+└── Constraint satisfaction approach
+
+Output: Complete timetable with time slots and lab teachers
 
 Example:
 Monday 8:30-10:30 - Section 5A:
-├── Batch 5A1 → DV → DC+AK → Room 612A (from Phase 2)
-├── Batch 5A2 → DV → Rajeev+Suman → Room 612B (from Phase 2)
-└── Batch 5A3 → DV → Arjun+Priya → Room 604A (from Phase 2)
+├── Batch 5A1 → DV → Room 612A (from Phase 2) → Teachers: DC+AK (Phase 3)
+├── Batch 5A2 → DV → Room 612B (from Phase 2) → Teachers: Rajeev+Suman (Phase 3)
+└── Batch 5A3 → DV → Room 604A (from Phase 2) → Teachers: Arjun+Priya (Phase 3)
 
-Algorithm only found: "Monday 8:30-10:30"
+Algorithm decided:
+├── Time slot: Monday 8:30-10:30
+└── Lab teachers: Dynamically assigned based on availability
 Everything else was decided in Phase 2
 ```
 
@@ -1126,9 +1594,13 @@ For each section:
 For each section:
   For each lab in semester:
     For each batch (3 batches per section):
-      ✅ Check: 2 teachers assigned?
-      ✅ Check: Lab room assigned?
-      ❌ Missing: Flag batch as unassigned
+      ✅ Check: Lab room automatically assigned?
+      ❌ Missing: Flag batch as unassigned (should not happen with automatic assignment)
+      
+Note: Room assignment is AUTOMATIC in Phase 2
+      Algorithm ensures all batches get equipment-compatible rooms
+      Teachers are NOT checked in Phase 2 validation
+      (Teachers assigned dynamically in Phase 3)
 ```
 
 **3. Professional Elective Courses (PEC - Sem 7 only):**
@@ -1163,9 +1635,9 @@ For each project subject:
     theory_subjects: [
       { section: "3A", subject: "Data Structures", reason: "No teacher assigned" }
     ],
-    lab_batches: [
-      { section: "5A", batch: "5A2", lab: "CN Lab", reason: "Only 1 teacher assigned" },
-      { section: "5A", batch: "5A3", lab: "DV Lab", reason: "No lab room assigned" }
+    lab_rooms: [
+      { section: "5A", batch: "5A2", lab: "CN Lab", reason: "No room assigned" },
+      { section: "5A", batch: "5A3", lab: "DV Lab", reason: "No room assigned" }
     ],
     pec_options: [
       { option: "Advanced AI", reason: "No teacher assigned" }
@@ -1176,7 +1648,7 @@ For each project subject:
 // Show to admin:
 "⚠️ Phase 2 Incomplete! The following items are not assigned:
 - Section 3A: Data Structures (no teacher)
-- Section 5A, Batch 5A2: CN Lab (only 1 teacher)
+- Section 5A, Batch 5A2: CN Lab (no room)
 - Section 5A, Batch 5A3: DV Lab (no room)
 - PEC: Advanced AI (no teacher)
 
@@ -1190,6 +1662,7 @@ Would you like to:
 - Leave time slots empty for those items
 - Mark as "Not Scheduled - Missing Assignment" in final timetable
 - Generate workload report excluding unassigned items
+- Lab teachers assigned dynamically in Phase 3 (even if rooms missing, will be flagged)
 
 **Implementation:**
 - Run validation API call before generation
@@ -1218,12 +1691,14 @@ Example - Prof. DC:
 **Lab Hours:**
 ```javascript
 For each teacher:
-  lab_hours = Σ(2 hours × number_of_lab_sessions)
+  lab_hours = Σ(2 hours × number_of_lab_sessions_assigned)
   
-Example - Prof. DC:
-├── DSL (Batch 3A1): 2 hours
-├── DSL (Batch 3B2): 2 hours
-├── CN Lab (Batch 5A1): 2 hours
+Note: Lab teachers are assigned in Phase 3 after time slots are finalized
+  
+Example - Prof. DC (after Phase 3 generation):
+├── DSL (Batch 3A1): 2 hours (assigned as teacher1)
+├── DSL (Batch 3B2): 2 hours (assigned as teacher2)
+├── CN Lab (Batch 5A1): 2 hours (assigned as teacher1)
 └── Lab Total: 6 hours
 ```
 
@@ -1246,11 +1721,13 @@ Theory Assignments:
 ├── DBMS (3B): 4 hrs/week
 └── Subtotal: 7 hours
 
-Lab Assignments:
-├── DSL - Batch 3A1: 2 hours
-├── DSL - Batch 3B2: 2 hours
-├── CN Lab - Batch 5A1: 2 hours
+Lab Assignments (Phase 3):
+├── DSL - Batch 3A1: 2 hours (teacher1)
+├── DSL - Batch 3B2: 2 hours (teacher2)
+├── CN Lab - Batch 5A1: 2 hours (teacher1)
 └── Subtotal: 6 hours
+
+Note: Some labs may have only 1 teacher if 2nd unavailable
 
 Total Weekly Workload: 13 hours
 Status: ✅ Normal (Typical: 40-50 hrs/week for full-time faculty)
@@ -1443,10 +1920,149 @@ Teachers Page:
 - `Classrooms` - Theory classroom inventory
 - `Dept_Labs` - Lab room inventory
 - `Teacher_Subject_Assignments` - Theory subject assignments (Phase 2)
-- `Teacher_Lab_Assignments` - Lab assignments per batch (Phase 2)
+- `Lab_Room_Assignments` - Lab room assignments per batch (Phase 2)
 - `Lab_Sessions` - Scheduled lab sessions with time slots (Phase 3)
+- `Timetables` - Final timetable per section (Phase 3 output)
 
-### 12.2 Unique Indexes
+### 12.2 Timetable Model Structure
+**Purpose:** Store the complete generated timetable for each section.
+
+**Document Per Section:**
+```javascript
+{
+  _id: ObjectId,
+  section_id: ObjectId,  // Reference to ISE_Sections
+  section_name: "3A",
+  sem: 3,
+  sem_type: "odd",
+  academic_year: "2024-25",
+  generation_date: Date,
+  generation_metadata: {
+    algorithm: "greedy",
+    fitness_score: -150,
+    generation_time_ms: 5000,
+    teacher_assignment_summary: {
+      total_lab_sessions: 15,
+      sessions_with_2_teachers: 12,
+      sessions_with_1_teacher: 2,
+      sessions_with_0_teachers: 1
+    }
+  },
+  
+  theory_slots: [
+    {
+      subject_id: ObjectId,
+      subject_name: "Data Structures",
+      subject_shortform: "DS",
+      teacher_id: ObjectId,
+      teacher_name: "Prof. Deeksha Chandra",
+      teacher_shortform: "DC",
+      classroom_id: ObjectId,
+      classroom_name: "ISE-LH1",
+      day: "Monday",
+      start_time: "10:00",
+      end_time: "12:00",
+      duration_hours: 2
+    }
+    // ... more theory slots
+  ],
+  
+  lab_slots: [
+    {
+      slot_type: "multi_batch_lab",
+      day: "Monday",
+      start_time: "08:00",
+      end_time: "10:00",
+      duration_hours: 2,
+      batches: [
+        {
+          batch_number: 1,
+          batch_name: "3A1",
+          lab_id: ObjectId,
+          lab_name: "Data Structures Lab",
+          lab_shortform: "DSL",
+          lab_room_id: ObjectId,
+          lab_room_name: "ISE-301",
+          teacher1_id: ObjectId,
+          teacher1_name: "Prof. DC",
+          teacher1_shortform: "DC",
+          teacher2_id: ObjectId,
+          teacher2_name: "Prof. AK",
+          teacher2_shortform: "AK",
+          teacher_status: "2_teachers"
+        },
+        {
+          batch_number: 2,
+          batch_name: "3A2",
+          lab_id: ObjectId,
+          lab_name: "Data Structures Lab",
+          lab_shortform: "DSL",
+          lab_room_id: ObjectId,
+          lab_room_name: "ISE-302",
+          teacher1_id: ObjectId,
+          teacher1_name: "Prof. Rajeev",
+          teacher1_shortform: "RJ",
+          teacher2_id: null,
+          teacher2_name: null,
+          teacher2_shortform: null,
+          teacher_status: "1_teacher"
+        },
+        {
+          batch_number: 3,
+          batch_name: "3A3",
+          lab_id: ObjectId,
+          lab_name: "Data Structures Lab",
+          lab_shortform: "DSL",
+          lab_room_id: ObjectId,
+          lab_room_name: "ISE-303",
+          teacher1_id: ObjectId,
+          teacher1_name: "Prof. Suman",
+          teacher1_shortform: "SM",
+          teacher2_id: ObjectId,
+          teacher2_name: "Prof. Priya",
+          teacher2_shortform: "PY",
+          teacher_status: "2_teachers"
+        }
+      ]
+    }
+    // ... more lab slots
+  ],
+  
+  flagged_sessions: [
+    {
+      type: "lab",
+      batch_name: "3A2",
+      lab_name: "DBMS Lab",
+      day: "Wednesday",
+      start_time: "14:00",
+      issue: "Only 1 teacher assigned (ideal: 2)",
+      severity: "warning"
+    }
+  ]
+}
+```
+
+**Indexes:**
+```javascript
+// Unique: one timetable per section per semester type per academic year
+{ section_id: 1, sem_type: 1, academic_year: 1 }, { unique: true }
+
+// Query optimization: Find all timetables for a semester type
+{ sem_type: 1, academic_year: 1 }
+
+// Query optimization: Find timetable by section
+{ section_id: 1 }
+```
+
+**Benefits:**
+- ✅ One document = one section's complete timetable
+- ✅ Easy to retrieve individual section timetables
+- ✅ Complete information for display/printing
+- ✅ Metadata tracks generation quality
+- ✅ Flagged sessions for admin review
+- ✅ Historical tracking (by academic year)
+
+### 12.3 Unique Indexes
 **Required Unique Constraints:**
 ```javascript
 // Prevent duplicate subjects
@@ -1461,14 +2077,17 @@ Teachers Page:
 // Prevent duplicate subject assignments
 { subject_id: 1, sem: 1, sem_type: 1, section: 1 } // Unique
 
-// Prevent duplicate lab assignments per batch
+// Prevent duplicate lab room assignments per batch
 { lab_id: 1, sem: 1, sem_type: 1, section: 1, batch_number: 1 } // Unique
 
 // Prevent duplicate lab sessions per time slot
 { section_id: 1, scheduled_day: 1, scheduled_start_time: 1 } // Unique
+
+// Prevent duplicate timetables per section per semester type per year
+{ section_id: 1, sem_type: 1, academic_year: 1 } // Unique
 ```
 
-### 12.3 Pre-Save Validations
+### 12.4 Pre-Save Validations
 **Required Validations:**
 
 **Lab Assignments:**
@@ -1498,36 +2117,30 @@ Teachers Page:
 
 ## 🧠 **13. ALGORITHM CONSTRAINTS AND STRATEGIES**
 
-### 13.1 Phase 2 Auto-Assignment Algorithm
-**Purpose:** Automatically generate conflict-free lab assignments (teachers + rooms) for all batches.
+### 13.1 Phase 2 Lab Room Assignment Algorithm
+**Purpose:** Assign lab rooms to batches based on equipment compatibility.
 
 **Algorithm Strategy:**
 ```javascript
 For each section:
   For each syllabus lab:
     For each batch (1 to 3):
-      1. Find 2 qualified teachers (least used first - fair distribution)
+      1. Filter rooms by equipment compatibility (lab_subjects_handled)
       2. Use round-robin room assignment based on batch number
          → Batch 1: Room[0], Batch 2: Room[1], Batch 3: Room[2]
-      3. Save assignment: (section, batch, lab, 2 teachers, 1 room)
+      3. Save assignment: (section, batch, lab, 1 room)
 ```
 
 **Critical Insight - Room Rotation per Batch:**
 ```
 Example: CN Lab for Section 5A
-├── Batch 5A1 → Teachers: DC+AK → Room: ISE-301 (rooms[0])
-├── Batch 5A2 → Teachers: Rajeev+Suman → Room: ISE-302 (rooms[1])
-└── Batch 5A3 → Teachers: Arjun+Priya → Room: ISE-303 (rooms[2])
+├── Batch 5A1 → Room: ISE-301 (rooms[0])
+├── Batch 5A2 → Room: ISE-302 (rooms[1])
+└── Batch 5A3 → Room: ISE-303 (rooms[2])
 
 WHY: Ensures each batch gets a different room for the same lab
 BENEFIT: No room conflicts when batches do same lab in parallel
 ```
-
-**Teacher Selection Strategy:**
-- Filter teachers by capability (`labs_handled` includes target lab)
-- Sort by usage count (ascending) - pick least used teachers first
-- Fair workload distribution across all qualified teachers
-- Teachers CAN be reused across different batches (no conflicts since batches rotate time slots)
 
 **Room Assignment Strategy:**
 - Filter rooms by lab support (`lab_subjects_handled` includes target lab)
@@ -1535,17 +2148,20 @@ BENEFIT: No room conflicts when batches do same lab in parallel
 - Use modulo operator: `roomIndex = (batchNumber - 1) % suitableRooms.length`
 - Ensures different rooms for different batches of same lab
 
-**Output:** Complete `Teacher_Lab_Assignments` collection with all (section, batch, lab, teachers, room) combinations.
+**Output:** Complete `Lab_Room_Assignments` collection with all (section, batch, lab, room) combinations.
+
+**Note:** Teachers are NOT assigned in Phase 2. They are dynamically assigned in Phase 3 after time slots are finalized.
 
 ---
 
 ### 13.2 Phase 3 Timetable Generation Algorithm (Greedy Builder)
-**Purpose:** Find optimal TIME SLOTS for all theory subjects and labs using constraint satisfaction.
+**Purpose:** Find optimal TIME SLOTS for all theory subjects and labs, then assign teachers to labs.
 
 **Algorithm Architecture:**
 ```
 Phase 0: Greedy Initialization (Current Implementation)
-├── Generate initial "good enough" timetable
+├── Step A: Generate time slots for all activities
+├── Step B: Assign teachers to labs dynamically
 ├── Fitness: ~-200 (minor violations acceptable)
 └── Much better than random (~-900)
 
@@ -1572,6 +2188,7 @@ Block PEC slots: { day: 'Monday', start: '10:30', end: '12:30' }
 **Step 2: Schedule Labs (Hardest First)**
 ```javascript
 // Labs scheduled before theory (less flexible - 2 hour blocks)
+// NO TEACHERS ASSIGNED YET - only time slots and rooms
 
 BATCH ROTATION STRATEGY (CRITICAL!):
 For each time slot round:
@@ -1581,16 +2198,17 @@ For each time slot round:
 
 EXAMPLE: Section 5A has 2 labs (CN, DV)
 Round 1:
-├── Batch 5A1: CN Lab (labs[0])
-├── Batch 5A2: DV Lab (labs[1])  ← Started at different lab!
-└── Batch 5A3: CN Lab (labs[0])
+├── Batch 5A1: CN Lab (labs[0]) → Room: ISE-301 (Phase 2)
+├── Batch 5A2: DV Lab (labs[1]) → Room: 612B (Phase 2)
+└── Batch 5A3: CN Lab (labs[0]) → Room: ISE-302 (Phase 2)
 
 Round 2:
-├── Batch 5A1: DV Lab (labs[1])  ← Rotated!
-├── Batch 5A2: CN Lab (labs[0])  ← Rotated!
-└── Batch 5A3: DV Lab (labs[1])
+├── Batch 5A1: DV Lab (labs[1]) → Room: 612A (Phase 2)
+├── Batch 5A2: CN Lab (labs[0]) → Room: ISE-303 (Phase 2)
+└── Batch 5A3: DV Lab (labs[1]) → Room: 612C (Phase 2)
 
 Result: All batches complete all labs, no duplicates!
+Note: Rooms from Phase 2, Teachers assigned in Step 4
 ```
 
 **Batch Rotation Formula:**
@@ -1615,7 +2233,8 @@ Preferred lab times:
 Strategy:
 1. Try Monday first, then Tuesday, Wednesday, Thursday, Friday
 2. For each day, try time slots in order
-3. Pick first available (no conflicts)
+3. Pick first available (no room conflicts - rooms already assigned)
+4. Teachers NOT checked yet (assigned in Step 4)
 ```
 
 **Step 3: Schedule Theory (More Flexible)**
@@ -1674,19 +2293,75 @@ sortedSlots = availableSlots.sort((a, b) => {
 // Try slots in load-balanced order
 ```
 
-**Conflict Detection:**
+**Step 4: Assign Teachers to Labs (After All Slots Finalized)**
+```javascript
+// All time slots are now finalized
+// Now assign teachers to each lab session
+
+For each lab_session in timetable:
+  qualified_teachers = getQualifiedTeachers(lab_session.lab_id)
+  // Filter teachers who have this lab in labs_handled
+  
+  available_teachers = qualified_teachers.filter(teacher => {
+    return !hasConflict(teacher, lab_session.day, lab_session.start_time)
+  })
+  
+  // Sort by current workload (ascending) - fair distribution
+  available_teachers.sort((a, b) => a.workload - b.workload)
+  
+  // Try to assign 2 teachers (ideal)
+  if (available_teachers.length >= 2) {
+    lab_session.teacher1_id = available_teachers[0]
+    lab_session.teacher2_id = available_teachers[1]
+    lab_session.teacher_status = "2_teachers" ✅✅
+  }
+  // Fallback: Assign 1 teacher (acceptable)
+  else if (available_teachers.length === 1) {
+    lab_session.teacher1_id = available_teachers[0]
+    lab_session.teacher2_id = null
+    lab_session.teacher_status = "1_teacher" ✅
+  }
+  // No teachers available (flag for admin)
+  else {
+    lab_session.teacher1_id = null
+    lab_session.teacher2_id = null
+    lab_session.teacher_status = "no_teachers" ⚠️
+    flagForReview.push(lab_session)
+  }
+```
+
+**Teacher Assignment Report:**
+```
+Lab Teacher Assignment Summary:
+├── Total Lab Sessions: 45
+├── Sessions with 2 Teachers: 38 ✅✅ (84%)
+├── Sessions with 1 Teacher: 5 ✅ (11%)
+└── Sessions with 0 Teachers: 2 ⚠️ (5%) - Needs Admin Review
+
+Flagged Sessions (Needs Review):
+1. Section 5A, Batch 5A3, CN Lab, Monday 8:30-10:30
+   → No qualified teachers available
+   → Suggestion: Reassign time slot or add teacher capability
+
+2. Section 7B, Batch 7B2, AI Lab, Friday 2:00-4:00
+   → No qualified teachers available
+   → Suggestion: Reassign time slot or add teacher capability
+```
+
+**Conflict Detection (Updated):**
 ```javascript
 checkSlotConflicts(timetable, assignment, slot, type):
   
   // Type: 'theory' or 'lab'
   
-  // Check 1: Teacher conflict
+  // Check 1: Teacher conflict (for theory only in Steps 1-3)
   - Teacher already teaching another subject at same time?
-  - For labs: Check both teacher1 and teacher2
+  - For labs: Teachers not checked during slot assignment (Step 2)
+                Teachers checked during teacher assignment (Step 4)
   
   // Check 2: Room conflict
   - Room already occupied at same time?
-  - For labs: Check assigned lab room
+  - For labs: Check assigned lab room (from Phase 2)
   - For theory: Check classroom
   
   // Check 3: Batch synchronization
@@ -1716,7 +2391,13 @@ Timetable {
   metadata: {
     created_by: 'greedy',
     generation: 0,
-    fitness_score: -200 (approximate)
+    fitness_score: -200 (approximate),
+    teacher_assignment_summary: {
+      total_lab_sessions: 45,
+      sessions_with_2_teachers: 38,
+      sessions_with_1_teacher: 5,
+      sessions_with_0_teachers: 2
+    }
   },
   
   theory_slots: [
@@ -1737,13 +2418,22 @@ Timetable {
         {
           batch_number, batch_name,
           lab_id, lab_name, lab_shortform,
-          teacher1_id, teacher2_id,
+          teacher1_id, teacher2_id,  // Assigned in Step 4 (may be null)
           teacher1_name, teacher2_name,
           teacher1_shortform, teacher2_shortform,
-          lab_room_id, lab_room_name
+          teacher_status,  // "2_teachers", "1_teacher", or "no_teachers"
+          lab_room_id, lab_room_name  // From Phase 2
         }
       ],
       day, start_time, end_time, duration_hours: 2
+    }
+  ],
+  
+  flagged_sessions: [
+    {
+      section, batch, lab, day, start_time,
+      issue: "No qualified teachers available",
+      suggestions: ["Reassign time slot", "Add teacher capability"]
     }
   ]
 }
@@ -1972,44 +2662,56 @@ console.log('Current Assignment:', currentAssignment)
 
 ## �📝 **SUMMARY: CRITICAL CONSTRAINTS**
 
-### Top 15 Most Important Constraints:
+### Top 17 Most Important Constraints:
 
 1. **Semester Scope:** Only semesters 3-8 (ISE responsibility)
-2. **Batch Synchronization:** All batches of a section must be together in time (same OR different labs)
-3. **Lab Teachers:** Exactly 2 teachers per lab batch (always)
-4. **Lab Duration:** Always 2 hours (no exceptions)
-5. **Lab Equipment Requirements:** ⭐ Labs need specific rooms based on equipment/software (DV needs graphics, DVP needs project tools)
-6. **Lab Room Assignment in Phase 2:** ⭐ Rooms must be manually assigned in Phase 2, not auto-assigned (equipment constraints)
-7. **Batch Rotation Strategy:** ⭐ Batches rotate through labs using formula: `labIndex = (round + batchNumber) % totalLabs`
-8. **Room Rotation per Batch:** ⭐ Different batches get different rooms: `roomIndex = (batchNumber - 1) % suitableRooms.length`
-9. **Load Balancing:** Algorithm prefers scheduling on least busy days first (distributes workload evenly)
-10. **Project Subjects:** Time allocation only, no teacher/classroom assignment
-11. **Batch Naming:** Include semester prefix (3A1, not A1)
-12. **Teacher Capability ≠ Assignment:** Separate capability declaration from workload (no upfront hour limits)
-13. **No Conflicts:** No teacher/room double-booking at same time (validated by TeacherConflictValidator, RoomConflictValidator)
-14. **Atomic Sessions:** Lab sessions saved as complete units (all batches)
-15. **Three-Phase Workflow:** Master Data → Assignments (Teachers + Rooms) → Generation (Time Slots)
+2. **Semester Type Separation:** Odd and even sems completely separate, generated at different times
+3. **Cross-Section Conflict-Free:** ALL sections globally conflict-free (teachers, rooms, classrooms)
+4. **Individual Section Timetables:** Separate document per section, but generated in ONE algorithm run
+5. **Batch Synchronization:** All batches of a section must be together in time (same OR different labs)
+6. **Lab Teachers:** Ideal: 2 teachers per lab, Acceptable: 1 teacher, Flagged: 0 teachers (assigned in Phase 3)
+7. **Lab Duration:** Always 2 hours (no exceptions)
+8. **No Consecutive Labs:** Section cannot have lab sessions back-to-back on same day ⚠️ NEW
+9. **Break Management:** 1-2 breaks per day (30 min each), try for one before/after noon ⚠️ NEW
+10. **Lab Equipment Requirements:** Labs need specific rooms based on equipment/software
+11. **Lab Room Assignment in Phase 2:** Rooms AUTOMATICALLY assigned (equipment compatibility + even distribution), Teachers in Phase 3
+12. **Batch Rotation Strategy:** Batches rotate through labs using formula: `labIndex = (round + batchNumber) % totalLabs`
+13. **Room Rotation per Batch:** Different batches get different rooms: `roomIndex = (batchNumber - 1) % suitableRooms.length`
+14. **Teacher Assignment Flexibility:** Teachers assigned dynamically in Phase 3 after time slots finalized
+15. **Project Subjects:** Time allocation only, no teacher/classroom assignment
+16. **Batch Naming:** Include semester prefix (3A1, not A1)
+17. **Three-Phase Workflow:** Master Data → Room Assignments → Generation (Time Slots + Lab Teachers)
 
 ### 🔧 Critical Implementation Details:
 
 **Algorithm Strategies:**
-- ⚠️ **Batch Rotation Formula:** `labIndex = (currentRound + batchNumber) % totalLabs` ensures all batches complete all labs without duplicates
-- ⚠️ **Room Distribution:** `roomIndex = (batchNumber - 1) % suitableRooms.length` prevents room conflicts in parallel sessions
-- ⚠️ **Load Balancing:** Algorithm sorts time slots by day load (ascending) to distribute workload evenly across week
+- ⚠️ **Semester Type Separation:** Generate all odd OR all even semester sections in one run (never mixed)
+- ⚠️ **Global Conflict Checking:** Check teacher/room/classroom availability across ALL sections before assignment
+- ⚠️ **Individual Section Output:** Save separate timetable document per section (globally conflict-free)
+- ⚠️ **Batch Rotation Formula:** `labIndex = (currentRound + batchNumber) % totalLabs` ensures all batches complete all labs
+- ⚠️ **Room Distribution:** `roomIndex = (batchNumber - 1) % suitableRooms.length` prevents room conflicts in parallel
+- ⚠️ **Load Balancing:** Algorithm sorts time slots by day load (ascending) to distribute workload evenly
 - ⚠️ **Greedy Strategy:** Schedule hardest items first (labs before theory, high hrs_per_week first)
-- ⚠️ **Constraint Satisfaction:** Validate teacher conflicts, room conflicts, batch sync before finalizing each slot
+- ⚠️ **No Consecutive Labs:** Validate no back-to-back lab sessions for same section on same day
+- ⚠️ **Break Management:** Ensure 1-2 breaks (30 min each) per day, distributed before/after noon
+- ⚠️ **Teacher Assignment Post-Scheduling:** Teachers assigned AFTER all time slots finalized (Step 4)
+- ⚠️ **Teacher Priority:** Try 2 teachers first, fall back to 1 if needed, flag if none available
+- ⚠️ **Constraint Satisfaction:** Validate room conflicts, batch sync, consecutive labs during slot assignment
 
-**Phase 2 Auto-Assignment:**
-- ✅ Automatically generates (teacher, room) assignments for all batches
-- ✅ Fair distribution: Picks least-used teachers and rotates rooms
-- ✅ Zero conflicts guaranteed: Different batches get different rooms for same lab
-- ✅ Output: Complete `Teacher_Lab_Assignments` collection ready for Phase 3
+**Phase 2 Room Assignment:**
+- ✅ Assigns only lab rooms based on equipment compatibility
+- ✅ Fair distribution: Rotates rooms across batches
+- ✅ Zero room conflicts guaranteed: Different batches get different rooms for same lab
+- ✅ Output: Complete `Lab_Room_Assignments` collection ready for Phase 3
+- ❌ No teacher assignment in Phase 2 (deferred to Phase 3 for flexibility)
 
 **Phase 3 Greedy Builder:**
 - ✅ Step 1: Block fixed slots (OEC/PEC in Sem 7)
-- ✅ Step 2: Schedule labs using batch rotation strategy
+- ✅ Step 2: Schedule labs using batch rotation strategy (rooms from Phase 2)
 - ✅ Step 3: Schedule theory using load balancing and hour splitting
-- ✅ Result: Initial timetable with fitness ~-200 (good starting point)
+- ✅ Step 4: Assign teachers to labs (2 if possible, 1 if needed, flag if none)
+- ✅ Result: Complete timetable with all slots + dynamic teacher assignments
+- ✅ Report: Teacher assignment summary with flagged sessions
 - 🔄 Future: Genetic Algorithm (Phase 1) and Bees Algorithm (Phase 2) will refine to fitness = 0
 
 **Field Naming Convention:**
@@ -2050,45 +2752,237 @@ console.log('Current Assignment:', currentAssignment)
 
 ## 🎓 **END OF CONSTRAINTS DOCUMENT**
 
-**Version:** 3.0 (Algorithm Update) 🚀  
-**Major Update:** Added Section 13 - Algorithm Constraints and Strategies, documenting Phase 2 Auto-Assignment and Phase 3 Greedy Builder implementations  
-**New Content:**
-- Phase 2 Auto-Assignment algorithm with batch rotation and room distribution
-- Phase 3 Greedy Builder strategy (fixed slots → labs → theory)
-- Batch rotation formula: `labIndex = (round + batchNumber) % totalLabs`
-- Room distribution formula: `roomIndex = (batchNumber - 1) % suitableRooms.length`
-- Load balancing strategy for theory scheduling
-- Theory hour splitting logic
-- Conflict detection mechanisms (teacher, room, batch sync)
-- Future algorithm enhancements (Genetic Algorithm, Bees Algorithm)
-- Fitness function components for optimization
+**Version:** 5.0 (Cross-Section Conflict-Free + Break & Lab Constraints) 🚀  
+**Major Update:** Added global conflict-free generation across all sections, break management, and consecutive lab prevention.
 
-**Document Size:** 2,045 lines (added 329 lines)  
-**Last Updated:** November 2, 2025  
-**Status:** PHASE 3 IMPLEMENTED - Greedy Builder operational, GA and Bees Algorithm planned for future enhancement
+**Key Changes:**
+- ✅ **Semester Type Separation:** Odd/even sems completely separate, generated at different times
+- ✅ **Cross-Section Conflict-Free:** THE MAIN GOAL - all sections globally conflict-free
+- ✅ **Individual Section Timetables:** Separate document per section, generated in ONE algorithm run
+- ✅ **Global Resource Checking:** Teachers, rooms, classrooms checked across ALL sections
+- ✅ **Break Management:** 1-2 breaks per day (30 min each), distributed before/after noon
+- ✅ **No Consecutive Labs:** Section cannot have back-to-back lab sessions on same day
+- ✅ **Timetable Model:** New model to store individual section timetables
+- ✅ **Back-to-Back Classes:** Allowed if schedule is tight (only 1 break acceptable)
+
+**New Constraints Added:**
+1. **Section 1.2:** Semester Type Separation (odd/even never mixed)
+2. **Section 1.3:** Timetable Generation Strategy (cross-section conflict-free)
+3. **Section 4.8:** No Consecutive Lab Sessions
+4. **Section 5.3:** Break Management (updated with flexible 1-2 breaks)
+5. **Section 12.2:** Timetable Model Structure
+
+**Algorithm Updates:**
+- Generate for ALL sections of semester type in ONE run
+- Check conflicts across ALL sections (not just within section)
+- Validate no consecutive lab sessions
+- Ensure break distribution (1-2 per day, 30 min each)
+- Save individual timetable per section
+- Global conflict validation before any assignment
+
+**Document Size:** 2,300+ lines  
+**Last Updated:** November 3, 2025  
+**Status:** PHASE 3 UPDATED - Cross-section conflict-free generation with break & lab constraints
 
 **Document Completeness:**
 - ✅ 5 Subject Types (Regular, Other Dept, Project, OEC, PEC)
 - ✅ Theory Subject Scheduling (hrs_per_week + max_hrs_per_day)
 - ✅ Lab Completeness (all batches get all labs weekly)
+- ✅ **NEW:** No Consecutive Lab Sessions
 - ✅ Fixed Time Slots (OEC/PEC in Sem 7)
 - ✅ Pre-Generation Validation Checklist
 - ✅ Teacher Workload Calculation Formula
 - ✅ Batch Synchronization (all activities)
 - ✅ Working Hours (8 AM - 5 PM, Mon-Fri)
-- ✅ Phase 2 Completeness Handling
-- ✅ Capacity Clarification (informational only)
-- ✅ **NEW:** Phase 2 Auto-Assignment Algorithm
-- ✅ **NEW:** Phase 3 Greedy Builder Strategy
-- ✅ **NEW:** Batch Rotation and Room Distribution Formulas
-- ✅ **NEW:** Load Balancing and Conflict Detection
-- ✅ **NEW:** Future Enhancement Roadmap (GA + Bees)
+- ✅ **NEW:** Break Management (1-2 breaks, 30 min each)
+- ✅ **NEW:** Cross-Section Conflict-Free Generation
+- ✅ **NEW:** Individual Section Timetables
+- ✅ Phase 2 Lab Room Assignment Algorithm
+- ✅ Phase 3 Greedy Builder Strategy (4-step process)
+- ✅ Flexible Teacher Assignment (Step 4)
+- ✅ **NEW:** Timetable Model for output storage
 
 **Algorithm Implementation Status:**
-- ✅ Phase 0 (Greedy): IMPLEMENTED and OPERATIONAL
+- ✅ Phase 0 (Greedy): UPDATED - Global conflict checking + break management + no consecutive labs
 - 🔄 Phase 1 (Genetic): PLANNED (fitness target: -50)
 - 🔄 Phase 2 (Bees): PLANNED (fitness target: 0)
 
-**Ready for Production Testing!** 🎯
+**Ready for Implementation!** 🎯
 
-**Note:** This document should be updated as algorithms are enhanced and new optimization strategies are discovered during testing and refinement phases.
+**Critical Requirements for Implementation:**
+1. 🎯 **Main Goal:** ALL CONFLICT-FREE TIMETABLES ACROSS ALL SECTIONS
+2. ⚠️ Generate all odd semester sections in ONE algorithm run (or all even)
+3. ⚠️ Check teacher availability across ALL sections before assignment
+4. ⚠️ Check room availability across ALL sections before assignment
+5. ⚠️ Check classroom availability across ALL sections before assignment
+6. ⚠️ Validate no consecutive lab sessions within section's daily schedule
+7. ⚠️ Ensure 1-2 breaks per day (30 min each), distributed before/after noon
+8. ⚠️ Save separate timetable document for each section
+9. ⚠️ All timetables globally conflict-free
+
+---
+
+## 🚀 **15. PHASE 3 IMPLEMENTATION STRUCTURE**
+
+### 15.1 Optimized Algorithm Flow
+
+**Your Proposed Approach:**
+```
+1. Fixed slots + classrooms ✅
+2. Lab slots + rooms ✅
+3. Theory slots + teachers + classrooms ✅
+4. Lab teachers ✅
+```
+
+**✅ OPTIMIZED VERSION (with break handling & storage):**
+```
+1. Fixed slots (OEC/PEC) + classrooms [Sem 7 only]
+2. Lab slots + rooms (auto-assigned in Phase 2)
+   └─ Constraint: No consecutive labs for same section
+3. Theory slots + teachers + classrooms
+   └─ 3 slots per subject, respecting max_hrs_per_day
+3.5. INSERT BREAKS (NEW STEP!)
+   └─ Analyze schedule, insert 1-2 breaks per day (30 min each)
+4. Assign Lab Teachers (dynamic, best effort)
+   └─ Try 2 teachers, accept 1, flag 0
+5. Validate & Save to timetable_model
+   └─ ONE document per section
+```
+
+---
+
+### 15.2 When Breaks Are Checked
+
+**Answer: STEP 3.5 - After all slots placed, BEFORE validation**
+
+**Why This Timing?**
+- ❌ BAD: Check during slot placement → Too constraining
+- ✅ GOOD: Insert after schedule built → See full day, place optimally
+
+**Break Insertion Strategy:**
+```javascript
+For each day:
+  1. Find natural gaps > 30 min → Mark as break
+  2. Find back-to-back classes near noon → Insert break
+  3. Ensure min 1, max 2 breaks per day
+  4. Distribute: 1 before noon, 1 after noon (if possible)
+```
+
+---
+
+### 15.3 When Timetable Is Stored
+
+**Answer: STEP 5 - After complete validation**
+
+**Storage Timing:**
+```
+❌ NOT STORED (In-Memory Only):
+   - Steps 1-4: All operations on weeklyGrid object
+   
+✅ STORED TO DATABASE:
+   - Step 5: After validation
+   - Format: timetable_model document
+   - One document = One section's complete week
+```
+
+**Storage Flow:**
+```javascript
+// In-Memory (Steps 1-4):
+weeklyGrid = {
+  Monday: [
+    { type: 'theory', subject, teacher, classroom, time },
+    { type: 'break', time: '10:00-10:30' },
+    { type: 'lab', lab, batches: [...], rooms: [...], time }
+  ],
+  Tuesday: [...]
+}
+
+// Database (Step 5):
+Timetable.create({
+  section_id, sem_type, academic_year,
+  theory_slots: [...],
+  lab_slots: [...],
+  breaks: [...],
+  flagged_sessions: [...],
+  generation_metadata: { generated_at, success_rate }
+})
+```
+
+---
+
+### 15.4 File Organization
+
+**Backend Structure:**
+```
+backend_server/
+├── algorithms/
+│   ├── timetable_generator.js              # Master orchestrator
+│   ├── step1_fixed_slots.js                # OEC/PEC placement
+│   ├── step2_lab_scheduling.js             # Lab slot finding
+│   ├── step3_theory_scheduling.js          # Theory + classrooms
+│   ├── step3_5_break_insertion.js          # Break insertion logic
+│   ├── step4_lab_teacher_assignment.js     # Dynamic teacher assignment
+│   ├── step5_validation_storage.js         # Validate & save
+│   └── utils/
+│       ├── conflict_checker.js             # Global conflict detection
+│       ├── grid_manager.js                 # Weekly grid operations
+│       └── availability_checker.js         # Resource availability
+│
+├── models/
+│   └── timetable_model.js                  # OUTPUT storage
+│
+└── routes/
+    └── timetables.js                       # API endpoint
+```
+
+---
+
+### 15.5 Global Conflict Tracking
+
+**Problem:** Prevent teacher/room conflicts across sections
+
+**Solution:** Maintain global availability trackers
+
+```javascript
+globalAvailability = {
+  teachers: {
+    'T101': [
+      { day: 'Monday', start: '8:30', end: '10:00', section: '5A' },
+      { day: 'Tuesday', start: '10:30', end: '12:30', section: '5B' }
+    ]
+  },
+  classrooms: { 'CR1': [...] },
+  labRooms: { 'ISE-301': [...] }
+}
+
+// Before assigning: Check global availability
+isTeacherAvailable(teacherId, day, startTime, endTime)
+
+// After assigning: Update global tracker
+markTeacherOccupied(teacherId, day, startTime, endTime, section)
+```
+
+---
+
+### 15.6 Summary: Questions Answered
+
+**Q1: Is your approach correct?**
+✅ YES! With modifications:
+- 1-4: Your original steps ✅
+- 3.5: INSERT BREAKS (NEW) ✅
+- 5: Validate & Save (explicit) ✅
+
+**Q2: When checking breaks?**
+**Step 3.5** - After slots, before validation
+
+**Q3: When storing timetable?**
+**Step 5** - After validation, one doc per section
+
+**Q4: Which files for storage?**
+- In-memory: `utils/grid_manager.js`
+- Database: `algorithms/step5_validation_storage.js` → `models/timetable_model.js`
+
+---
+
+**Note:** This document reflects the complete constraint system for realistic, conflict-free timetable generation across multiple sections.
+

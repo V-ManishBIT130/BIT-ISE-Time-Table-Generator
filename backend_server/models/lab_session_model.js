@@ -1,7 +1,7 @@
 import mongoose from "mongoose"
 
 /**
- * Lab Session Model
+ * Lab Session Model (Phase 3 Output)
  * 
  * Purpose: Groups all batches of a section into ONE time slot
  * Enforces constraint: "All batches must be together in time"
@@ -10,7 +10,8 @@ import mongoose from "mongoose"
  * - One document = one time slot for entire section
  * - All batches MUST be present in batch_assignments array
  * - Each batch can have SAME or DIFFERENT lab
- * - Validates exactly 2 teachers per batch
+ * - Teachers: 0-2 allowed (assigned dynamically in Phase 3 Step 4)
+ * - Lab rooms: from Phase 2 Lab_Room_Assignments
  * - Prevents partial sessions (atomic operations)
  */
 
@@ -69,14 +70,21 @@ const LabSessionSchema = new mongoose.Schema(
         required: true
       },
       
-      // Exactly 2 teachers per batch (constraint)
+      // Teachers: 0-2 allowed (assigned dynamically in Phase 3 Step 4)
       teacher_ids: [{
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Teacher',
-        required: true
+        ref: 'Teacher'
+        // NOT required! Can be 0, 1, or 2 teachers
       }],
       
-      // Physical lab room
+      // Track teacher assignment status
+      teacher_status: {
+        type: String,
+        enum: ['2_teachers', '1_teacher', 'no_teachers'],
+        default: 'no_teachers'
+      },
+      
+      // Physical lab room (from Phase 2 - Lab_Room_Assignments)
       lab_room: {
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'Dept_Labs',
@@ -121,14 +129,25 @@ LabSessionSchema.pre('save', async function(next) {
       ))
     }
     
-    // Validation 4: Each batch must have exactly 2 teachers
+    // Validation 4: Each batch can have 0-2 teachers (flexible constraint)
     for (let i = 0; i < this.batch_assignments.length; i++) {
       const assignment = this.batch_assignments[i]
       
-      if (!assignment.teacher_ids || assignment.teacher_ids.length !== 2) {
+      // Allow 0, 1, or 2 teachers
+      if (assignment.teacher_ids && assignment.teacher_ids.length > 2) {
         return next(new Error(
-          `Batch ${assignment.batch_name} must have exactly 2 teachers. Found ${assignment.teacher_ids?.length || 0}.`
+          `Batch ${assignment.batch_name} can have maximum 2 teachers. Found ${assignment.teacher_ids.length}.`
         ))
+      }
+      
+      // Auto-set teacher_status based on teacher count
+      const teacherCount = assignment.teacher_ids?.length || 0
+      if (teacherCount === 2) {
+        assignment.teacher_status = '2_teachers'
+      } else if (teacherCount === 1) {
+        assignment.teacher_status = '1_teacher'
+      } else {
+        assignment.teacher_status = 'no_teachers'
       }
     }
     

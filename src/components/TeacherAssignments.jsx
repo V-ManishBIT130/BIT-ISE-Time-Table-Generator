@@ -191,6 +191,51 @@ function TeacherAssignments() {
     }
   }
 
+  // Validate and clean database
+  const handleValidateDatabase = async () => {
+    try {
+      setLoading(true)
+      console.log('🔍 Running database integrity check...')
+      
+      const response = await axios.post('http://localhost:5000/api/teacher-assignments/validate', {
+        autoCleanup: true // Automatically delete orphaned assignments
+      })
+      
+      const { data } = response.data
+      
+      console.log('Database validation results:', data)
+      
+      let message = `📊 Database Integrity Check Results:\n\n`
+      message += `Total Assignments: ${data.totalAssignments}\n`
+      message += `✅ Valid Assignments: ${data.validAssignments}\n`
+      message += `⚠️ Orphaned Assignments: ${data.orphanedAssignments}\n`
+      
+      if (data.cleanedCount > 0) {
+        message += `\n🧹 Cleaned up ${data.cleanedCount} orphaned assignments!`
+      }
+      
+      if (data.orphanedDetails && data.orphanedDetails.length > 0) {
+        message += `\n\n⚠️ Issues Found:\n`
+        data.orphanedDetails.forEach(orphan => {
+          message += `- Section ${orphan.sem}${orphan.section}: ${orphan.issues.join(', ')}\n`
+        })
+      }
+      
+      alert(message)
+      
+      // Refresh assignments after cleanup
+      if (selectedSection) {
+        fetchExistingAssignments()
+      }
+      
+    } catch (err) {
+      console.error('Error validating database:', err)
+      alert('Failed to validate database: ' + (err.response?.data?.message || err.message))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (loading && sections.length === 0) {
     return <div className="loading">Loading teacher assignments...</div>
   }
@@ -203,6 +248,14 @@ function TeacherAssignments() {
           <h1>👨‍🏫 Teacher-Subject Assignments (Phase 2)</h1>
           <p>Assign teachers to theory subjects before scheduling</p>
         </div>
+        <button 
+          className="btn btn-warning"
+          onClick={handleValidateDatabase}
+          disabled={loading}
+          title="Check for and clean up orphaned assignments"
+        >
+          🔍 Validate Database
+        </button>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
@@ -351,7 +404,16 @@ function TeacherAssignments() {
                 </tr>
               </thead>
               <tbody>
-                {existingAssignments.map(assignment => (
+                {existingAssignments
+                  .filter(assignment => {
+                    // Filter out assignments with null/undefined references (orphaned data)
+                    if (!assignment.teacher_id || !assignment.subject_id) {
+                      console.warn('⚠️ Orphaned assignment found (null references):', assignment._id);
+                      return false;
+                    }
+                    return true;
+                  })
+                  .map(assignment => (
                   <tr key={assignment._id}>
                     <td>
                       <span className="subject-code-badge">

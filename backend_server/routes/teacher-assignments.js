@@ -289,4 +289,91 @@ router.delete('/:id', async (req, res) => {
   }
 })
 
+// POST /api/teacher-assignments/validate
+// Purpose: Check database integrity and clean up orphaned assignments
+// Returns: List of orphaned assignments and cleanup statistics
+router.post('/validate', async (req, res) => {
+  try {
+    console.log('\n🔍 Starting database integrity check for teacher assignments...')
+    
+    // Fetch all assignments
+    const allAssignments = await TeacherSubjectAssignment.find()
+    console.log(`📊 Total assignments found: ${allAssignments.length}`)
+    
+    const orphanedAssignments = []
+    const validAssignments = []
+    
+    // Check each assignment
+    for (const assignment of allAssignments) {
+      let isOrphaned = false
+      const issues = []
+      
+      // Check teacher reference
+      const teacher = await Teacher.findById(assignment.teacher_id)
+      if (!teacher) {
+        isOrphaned = true
+        issues.push(`Teacher ID ${assignment.teacher_id} not found`)
+      }
+      
+      // Check subject reference
+      const subject = await Subject.findById(assignment.subject_id)
+      if (!subject) {
+        isOrphaned = true
+        issues.push(`Subject ID ${assignment.subject_id} not found`)
+      }
+      
+      if (isOrphaned) {
+        orphanedAssignments.push({
+          _id: assignment._id,
+          teacher_id: assignment.teacher_id,
+          subject_id: assignment.subject_id,
+          sem: assignment.sem,
+          sem_type: assignment.sem_type,
+          section: assignment.section,
+          issues
+        })
+      } else {
+        validAssignments.push(assignment._id)
+      }
+    }
+    
+    console.log(`✅ Valid assignments: ${validAssignments.length}`)
+    console.log(`⚠️ Orphaned assignments: ${orphanedAssignments.length}`)
+    
+    // Auto-cleanup if requested
+    let cleanedCount = 0
+    if (req.body.autoCleanup === true && orphanedAssignments.length > 0) {
+      console.log('🧹 Auto-cleanup enabled, deleting orphaned assignments...')
+      
+      const orphanedIds = orphanedAssignments.map(a => a._id)
+      const deleteResult = await TeacherSubjectAssignment.deleteMany({
+        _id: { $in: orphanedIds }
+      })
+      
+      cleanedCount = deleteResult.deletedCount
+      console.log(`✅ Cleaned up ${cleanedCount} orphaned assignments`)
+    }
+    
+    res.json({
+      success: true,
+      message: 'Database integrity check complete',
+      data: {
+        totalAssignments: allAssignments.length,
+        validAssignments: validAssignments.length,
+        orphanedAssignments: orphanedAssignments.length,
+        orphanedDetails: orphanedAssignments,
+        cleanedCount
+      }
+    })
+    
+  } catch (error) {
+    console.error('Error validating assignments:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Error validating assignments',
+      error: error.message
+    })
+  }
+})
+
 export default router
