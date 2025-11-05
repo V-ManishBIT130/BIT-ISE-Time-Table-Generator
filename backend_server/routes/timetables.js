@@ -215,6 +215,36 @@ router.post('/step3', async (req, res) => {
 })
 
 /**
+ * POST /api/timetables/step3.5
+ * Step 3.5: Resolve room conflicts (post-processing validation)
+ * Body: { sem_type: 'odd' | 'even', academic_year: '2024-2025' }
+ */
+router.post('/step3.5', async (req, res) => {
+  try {
+    const { sem_type, academic_year } = req.body
+    
+    if (!sem_type || !academic_year) {
+      return res.status(400).json({
+        success: false,
+        message: 'sem_type and academic_year are required'
+      })
+    }
+    
+    console.log(`\n🔧 Running Step 3.5: Resolve Room Conflicts...`)
+    const result = await resolveRoomConflicts(sem_type, academic_year)
+    res.json(result)
+    
+  } catch (error) {
+    console.error('Error in Step 3.5:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Failed to execute Step 3.5',
+      error: error.message
+    })
+  }
+})
+
+/**
  * POST /api/timetables/step4
  * Step 4: Schedule theory classes
  * Body: { sem_type: 'odd' | 'even', academic_year: '2024-2025' }

@@ -42,7 +42,44 @@ function TimetableGenerator() {
           [`step${stepNumber}`]: response.data
         }))
         setResult(response.data.data)
-        alert(`✅ ${stepName} completed successfully!`)
+        
+        // Special handling for Step 3 - show detailed report
+        if (stepNumber === 3 && response.data.data) {
+          const data = response.data.data
+          const successRate = data.success_rate || 0
+          const scheduled = data.lab_sessions_scheduled || 0
+          const expected = data.lab_sessions_expected || 0
+          const batches = data.batches_scheduled || 0
+          const sections = data.sections_processed || 0
+          const unresolved = data.unresolved_conflicts || 0
+          
+          let alertMessage = `✅ STEP 3 COMPLETED: Lab Scheduling Report\n\n`
+          alertMessage += `📊 SUCCESSFULLY SCHEDULED:\n`
+          alertMessage += `   Total Lab Sessions: ${scheduled}/${expected} (${successRate.toFixed(2)}%)\n`
+          alertMessage += `   Total Batches: ${batches}\n`
+          alertMessage += `   Sections Processed: ${sections}\n\n`
+          
+          if (unresolved > 0) {
+            alertMessage += `⚠️ UNRESOLVED CONFLICTS:\n`
+            alertMessage += `   ${unresolved} lab session(s) could not be scheduled\n\n`
+            
+            if (data.unresolved_details && data.unresolved_details.length > 0) {
+              alertMessage += `Details:\n`
+              data.unresolved_details.slice(0, 3).forEach(conflict => {
+                alertMessage += `   • ${conflict.section} - Round ${conflict.round}: ${conflict.reason}\n`
+              })
+              if (data.unresolved_details.length > 3) {
+                alertMessage += `   ... and ${data.unresolved_details.length - 3} more\n`
+              }
+            }
+          } else {
+            alertMessage += `🎉 PERFECT! All labs scheduled with ZERO conflicts!\n`
+          }
+          
+          alert(alertMessage)
+        } else {
+          alert(`✅ ${stepName} completed successfully!`)
+        }
       } else {
         setError(response.data.message || `${stepName} failed`)
       }
@@ -227,7 +264,12 @@ function TimetableGenerator() {
             </button>
             {stepResults.step3 && (
               <div className="step-result">
-                ✅ Labs scheduled (placeholder)
+                ✅ {stepResults.step3.data.lab_sessions_scheduled}/{stepResults.step3.data.lab_sessions_expected} labs scheduled ({stepResults.step3.data.success_rate.toFixed(1)}%)
+                {stepResults.step3.data.unresolved_conflicts > 0 && (
+                  <span style={{ color: '#ff9800', marginLeft: '8px' }}>
+                    ⚠️ {stepResults.step3.data.unresolved_conflicts} unresolved
+                  </span>
+                )}
               </div>
             )}
           </div>
