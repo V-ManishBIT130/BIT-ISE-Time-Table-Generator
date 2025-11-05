@@ -12,8 +12,7 @@ import sectionsRoutes from "./routes/sections.js"
 import classroomsRoutes from "./routes/classrooms.js"
 import deptLabsRoutes from "./routes/dept-labs.js"
 import teacherAssignmentsRoutes from "./routes/teacher-assignments.js"
-import labRoomAssignmentsRoutes from "./routes/lab-room-assignments.js" // NEW: Auto lab room assignments
-import timetablesRoutes from "./routes/timetables.js" // NEW: Phase 3 timetable generation
+import timetablesRoutes from "./routes/timetables.js" // Phase 3 timetable generation with dynamic room assignment
 
 // Connect to MongoDB
 conn();
@@ -43,8 +42,7 @@ app.use('/api/sections', sectionsRoutes)
 app.use('/api/classrooms', classroomsRoutes)
 app.use('/api/dept-labs', deptLabsRoutes)
 app.use('/api/teacher-assignments', teacherAssignmentsRoutes)
-app.use('/api/lab-room-assignments', labRoomAssignmentsRoutes) // NEW: Auto lab room assignments
-app.use('/api/timetables', timetablesRoutes) // NEW: Phase 3 timetable generation
+app.use('/api/timetables', timetablesRoutes) // Phase 3 timetable generation with dynamic room assignment
 
 // 404 handler for unknown routes
 app.use((req, res) => {

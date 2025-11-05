@@ -8,7 +8,6 @@ import Labs from './components/Labs'
 import Sections from './components/Sections'
 import Classrooms from './components/Classrooms'
 import DeptLabs from './components/DeptLabs'
-import LabAssignments from './components/LabAssignments'
 import TeacherAssignments from './components/TeacherAssignments'
 import TimetableViewer from './components/TimetableViewer'
 import TimetableGenerator from './components/TimetableGenerator'
@@ -48,11 +47,10 @@ function App() {
           <Route path="classrooms" element={<Classrooms />} />
           <Route path="dept-labs" element={<DeptLabs />} />
           
-          {/* Phase 2: Assignment routes */}
+          {/* Phase 2: Pre-assignments */}
           <Route path="teacher-assignments" element={<TeacherAssignments />} />
-          <Route path="lab-assignments" element={<LabAssignments />} />
           
-          {/* Phase 3: Timetable Generation & Viewing */}
+          {/* Phase 3: Timetable Generation & Viewing (with dynamic room assignment) */}
           <Route path="generate" element={<TimetableGenerator />} />
           <Route path="view" element={<TimetableViewer />} />
           

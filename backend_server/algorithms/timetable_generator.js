@@ -34,6 +34,12 @@ import DeptLabs from '../models/dept_labs_model.js'
 import TeacherAssignment from '../models/pre_assign_teacher_model.js'
 import LabRoomAssignment from '../models/lab_room_assignment_model.js'
 import Timetable from '../models/timetable_model.js'
+import { loadSectionsAndInitialize } from './step1_load_sections.js'
+import { blockFixedSlots } from './step2_fixed_slots.js'
+import { scheduleLabs } from './step3_schedule_labs_v2.js'
+import { scheduleTheory } from './step4_schedule_theory.js'
+import { assignLabTeachers } from './step5_assign_teachers.js'
+import { validateAndFinalize } from './step6_validate.js'
 
 // Constants
 const WORKING_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
@@ -127,9 +133,10 @@ export async function generateTimetables(semType, academicYear) {
     console.log(`\n🔒 Step 2: Blocking fixed slots...`)
     await blockFixedSlots(timetables, sections)
     
-    // Step 3: Schedule labs using batch rotation
+    // Step 3: Schedule labs using batch rotation (includes automatic conflict resolution)
     console.log(`\n🧪 Step 3: Scheduling labs...`)
     await scheduleLabs(timetables, sections)
+    // NOTE: Step 3.5 (Conflict Resolution) runs automatically inside Step 3
     
     // Step 4: Schedule theory subjects
     console.log(`\n📚 Step 4: Scheduling theory subjects...`)
@@ -205,158 +212,6 @@ function calculateDuration(startTime24, endTime24) {
   const endTotalMinutes = endHours * 60 + endMinutes
   
   return (endTotalMinutes - startTotalMinutes) / 60
-}
-
-/**
- * Step 2: Block fixed time slots for OEC and PEC (Semester 7 only)
- */
-async function blockFixedSlots(timetables, sections) {
-  // Filter Semester 7 sections
-  const sem7Sections = sections.filter(s => s.sem === 7)
-  
-  if (sem7Sections.length === 0) {
-    console.log(`   ℹ️  No Semester 7 sections found, skipping fixed slot blocking`)
-    return
-  }
-  
-  console.log(`   📌 Found ${sem7Sections.length} Semester 7 sections`)
-  
-  for (const section of sem7Sections) {
-    const sectionId = section._id.toString()
-    
-    // Load OEC subjects for this section (if any)
-    const oecSubjects = await Subjects.find({
-      subject_sem: 7,
-      subject_sem_type: section.sem_type,
-      is_open_elective: true
-    }).lean()
-    
-    if (oecSubjects.length > 0) {
-      const oecSubject = oecSubjects[0]
-      
-      // Check if subject has fixed_schedule defined
-      if (oecSubject.fixed_schedule && oecSubject.fixed_schedule.length > 0) {
-        console.log(`   🔒 Blocking OEC slots for Section ${section.sem}${section.section_name}:`)
-        
-        // Add each fixed schedule slot
-        for (const schedule of oecSubject.fixed_schedule) {
-          // Convert times from 12-hour (user input) to 24-hour (internal storage)
-          const startTime24 = parseTimeFrom12HourFormat(schedule.start_time)
-          const endTime24 = parseTimeFrom12HourFormat(schedule.end_time)
-          const duration = calculateDuration(startTime24, endTime24)
-          
-          console.log(`      - ${schedule.day} ${schedule.start_time} - ${schedule.end_time}`)
-          
-          timetables[sectionId].theory_slots.push({
-            subject_id: oecSubject._id,
-            subject_name: oecSubject.subject_name,
-            subject_shortform: oecSubject.subject_shortform || oecSubject.subject_code,
-            teacher_id: null, // External department
-            teacher_name: '[Other Dept]',
-            teacher_shortform: 'EXT',
-            classroom_id: null, // Will be assigned later
-            classroom_name: 'TBD',
-            day: schedule.day,
-            start_time: startTime24,
-            end_time: endTime24,
-            duration_hours: duration,
-            is_fixed_slot: true
-          })
-        }
-      } else {
-        console.log(`   ⚠️  OEC subject found but no fixed_schedule defined`)
-      }
-    }
-    
-    // Load PEC subjects for this section (if any)
-    const pecSubjects = await Subjects.find({
-      subject_sem: 7,
-      subject_sem_type: section.sem_type,
-      is_professional_elective: true
-    }).lean()
-    
-    if (pecSubjects.length > 0) {
-      console.log(`   🔒 Blocking PEC slots for Section ${section.sem}${section.section_name}:`)
-      
-      // PEC has multiple options, but they all run at same time
-      for (const pecSubject of pecSubjects) {
-        // Check if subject has fixed_schedule defined
-        if (pecSubject.fixed_schedule && pecSubject.fixed_schedule.length > 0) {
-          // Load teacher assignment for this PEC option
-          const assignment = await TeacherAssignment.findOne({
-            subject_id: pecSubject._id,
-            sem: 7,
-            sem_type: section.sem_type,
-            section: section.section_name
-          }).populate('teacher_id', 'name teacher_shortform').lean()
-          
-          // Add each fixed schedule slot
-          for (const schedule of pecSubject.fixed_schedule) {
-            // Convert times from 12-hour (user input) to 24-hour (internal storage)
-            const startTime24 = parseTimeFrom12HourFormat(schedule.start_time)
-            const endTime24 = parseTimeFrom12HourFormat(schedule.end_time)
-            const duration = calculateDuration(startTime24, endTime24)
-            
-            console.log(`      - ${pecSubject.subject_shortform}: ${schedule.day} ${schedule.start_time} - ${schedule.end_time}`)
-            
-            timetables[sectionId].theory_slots.push({
-              subject_id: pecSubject._id,
-              subject_name: pecSubject.subject_name,
-              subject_shortform: pecSubject.subject_shortform || pecSubject.subject_code,
-              teacher_id: assignment?.teacher_id?._id || null,
-              teacher_name: assignment?.teacher_id?.name || 'TBD',
-              teacher_shortform: assignment?.teacher_id?.teacher_shortform || 'TBD',
-              classroom_id: null, // Will be assigned later
-              classroom_name: 'TBD',
-              day: schedule.day,
-              start_time: startTime24,
-              end_time: endTime24,
-              duration_hours: duration,
-              is_fixed_slot: true
-            })
-          }
-        } else {
-          console.log(`   ⚠️  PEC subject ${pecSubject.subject_shortform} found but no fixed_schedule defined`)
-        }
-      }
-    }
-  }
-  
-  console.log(`   ✅ Fixed slots blocked successfully`)
-}
-
-/**
- * Step 3: Schedule labs using batch rotation strategy
- */
-async function scheduleLabs(timetables, sections) {
-  console.log(`   🔄 Using batch rotation strategy for even lab distribution`)
-  
-  // TODO: Implement lab scheduling with batch rotation
-  // This is a complex function - we'll implement it next
-  
-  console.log(`   ℹ️  Lab scheduling - TO BE IMPLEMENTED`)
-}
-
-/**
- * Step 4: Schedule theory subjects with load balancing
- */
-async function scheduleTheory(timetables, sections) {
-  console.log(`   📊 Using load balancing for optimal theory distribution`)
-  
-  // TODO: Implement theory scheduling
-  
-  console.log(`   ℹ️  Theory scheduling - TO BE IMPLEMENTED`)
-}
-
-/**
- * Step 5: Assign teachers to labs dynamically
- */
-async function assignLabTeachers(timetables, sections) {
-  console.log(`   👥 Attempting 2 teachers per lab, falling back to 1 if needed`)
-  
-  // TODO: Implement teacher assignment
-  
-  console.log(`   ℹ️  Teacher assignment - TO BE IMPLEMENTED`)
 }
 
 /**

@@ -17,7 +17,6 @@ function DashboardHome() {
     classrooms: 0,
     deptLabs: 0,
     teacherAssignments: 0,
-    labRoomAssignments: 0, // Changed from labAssignments
     loading: true
   })
 
@@ -34,8 +33,7 @@ function DashboardHome() {
         sections,
         classrooms,
         deptLabs,
-        teacherAssignments,
-        labRoomAssignments // Changed from labAssignments
+        teacherAssignments
       ] = await Promise.all([
         axios.get('/api/teachers'),
         axios.get('/api/subjects'),
@@ -43,8 +41,7 @@ function DashboardHome() {
         axios.get('/api/sections'),
         axios.get('/api/classrooms'),
         axios.get('/api/dept-labs'),
-        axios.get('/api/teacher-assignments'),
-        axios.get('/api/lab-room-assignments') // Changed route
+        axios.get('/api/teacher-assignments')
       ])
 
       setStats({
@@ -55,7 +52,6 @@ function DashboardHome() {
         classrooms: classrooms.data.count || 0,
         deptLabs: deptLabs.data.count || 0,
         teacherAssignments: teacherAssignments.data.count || 0,
-        labRoomAssignments: labRoomAssignments.data.count || 0, // Changed from labAssignments
         loading: false
       })
     } catch (error) {
@@ -79,8 +75,7 @@ function DashboardHome() {
                          stats.classrooms > 0 &&
                          stats.deptLabs > 0
 
-  const phase2Complete = stats.teacherAssignments > 0 && 
-                         stats.labRoomAssignments > 0 // Changed from labAssignments
+  const phase2Complete = stats.teacherAssignments > 0
 
   return (
     <div className="dashboard-home">
@@ -168,13 +163,10 @@ function DashboardHome() {
               <p>Theory Subject Assignments</p>
             </div>
           </div>
-          <div className="stat-card">
-            <div className="stat-icon">🧬</div>
-            <div className="stat-content">
-              <h3>{stats.labRoomAssignments}</h3>
-              <p>Lab Room Assignments</p>
-            </div>
-          </div>
+        </div>
+        <div className="alert alert-info" style={{ marginTop: '1rem' }}>
+          <strong>ℹ️ Note:</strong> Lab room assignments are no longer needed in Phase 2. 
+          Phase 3 now dynamically assigns rooms during timetable generation.
         </div>
       </div>
 

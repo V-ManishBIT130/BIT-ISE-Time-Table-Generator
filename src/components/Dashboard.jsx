@@ -83,14 +83,10 @@ function Dashboard() {
           </div>
 
           <div className="nav-section">
-            <p className="nav-title">{sidebarOpen ? 'Phase 2: Assignments' : 'P2'}</p>
+            <p className="nav-title">{sidebarOpen ? 'Phase 2: Pre-Assignments' : 'P2'}</p>
             <NavLink to="/dashboard/teacher-assignments" className="nav-link">
               <span className="nav-icon">📝</span>
               {sidebarOpen && <span>Subject Assign</span>}
-            </NavLink>
-            <NavLink to="/dashboard/lab-assignments" className="nav-link">
-              <span className="nav-icon">🧬</span>
-              {sidebarOpen && <span>Lab Assign</span>}
             </NavLink>
           </div>
 

@@ -843,38 +843,81 @@ Section 5A:
 ✅ All 3 batches get BOTH labs in the week
 ```
 
-**Parallel Lab Scheduling (Same OR Different Labs):**
+**Parallel Lab Scheduling (Batch Rotation Strategy):**
 
-**Scenario A: Same Lab in Parallel (Preferred when possible)**
+Due to the **batch rotation formula** (`labIndex = (round + batchNum - 1) % totalLabs`), batches in the same section ALWAYS do DIFFERENT labs at the SAME time. This is not optional - it's how the rotation ensures every batch completes every lab.
+
+**How It Works:**
 ```
-Monday 8:00-10:00 - Section 5A:
-├── Batch 5A1 → CN Lab → Room ISE-301 → Teachers: DC+AK
-├── Batch 5A2 → CN Lab → Room ISE-302 → Teachers: Rajeev+Suman
-└── Batch 5A3 → CN Lab → Room ISE-303 → Teachers: Arjun+Priya
+Section 3A has 5 labs: DSL, DVP, OS, OOPS, DDCO
+3 Batches: 3A1, 3A2, 3A3
 
-✅ All batches doing SAME lab at SAME time (batch sync)
-✅ Easier for students/teachers (uniform schedule)
+Round 1 (e.g., Friday 3:00-5:00 PM):
+├── Batch 3A1: DSL (labIndex = (0+1-1) % 5 = 0) → Lab #0
+├── Batch 3A2: DVP (labIndex = (0+2-1) % 5 = 1) → Lab #1  
+└── Batch 3A3: OS (labIndex = (0+3-1) % 5 = 2) → Lab #2
+
+Round 2 (e.g., Monday 8:00-10:00 AM):
+├── Batch 3A1: DVP (labIndex = (1+1-1) % 5 = 1) → Lab #1
+├── Batch 3A2: OS (labIndex = (1+2-1) % 5 = 2) → Lab #2
+└── Batch 3A3: OOPS (labIndex = (1+3-1) % 5 = 3) → Lab #3
+
+Round 3 (e.g., Tuesday 10:00-12:00 PM):
+├── Batch 3A1: OS (labIndex = (2+1-1) % 5 = 2) → Lab #2
+├── Batch 3A2: OOPS (labIndex = (2+2-1) % 5 = 3) → Lab #3
+└── Batch 3A3: DDCO (labIndex = (2+3-1) % 5 = 4) → Lab #4
+
+... continues for 5 rounds total
 ```
 
-**Scenario B: Different Labs in Parallel (When necessary)**
+**Real Example from Screenshot:**
 ```
-Wednesday 2:00-4:00 - Section 5A:
-├── Batch 5A1 → DV Lab → Room 612A → Teachers: DC+AK
-├── Batch 5A2 → CN Lab → Room ISE-302 → Teachers: Rajeev+Suman
-└── Batch 5A3 → DSL Lab → Room ISE-301 → Teachers: Arjun+Priya
+Friday 3:00-5:00 PM - Section 3A:
+├── Batch 3A1 → OS Lab → Room 612C → Teachers: TBD
+├── Batch 3A2 → OOPS Lab → Room 612A → Teachers: TBD  
+└── Batch 3A3 → DVP Lab → Room 604A → Teachers: TBD
 
-✅ All batches doing DIFFERENT labs at SAME time (batch sync maintained)
-✅ Flexible - allows more scheduling options
+✅ All batches doing DIFFERENT labs at SAME time (batch rotation)
+✅ All batches in DIFFERENT rooms (no conflicts)
+✅ Batch synchronization maintained (all in labs together)
 ```
 
-**Algorithm Liberty:**
-- ✅ Can schedule same lab for all batches in parallel
-- ✅ Can schedule different labs for batches in parallel
-- ✅ Choice based on:
-  - Teacher availability
-  - Room availability
-  - Minimizing conflicts
-  - Optimal time slot utilization
+**Why Batches CANNOT Do Same Lab Simultaneously:**
+
+The batch rotation formula **mathematically guarantees** that batches are always offset by 1 lab:
+- Batch 1 is on lab `(round + 1 - 1) % totalLabs = round % totalLabs`
+- Batch 2 is on lab `(round + 2 - 1) % totalLabs = (round + 1) % totalLabs`
+- Batch 3 is on lab `(round + 3 - 1) % totalLabs = (round + 2) % totalLabs`
+
+So they're always doing labs at indices: `round`, `round+1`, `round+2` (mod totalLabs) - never the same!
+
+**Critical Phase 2 Requirement:**
+
+Since batches do DIFFERENT labs in each round, Phase 2 MUST assign DIFFERENT rooms to each batch for their respective labs in that round:
+
+```
+Phase 2 Room Assignment (Rotation-Aware):
+
+Round 1:
+├── Batch 3A1 needs DSL → Assign Room ISE-301 ✅
+├── Batch 3A2 needs DVP → Assign Room 604A ✅ (DIFFERENT from ISE-301)
+└── Batch 3A3 needs OS → Assign Room 612C ✅ (DIFFERENT from both)
+
+Round 2:
+├── Batch 3A1 needs DVP → Assign Room 604B ✅
+├── Batch 3A2 needs OS → Assign Room 612A ✅ (DIFFERENT from 604B)
+└── Batch 3A3 needs OOPS → Assign Room ISE-302 ✅ (DIFFERENT from both)
+
+✅ No room conflicts within any round!
+✅ Each batch gets appropriate equipment for their specific lab
+✅ Phase 3 can schedule any round at any time without conflicts
+```
+
+**Algorithm Implementation:**
+- Phase 2: Simulate batch rotation, assign rooms per batch per lab
+- Within each round: Ensure all 3 batches get DIFFERENT rooms
+- Across rounds: Rooms can be reused (different time slots)
+- Phase 3: Pick time slots knowing rooms are already conflict-free
 
 **Critical Constraint - Weekly Completeness:**
 ```
@@ -998,24 +1041,34 @@ All 60 students (3A1 + 3A2 + 3A3) → Data Structures Theory → ISE-LH1 → Pro
 ✅ All batches physically together in ONE classroom
 ```
 
-**Scenario B: Same Lab (Parallel Rooms)**
+**Scenario B: Labs with Batch Rotation (Most Common)** ⭐
 ```
-Monday 8:30-10:30 - Section 3A:
-├── Batch 3A1 → DSL → Room ISE-301 → DC + AK
-├── Batch 3A2 → DSL → Room ISE-302 → Rajeev + Suman
-└── Batch 3A3 → DSL → Room ISE-303 → Arjun + Priya
-
-✅ All batches doing SAME lab at SAME time in DIFFERENT rooms
-```
-
-**Scenario C: Different Labs (Parallel Rooms)** ⭐
-```
-Monday 8:30-10:30 - Section 3A:
-├── Batch 3A1 → DSL → Room ISE-301 → DC + AK
-├── Batch 3A2 → DBMS Lab → Room ISE-304 → Rajeev + Suman
-└── Batch 3A3 → AI Lab → Room ISE-307 → Arjun + Priya
+Friday 3:00-5:00 PM - Section 3A (Round 1):
+├── Batch 3A1 → OS Lab → Room 612C → DC + AK
+├── Batch 3A2 → OOPS Lab → Room 612A → Rajeev + Suman
+└── Batch 3A3 → DVP Lab → Room 604A → Arjun + Priya
 
 ✅ All batches doing DIFFERENT labs at SAME time in DIFFERENT rooms
+✅ This is the natural result of batch rotation formula
+✅ Each batch progresses through different lab in the sequence
+```
+
+**Why Batch Rotation Creates Different Labs:**
+```
+The batch rotation formula: labIndex = (round + batchNum - 1) % totalLabs
+
+Mathematically guarantees batches are offset:
+├── Batch 1 does lab at index: round
+├── Batch 2 does lab at index: round + 1
+└── Batch 3 does lab at index: round + 2
+
+They can NEVER do the same lab simultaneously!
+
+Example with 5 labs (DSL, DVP, OS, OOPS, DDCO):
+Round 0: Batch 1→DSL(0), Batch 2→DVP(1), Batch 3→OS(2)
+Round 1: Batch 1→DVP(1), Batch 2→OS(2), Batch 3→OOPS(3)
+Round 2: Batch 1→OS(2), Batch 2→OOPS(3), Batch 3→DDCO(4)
+... always different labs per round!
 ```
 
 **Invalid Scenario:**
@@ -1031,13 +1084,15 @@ Monday 8:30-10:30 - Section 3A:
 **Key Points:**
 - ✅ All batches must have **SAME start time** and **SAME end time**
 - ✅ Theory: All together in ONE room
-- ✅ Labs: All in labs (same OR different labs)
+- ✅ Labs: All in labs at SAME time (batch rotation ensures different labs)
 - ❌ Never: One batch busy, another free, another in different activity type
+- ⚠️ **Note:** Batches doing the SAME lab simultaneously is impossible with batch rotation
 
 **Implementation:**
 - `lab_session_model.js`: Groups all batches under single time slot
 - Pre-save validation ensures all batches present
 - Unique index: `(section_id, scheduled_day, scheduled_start_time)`
+- Batch rotation formula enforced in Phase 3 scheduling
 
 ### 5.2 Working Hours and Time Structure
 **Rule:** Classes operate within department working hours: 8:00 AM to 5:00 PM, Monday through Friday.
@@ -1059,17 +1114,21 @@ Weekends: Saturday, Sunday (NO classes)
 ```
 08:00-09:00 → Slot 1 (1 hour)
 09:00-10:00 → Slot 2 (1 hour)
-10:00-10:30 → Short Break
+10:00-10:30 → Break 1 (30 min) - before noon
 10:30-11:30 → Slot 3 (1 hour)
 11:30-12:30 → Slot 4 (1 hour)
-12:30-01:30 → Lunch Break (1 hour)
-01:30-02:30 → Slot 5 (1 hour)
-02:30-03:30 → Slot 6 (1 hour)
-03:30-04:30 → Slot 7 (1 hour)
+12:30-01:00 → Slot 5 (30 min)
+01:00-01:30 → Break 2 (30 min) - after noon
+01:30-02:30 → Slot 6 (1 hour)
+02:30-03:30 → Slot 7 (1 hour)
+03:30-04:30 → Slot 8 (1 hour)
 04:30-05:00 → Buffer/End of day
 ```
 
-**Note:** Actual time slot allocation is determined by algorithm during Phase 3 generation, within the 8 AM - 5 PM constraint.
+**Note:** 
+- Actual time slot allocation is determined by algorithm during Phase 3 generation, within the 8 AM - 5 PM constraint.
+- Breaks are NOT fixed college-wide; each section can have breaks at different times.
+- Maximum 2 breaks per day (30 minutes each), ideally one before noon and one after noon.
 
 ### 5.3 Break Management (CRITICAL!)
 **Rule:** Each section should have breaks distributed across the day, with specific constraints.
@@ -2985,4 +3044,136 @@ markTeacherOccupied(teacherId, day, startTime, endTime, section)
 ---
 
 **Note:** This document reflects the complete constraint system for realistic, conflict-free timetable generation across multiple sections.
+
+
+---
+
+## ?? **16. FINAL SOLUTION: DYNAMIC ROOM ASSIGNMENT (v3.0)**
+
+### 16.1 The Eureka Moment
+**Discovery:** Phase 2 room pre-assignments were creating artificial constraints!
+
+**Old Approach (v1.0 - v2.0):**
+```
+Phase 2: Pre-assign specific rooms to each batch
+         +-- 3A Batch 1 + DSL ? Room 612A
+         +-- 3A Batch 2 + DSL ? Room 612B
+         +-- 3A Batch 3 + DSL ? Room 612C
+
+Phase 3: Use ONLY those pre-assigned rooms
+          Problem: What if 612A is occupied by 5A at Monday 10:00?
+          Result: Conflicts OR scheduling failures
+
+Step 3.5: Fix conflicts by reassigning rooms (post-processing)
+            Band-aid solution, not root cause fix
+```
+
+**New Approach (v3.0 - CURRENT):**
+```
+Phase 2: ELIMINATED!  No pre-assignments needed
+
+Phase 3: DYNAMIC ROOM SELECTION in real-time
+          For each batch, determine which lab is needed (Rule 4.7)
+          Query ALL compatible rooms for that lab
+          Find FIRST room that is:
+             Free globally (no other section using it)
+             Free internally (no other batch in this section using it)
+          Assign that room dynamically
+
+Result: Zero conflicts by design! 
+```
+
+---
+
+### 16.2 Implementation: Dynamic Room Selection
+
+**Key Algorithm:**
+```javascript
+// For Batch 3A1 needing DSL at Monday 10:00-12:00:
+
+// Step 1: Get ALL compatible rooms
+compatibleRooms = await DeptLabs.find({
+  lab_subjects_handled: labId
+})
+// Returns: [612A, 612B, 612C, 613]
+
+// Step 2: Find first available room
+for (room of compatibleRooms) {
+  if (isRoomFreeGlobally(room, day, time) &&
+      !usedByOtherBatchesInSection(room)) {
+    assignRoom(batch, room)  //  Success!
+    break
+  }
+}
+```
+
+**Guarantees:**
+-  Rule 4.7: Batch rotation (mathematical formula)
+-  No global conflicts (cross-section)
+-  No internal conflicts (within section)
+-  No consecutive labs
+-  No theory overlaps
+
+---
+
+### 16.3 Why This Works
+
+**Maximum Flexibility:**
+- Not locked to specific room assignments
+- Can use ANY compatible room
+- More options = higher success rate
+
+**Real-Time Conflict Prevention:**
+- Checks availability BEFORE assignment
+- No post-processing needed
+- Conflicts impossible by design
+
+**Comprehensive Reporting:**
+- Shows success rate (e.g., 18/18 = 100%)
+- Lists any unresolved conflicts with details
+- Provides actionable recommendations
+
+---
+
+### 16.4 Evolution Summary
+
+| Version | Phase 2 | Phase 3 | Conflicts | Result |
+|---------|---------|---------|-----------|--------|
+| **v1.0** | Manual | Uses manual | High |  Error-prone |
+| **v2.0** | Auto pre-assign | Uses assignments | Medium |  Artificial constraints |
+| **v3.0** |  ELIMINATED | Dynamic selection | **Zero** |  **Optimal!** |
+
+---
+
+**FINAL NOTE:** Phase 2 lab room assignments are NO LONGER NEEDED. Phase 3 dynamically selects compatible rooms in real-time, preventing all conflicts by design while guaranteeing Rule 4.7 (batch rotation).
+
+---
+
+## 16. FINAL SOLUTION: DYNAMIC ROOM ASSIGNMENT (v3.0)
+
+### 16.1 The Eureka Moment
+
+Phase 2 room pre-assignments were creating artificial constraints!
+
+Old Approach: Pre-assign specific rooms to each batch, then use only those rooms in Phase 3. Problem: If pre-assigned room is occupied, scheduling fails.
+
+New Approach (v3.0): NO pre-assignments! Phase 3 dynamically selects ANY compatible available room in real-time.
+
+### 16.2 Implementation
+
+For each batch:
+1. Determine which lab is needed using Rule 4.7: labIndex = (round + batch - 1) % totalLabs
+2. Query ALL compatible rooms for that lab from DeptLabs
+3. Find FIRST room that is free globally AND not used by other batches in this section
+4. Assign that room dynamically
+
+Result: Zero conflicts by design!
+
+### 16.3 Evolution Summary
+
+- v1.0: Manual Phase 2 assignments
+- v2.0: Auto Phase 2 assignments + Step 3.5 conflict resolver
+- v3.0 (CURRENT): Phase 2 ELIMINATED, dynamic room selection in Phase 3
+
+FINAL NOTE: Phase 2 lab room assignments are NO LONGER NEEDED. Phase 3 dynamically selects compatible rooms in real-time, preventing all conflicts while guaranteeing Rule 4.7 batch rotation.
 
