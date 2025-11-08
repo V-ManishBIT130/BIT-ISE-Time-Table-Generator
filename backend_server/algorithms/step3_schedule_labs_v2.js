@@ -216,6 +216,30 @@ function hasConsecutiveLabConflict(labSlots, day, startTime, endTime) {
 }
 
 /**
+ * Helper: Check if scheduling a lab on this day would violate daily lab limits
+ * CONSTRAINTS:
+ * - If total labs >= 3: Maximum 2 labs per day (avoid 3+ labs on same day)
+ * - If total labs == 2: Must be on different days (spread across week)
+ */
+function violatesDailyLabLimit(labSlots, day, totalLabsNeeded) {
+  const labsOnThisDay = labSlots.filter(slot => slot.day === day).length
+  
+  if (totalLabsNeeded >= 3) {
+    // CONSTRAINT 1: For 3+ labs total, max 2 labs per day
+    if (labsOnThisDay >= 2) {
+      return true // Already have 2 labs on this day - can't add more
+    }
+  } else if (totalLabsNeeded === 2) {
+    // CONSTRAINT 2: For exactly 2 labs, they must be on different days
+    if (labsOnThisDay >= 1) {
+      return true // Already have 1 lab on this day - must use different day
+    }
+  }
+  
+  return false
+}
+
+/**
  * Main function: Schedule labs for all sections with global conflict prevention
  */
 export async function scheduleLabs(semType, academicYear) {
@@ -328,6 +352,13 @@ export async function scheduleLabs(semType, academicYear) {
       
       console.log(`      📊 Need to schedule ${NUM_ROUNDS} lab sessions (${NUM_ROUNDS} rounds)`)
       
+      // Log daily lab distribution constraint being applied
+      if (NUM_ROUNDS >= 3) {
+        console.log(`      📅 Daily Lab Constraint: Max 2 labs per day (3+ labs total)`)
+      } else if (NUM_ROUNDS === 2) {
+        console.log(`      📅 Daily Lab Constraint: Must be on different days (exactly 2 labs)`)
+      }
+      
       const labSlots = []
       let roundsScheduled = 0
       
@@ -355,6 +386,13 @@ export async function scheduleLabs(semType, academicYear) {
         
         // Check for consecutive lab prohibition
         if (hasConsecutiveLabConflict(labSlots, day, start, end)) {
+          continue
+        }
+        
+        // Check for daily lab limit violations
+        // - 3+ labs total: max 2 per day
+        // - 2 labs total: must be on different days
+        if (violatesDailyLabLimit(labSlots, day, NUM_ROUNDS)) {
           continue
         }
         
@@ -574,6 +612,9 @@ export async function scheduleLabs(semType, academicYear) {
     console.log(`   Internal Conflict Prevention: ✅ Active`)
     console.log(`   Rule 4.7 (Batch Rotation): ✅ Guaranteed`)
     console.log(`   Consecutive Lab Prevention: ✅ Active`)
+    console.log(`   Daily Lab Limits: ✅ Active`)
+    console.log(`     • 3+ labs total → max 2 per day`)
+    console.log(`     • 2 labs total → different days`)
     console.log(`   Theory Slot Conflicts: ✅ Prevented`)
     console.log(``)
     
@@ -603,6 +644,7 @@ export async function scheduleLabs(semType, academicYear) {
           internal_conflicts: 0,
           rule_4_7_followed: true,
           consecutive_labs_prevented: true,
+          daily_lab_limits_applied: true,
           theory_conflicts_prevented: true
         },
         timetables: updatedTimetables
