@@ -180,11 +180,15 @@ function TimetableViewer() {
 
     if (!timetable) return cells
 
-    // Define break times
-    const breaks = [
-      { start_time: '11:00', end_time: '11:30', label: 'Morning Break' },
-      { start_time: '13:30', end_time: '14:00', label: 'Afternoon Break' }
-    ]
+    // Get breaks from timetable.breaks (includes both default and custom breaks)
+    // If no breaks array exists, fallback to default breaks
+    const breaks = timetable.breaks && timetable.breaks.length > 0
+      ? timetable.breaks.filter(b => b.day === day)
+      : [
+          // Default breaks (only used if timetable.breaks doesn't exist)
+          { day: day, start_time: '11:00', end_time: '11:30', label: 'Morning Break' },
+          { day: day, start_time: '13:30', end_time: '14:00', label: 'Afternoon Break' }
+        ].filter(b => b.day === day)
 
     // Process break slots first (lowest priority - can be overridden by labs/theory)
     breaks.forEach((breakSlot) => {
@@ -206,7 +210,7 @@ function TimetableViewer() {
           span: span,
           start_time: breakSlot.start_time,
           end_time: breakSlot.end_time,
-          label: breakSlot.label
+          label: breakSlot.label || 'Break'
         }
 
         // Mark occupied cells

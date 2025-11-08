@@ -763,10 +763,60 @@ export async function scheduleTheory(semType, academicYear) {
         a.subject_id.is_project === true
       )
       
-      console.log(`      ℹ️  Found ${allAssignments.length} theory subject assignments in database`)
-      console.log(`      ℹ️  Breakdown: ${regularISE.length} Regular ISE, ${otherDept.length} Other Dept, ${projects.length} Projects`)
+      // CRITICAL: Get list of subject IDs already scheduled as fixed slots in Step 2
+      // These are OEC/PEC/Open Electives - we should NOT re-schedule them!
+      const fixedSlotSubjectIds = new Set(
+        tt.theory_slots
+          .filter(slot => slot.is_fixed_slot === true)
+          .map(slot => slot.subject_id?.toString())
+          .filter(Boolean)
+      )
+      
+      console.log(`\n      🔒 Found ${fixedSlotSubjectIds.size} subjects already scheduled as FIXED slots (OEC/PEC)`)
+      if (fixedSlotSubjectIds.size > 0) {
+        const fixedSubjectNames = tt.theory_slots
+          .filter(slot => slot.is_fixed_slot === true)
+          .map(slot => slot.subject_shortform)
+          .join(', ')
+        console.log(`         → Fixed subjects: ${fixedSubjectNames}`)
+      }
+      
+      // FILTER OUT subjects that are already in fixed slots
+      const regularISE_filtered = regularISE.filter(a => {
+        const subjectId = a.subject_id?._id?.toString() || a.subject_id?.toString()
+        const isAlreadyFixed = fixedSlotSubjectIds.has(subjectId)
+        
+        if (isAlreadyFixed) {
+          console.log(`         ⏭️  Skipping ${a.subject_id.subject_shortform} - already in FIXED slot (Step 2)`)
+        }
+        
+        return !isAlreadyFixed
+      })
+      
+      const otherDept_filtered = otherDept.filter(a => {
+        const subjectId = a.subject_id?._id?.toString() || a.subject_id?.toString()
+        return !fixedSlotSubjectIds.has(subjectId)
+      })
+      
+      const projects_filtered = projects.filter(a => {
+        const subjectId = a.subject_id?._id?.toString() || a.subject_id?.toString()
+        return !fixedSlotSubjectIds.has(subjectId)
+      })
+      
+      const totalToSchedule = regularISE_filtered.length + otherDept_filtered.length + projects_filtered.length
+      const totalSkipped = allAssignments.length - totalToSchedule
+      
+      console.log(`      📊 Subjects to schedule in Step 4: ${totalToSchedule}/${allAssignments.length} (excluded ${totalSkipped} fixed)`)
+      
+      if (totalToSchedule === 0) {
+        console.log(`      ℹ️  All subjects already scheduled in fixed slots - nothing to do in Step 4\n`)
+        continue
+      }
+      
+      console.log(`      ℹ️  Found ${totalToSchedule} theory subject assignments to schedule`)
+      console.log(`      ℹ️  Breakdown: ${regularISE_filtered.length} Regular ISE, ${otherDept_filtered.length} Other Dept, ${projects_filtered.length} Projects`)
       console.log(`      ⏰ Working Hours: 8:00 AM - 5:00 PM (with breaks at 11:00-11:30 AM, 1:30-2:00 PM)`)
-      console.log(`      � Using Gap Minimization Strategy (reduces empty slots between classes)\n`)
+      console.log(`      📊 Using Gap Minimization Strategy (reduces empty slots between classes)\n`)
       
       // Initialize theory_slots array if not exists
       if (!tt.theory_slots) {
@@ -774,10 +824,11 @@ export async function scheduleTheory(semType, academicYear) {
       }
       
       // Schedule in priority order (capture results for summary)
+      // USE FILTERED LISTS (excluding subjects already in fixed slots)
       const results = {
-        regularISE: await scheduleSubjectGroup(regularISE, tt, 'Regular ISE'),
-        otherDept: await scheduleSubjectGroup(otherDept, tt, 'Other Dept'),
-        projects: await scheduleSubjectGroup(projects, tt, 'Projects')
+        regularISE: await scheduleSubjectGroup(regularISE_filtered, tt, 'Regular ISE'),
+        otherDept: await scheduleSubjectGroup(otherDept_filtered, tt, 'Other Dept'),
+        projects: await scheduleSubjectGroup(projects_filtered, tt, 'Projects')
       }
       
       // Print comprehensive section summary
@@ -786,10 +837,12 @@ export async function scheduleTheory(semType, academicYear) {
       console.log(`      📊 ═══════════════════════════════════════════════════════`)
       
       console.log(`\n         📌 Database Statistics:`)
-      console.log(`            • Total Theory Subjects Found: ${allAssignments.length}`)
-      console.log(`            • Regular ISE Subjects: ${regularISE.length}`)
-      console.log(`            • Other Department Subjects: ${otherDept.length}`)
-      console.log(`            • Project Subjects: ${projects.length}`)
+      console.log(`            • Total Theory Subjects in DB: ${allAssignments.length}`)
+      console.log(`            • Already in Fixed Slots (Step 2): ${totalSkipped}`)
+      console.log(`            • To Schedule in Step 4: ${totalToSchedule}`)
+      console.log(`            • Regular ISE to Schedule: ${regularISE_filtered.length}`)
+      console.log(`            • Other Department to Schedule: ${otherDept_filtered.length}`)
+      console.log(`            • Project Subjects to Schedule: ${projects_filtered.length}`)
       
       console.log(`\n         📌 Scheduling Results:`)
       console.log(`            • Regular ISE: ${results.regularISE.scheduled}/${results.regularISE.total} fully scheduled (${results.regularISE.failed} partial/failed)`)
@@ -797,11 +850,12 @@ export async function scheduleTheory(semType, academicYear) {
       console.log(`            • Projects: ${results.projects.scheduled}/${results.projects.total} fully scheduled (${results.projects.failed} partial/failed)`)
       
       const totalScheduled = results.regularISE.scheduled + results.otherDept.scheduled + results.projects.scheduled
-      const totalSubjects = allAssignments.length
-      const successRate = totalSubjects > 0 ? ((totalScheduled / totalSubjects) * 100).toFixed(1) : 0
+      const successRate = totalToSchedule > 0 ? ((totalScheduled / totalToSchedule) * 100).toFixed(1) : 0
       
-      console.log(`\n         📌 Overall Success Rate: ${totalScheduled}/${totalSubjects} subjects (${successRate}%)`)
-      console.log(`         📌 Theory Slots Created: ${tt.theory_slots.length}`)
+      console.log(`\n         📌 Overall Success Rate (Step 4 only): ${totalScheduled}/${totalToSchedule} subjects (${successRate}%)`)
+      console.log(`         📌 NEW Theory Slots Created: ${tt.theory_slots.length}`)
+      console.log(`         📌 Fixed Slots (Step 2): ${totalSkipped}`)
+      console.log(`         📌 Total Theory Slots: ${tt.theory_slots.length + fixedSlotSubjectIds.size}`)
       
       // Show early start distribution
       const finalEarlyDays = countEarlyStartDays(tt)
@@ -850,12 +904,17 @@ export async function scheduleTheory(semType, academicYear) {
       console.log(`      📊 ═══════════════════════════════════════════════════════\n`)
 
       
-      // CRITICAL: Count ONLY newly scheduled slots (before adding fixed slots back)
+      // CRITICAL: Count ONLY newly scheduled slots (exclude any fixed slots if present)
       console.log(`\n   🔍 DEBUG AFTER SCHEDULING:`)
-      console.log(`      - tt.theory_slots.length NOW = ${tt.theory_slots.length}`)
-      console.log(`      - These are NEWLY SCHEDULED (no fixed slots yet)`)
+      console.log(`      - tt.theory_slots.length = ${tt.theory_slots.length}`)
       
-      const newlyScheduledCount = tt.theory_slots.length
+      // FILTER: Only count non-fixed slots (in case any slipped through)
+      const newlyScheduledSlots = tt.theory_slots.filter(slot => slot.is_fixed_slot !== true)
+      const newlyScheduledCount = newlyScheduledSlots.length
+      
+      console.log(`      - Non-fixed slots in tt.theory_slots = ${newlyScheduledCount}`)
+      console.log(`      - Fixed slots in tt.theory_slots = ${tt.theory_slots.length - newlyScheduledCount}`)
+      
       const previousTotal = totalTheorySlotsScheduled
       totalTheorySlotsScheduled += newlyScheduledCount
       
@@ -865,19 +924,21 @@ export async function scheduleTheory(semType, academicYear) {
       // CRITICAL: Preserve existing theory_slots (Step 2 fixed slots) and add new ones
       const currentTimetable = await Timetable.findById(tt._id)
       const existingFixedSlots = currentTimetable.theory_slots.filter(slot => slot.is_fixed_slot === true)
-      const allTheorySlots = [...existingFixedSlots, ...tt.theory_slots]
+      const allTheorySlots = [...existingFixedSlots, ...newlyScheduledSlots]
       
       console.log(`      - Fixed slots from DB: ${existingFixedSlots.length}`)
-      console.log(`      - Total slots to save: ${allTheorySlots.length} (${existingFixedSlots.length} fixed + ${tt.theory_slots.length} new)`)
+      console.log(`      - Total slots to save: ${allTheorySlots.length} (${existingFixedSlots.length} fixed + ${newlyScheduledSlots.length} new)`)
       
       console.log(`      ✅ Section slots: ${newlyScheduledCount} newly scheduled, ${existingFixedSlots.length} fixed slots preserved\n`)
       
-      // Prepare summary data
+      // Prepare summary data (only count subjects scheduled in Step 4, exclude fixed)
       const summaryData = {
         total_subjects_found: allAssignments.length,
-        regular_ise_found: regularISE.length,
-        other_dept_found: otherDept.length,
-        projects_found: projects.length,
+        subjects_in_fixed_slots: totalSkipped,
+        subjects_to_schedule_step4: totalToSchedule,
+        regular_ise_found: regularISE_filtered.length,
+        other_dept_found: otherDept_filtered.length,
+        projects_found: projects_filtered.length,
         regular_ise_scheduled: results.regularISE.scheduled,
         regular_ise_failed: results.regularISE.failed,
         other_dept_scheduled: results.otherDept.scheduled,
