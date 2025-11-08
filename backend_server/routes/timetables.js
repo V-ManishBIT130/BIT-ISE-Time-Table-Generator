@@ -50,6 +50,105 @@ router.get('/', async (req, res) => {
 })
 
 /**
+ * GET /api/timetables/check-teacher-conflict
+ * Check if a teacher has a conflict at a specific day/time across ALL sections
+ * IMPORTANT: This route MUST come BEFORE /:section_id route to avoid path conflicts
+ * Query params:
+ * - teacher_id: Teacher's ObjectId
+ * - day: Day of the week (Monday, Tuesday, etc.)
+ * - start_time: Start time in 24-hour format (e.g., "11:30")
+ * - exclude_timetable_id: Current timetable ID to exclude
+ * - exclude_slot_id: Current slot ID to exclude
+ */
+router.get('/check-teacher-conflict', async (req, res) => {
+  try {
+    const { teacher_id, day, start_time, exclude_timetable_id, exclude_slot_id } = req.query
+    
+    console.log('🔍 [BACKEND] Checking teacher conflict:', {
+      teacher_id,
+      day,
+      start_time,
+      exclude_timetable_id
+    })
+    
+    if (!teacher_id || !day || !start_time) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required parameters: teacher_id, day, start_time'
+      })
+    }
+    
+    // Find all timetables (excluding current one)
+    const timetables = await Timetable.find({
+      _id: { $ne: exclude_timetable_id }
+    }).populate('section_id', 'section_name sem')
+    
+    // Check theory slots
+    for (const tt of timetables) {
+      const conflictSlot = tt.theory_slots?.find(slot => 
+        slot.teacher_id?.toString() === teacher_id &&
+        slot.day === day &&
+        slot.start_time === start_time &&
+        slot._id?.toString() !== exclude_slot_id
+      )
+      
+      if (conflictSlot) {
+        console.log('   ❌ [BACKEND] Conflict found in theory slots!')
+        return res.json({
+          success: true,
+          hasConflict: true,
+          conflict: {
+            section: tt.section_name || tt.section_id?.section_name,
+            subject: conflictSlot.subject_name || conflictSlot.subject_shortform,
+            day: day,
+            time: start_time,
+            type: 'theory'
+          }
+        })
+      }
+    }
+    
+    // Check lab slots
+    for (const tt of timetables) {
+      const conflictSlot = tt.lab_slots?.find(slot => 
+        slot.teacher_id?.toString() === teacher_id &&
+        slot.day === day &&
+        slot.start_time === start_time
+      )
+      
+      if (conflictSlot) {
+        console.log('   ❌ [BACKEND] Conflict found in lab slots!')
+        return res.json({
+          success: true,
+          hasConflict: true,
+          conflict: {
+            section: tt.section_name || tt.section_id?.section_name,
+            subject: conflictSlot.subject_name || conflictSlot.subject_shortform || 'Lab Session',
+            day: day,
+            time: start_time,
+            type: 'lab'
+          }
+        })
+      }
+    }
+    
+    console.log('   ✅ [BACKEND] No conflicts found')
+    res.json({
+      success: true,
+      hasConflict: false
+    })
+    
+  } catch (error) {
+    console.error('❌ [BACKEND] Error checking teacher conflict:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check teacher conflict',
+      error: error.message
+    })
+  }
+})
+
+/**
  * GET /api/timetables/:section_id
  * Fetch timetable for a specific section
  */
@@ -357,6 +456,62 @@ router.delete('/clear', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to clear timetables',
+      error: error.message
+    })
+  }
+})
+
+/**
+ * PUT /api/timetables/:timetableId/update-slots
+ * Update theory slots and breaks in a timetable (manual editing)
+ * Body: { theory_slots, breaks }
+ */
+router.put('/:timetableId/update-slots', async (req, res) => {
+  try {
+    const { timetableId } = req.params
+    const { theory_slots, breaks } = req.body
+    
+    console.log('📝 Updating timetable slots:', timetableId)
+    
+    // Find timetable
+    const timetable = await Timetable.findById(timetableId)
+    
+    if (!timetable) {
+      return res.status(404).json({
+        success: false,
+        message: 'Timetable not found'
+      })
+    }
+    
+    // Update theory slots if provided
+    if (theory_slots) {
+      timetable.theory_slots = theory_slots
+      console.log(`✅ Updated ${theory_slots.length} theory slots`)
+    }
+    
+    // Update breaks if provided
+    if (breaks !== undefined) {
+      timetable.breaks = breaks
+      console.log(`✅ Updated ${breaks.length} breaks`)
+    }
+    
+    // Update last_modified timestamp
+    timetable.last_modified = new Date()
+    
+    // Save to database
+    await timetable.save()
+    
+    res.json({
+      success: true,
+      message: 'Timetable updated successfully',
+      data: timetable
+    })
+    
+  } catch (error) {
+    console.error('❌ Error updating timetable slots:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update timetable',
       error: error.message
     })
   }
