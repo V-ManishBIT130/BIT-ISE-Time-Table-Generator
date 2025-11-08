@@ -43,6 +43,39 @@ function TimetableViewer() {
     return endIndex - startIndex
   }
 
+  // Helper: Detect teacher conflicts
+  // ONLY checks non-fixed slots (fixed slots verified in Step 2)
+  const detectTeacherConflicts = (theorySlots) => {
+    if (!theorySlots) return []
+    
+    const conflicts = []
+    const teacherSchedule = new Map()
+    
+    theorySlots.forEach(slot => {
+      // Skip fixed slots (verified in Step 2)
+      if (slot.is_fixed_slot === true) return
+      
+      // Skip slots without teachers
+      if (!slot.teacher_id || slot.teacher_name === '[Other Dept]') return
+      
+      const key = `${slot.teacher_id}_${slot.day}_${slot.start_time}`
+      
+      if (teacherSchedule.has(key)) {
+        const existingSlot = teacherSchedule.get(key)
+        conflicts.push({
+          teacher: slot.teacher_name,
+          day: slot.day,
+          time: convertTo12Hour(slot.start_time),
+          subjects: [existingSlot.subject_shortform, slot.subject_shortform]
+        })
+      } else {
+        teacherSchedule.set(key, slot)
+      }
+    })
+    
+    return conflicts
+  }
+
   // Fetch all sections
   useEffect(() => {
     fetchSections()
@@ -411,6 +444,38 @@ function TimetableViewer() {
               </div>
             </div>
           )}
+
+          {/* Teacher Conflicts Warning */}
+          {(() => {
+            const conflicts = detectTeacherConflicts(timetable.theory_slots)
+            return conflicts.length > 0 && (
+              <div className="teacher-conflicts-warning">
+                <div className="warning-header">
+                  <span className="warning-icon">❌</span>
+                  <h4>Teacher Conflicts Detected!</h4>
+                </div>
+                <div className="warning-content">
+                  <p>
+                    <strong>{conflicts.length} teacher conflict(s)</strong> found where a teacher is assigned to multiple classes at the same time.
+                  </p>
+                  <div className="conflicts-list">
+                    {conflicts.map((conflict, idx) => (
+                      <div key={idx} className="conflict-item">
+                        <span className="conflict-teacher">👨‍🏫 {conflict.teacher}</span>
+                        <span className="conflict-time">📅 {conflict.day} at {conflict.time}</span>
+                        <span className="conflict-subjects">📚 {conflict.subjects.join(' + ')}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="warning-action">
+                    <p>
+                      <strong>Action Required:</strong> This should not happen! Please report this bug to the developer.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
 
           <div className="grid-wrapper">
             <table className="timetable-grid">
