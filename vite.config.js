@@ -10,6 +10,14 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true
       }
+    },
+    // Fix for spaces in path (Windows username with spaces)
+    fs: {
+      strict: false
     }
+  },
+  // Additional fix for path resolution
+  resolve: {
+    preserveSymlinks: true
   }
 })
