@@ -994,6 +994,113 @@
   font-weight: 700;
 }
 
+/* Teacher Conflicts Warning */
+.teacher-conflicts-warning {
+  background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+  border: 2px solid #f44336;
+  border-left: 6px solid #d32f2f;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+}
+
+.teacher-conflicts-warning .warning-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.teacher-conflicts-warning .warning-icon {
+  font-size: 32px;
+  animation: shake 0.5s ease-in-out infinite;
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+.teacher-conflicts-warning .warning-header h4 {
+  margin: 0;
+  font-size: 20px;
+  color: #c62828;
+  font-weight: 700;
+}
+
+.teacher-conflicts-warning .warning-content p {
+  margin: 0 0 16px 0;
+  font-size: 15px;
+  color: #5d4037;
+  line-height: 1.6;
+}
+
+.conflicts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.conflict-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  border-left: 4px solid #d32f2f;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  flex-wrap: wrap;
+}
+
+.conflict-teacher {
+  font-weight: 700;
+  color: #c62828;
+  font-size: 15px;
+  min-width: 150px;
+}
+
+.conflict-time {
+  font-weight: 600;
+  color: #6a1b9a;
+  font-size: 14px;
+  min-width: 180px;
+}
+
+.conflict-subjects {
+  font-weight: 600;
+  color: #0277bd;
+  font-size: 14px;
+  flex: 1;
+}
+
+.teacher-conflicts-warning .warning-action {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #d32f2f;
+}
+
+.teacher-conflicts-warning .warning-action p {
+  margin: 0;
+  font-size: 14px;
+  color: #3e2723;
+}
+
+.teacher-conflicts-warning .warning-action strong {
+  color: #c62828;
+  font-weight: 700;
+}
+
 /* Theory Scheduling Summary */
 .summary-stats {
   background: white;

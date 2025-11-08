@@ -111,12 +111,230 @@ function getAdjustedBreaks(day, labSlots) {
 }
 
 /**
- * Helper: Get available 1-hour time slots for a day
- * NOTE: All slots MUST be within 8:00 AM - 5:00 PM (17:00) constraint
+ * Helper: Check how many days already have 8:00 AM start for a section
  */
-function getAvailableTimeSlots(day, labSlots, theorySlots) {
+function countEarlyStartDays(timetable) {
+  const earlyStartDays = new Set()
+  
+  // Check theory slots starting at 8:00
+  const theorySlots = timetable.theory_slots || []
+  theorySlots.forEach(slot => {
+    if (slot.start_time === '08:00') {
+      earlyStartDays.add(slot.day)
+    }
+  })
+  
+  // Check lab slots starting at 8:00
+  const labSlots = timetable.lab_slots || []
+  labSlots.forEach(slot => {
+    if (slot.start_time === '08:00') {
+      earlyStartDays.add(slot.day)
+    }
+  })
+  
+  return earlyStartDays.size
+}
+
+/**
+ * Helper: Check if a day already has 8:00 AM start
+ */
+function hasEarlyStart(timetable, day) {
+  const theorySlots = timetable.theory_slots || []
+  const labSlots = timetable.lab_slots || []
+  const hasTheoryEarly = theorySlots.some(slot => slot.day === day && slot.start_time === '08:00')
+  const hasLabEarly = labSlots.some(slot => slot.day === day && slot.start_time === '08:00')
+  return hasTheoryEarly || hasLabEarly
+}
+
+/**
+ * Helper: Verify no teacher conflicts in theory slots
+ * ONLY checks non-fixed slots (fixed slots verified in Step 2)
+ */
+function verifyTeacherConflicts(theorySlots) {
+  const conflicts = []
+  const teacherSchedule = new Map()
+  
+  theorySlots.forEach(slot => {
+    // Skip fixed slots (verified in Step 2)
+    if (slot.is_fixed_slot === true) return
+    
+    // Skip slots without teachers (Other Dept, projects)
+    if (!slot.teacher_id) return
+    
+    const key = `${slot.teacher_id}_${slot.day}_${slot.start_time}`
+    if (teacherSchedule.has(key)) {
+      conflicts.push({
+        teacher: slot.teacher_name,
+        day: slot.day,
+        time: slot.start_time,
+        count: 2 // Simplified - could track actual count
+      })
+    } else {
+      teacherSchedule.set(key, slot)
+    }
+  })
+  
+  return conflicts
+}
+
+/**
+ * Helper: Verify day length constraint (8 AM → 4 PM, later → 5 PM)
+ */
+function verifyDayLengthConstraint(timetable) {
+  const violations = []
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  
+  days.forEach(day => {
+    const allSlots = [
+      ...(timetable.theory_slots || []).filter(s => s.day === day),
+      ...(timetable.lab_slots || []).filter(s => s.day === day)
+    ]
+    
+    if (allSlots.length === 0) return
+    
+    // Find earliest start and latest end
+    const startTimes = allSlots.map(s => s.start_time).sort()
+    const endTimes = allSlots.map(s => s.end_time).sort()
+    const earliestStart = startTimes[0]
+    const latestEnd = endTimes[endTimes.length - 1]
+    
+    // If starts at 8:00 AM, must end by 16:00 (4 PM)
+    if (earliestStart === '08:00' && latestEnd > '16:00') {
+      violations.push({
+        day,
+        startTime: earliestStart,
+        endTime: latestEnd,
+        expectedEnd: '16:00'
+      })
+    }
+  })
+  
+  return violations
+}
+
+/**
+ * Helper: Calculate gap score for a time slot with early start penalty AND subject diversity
+ * Prioritizes slots that minimize gaps, avoid too many early starts, AND promote subject variety
+ */
+function calculateGapScore(slotStart, timetable, day, currentSubjectId = null) {
+  const theorySlots = timetable.theory_slots || []
+  const labSlots = timetable.lab_slots || []
+  
+  let score = 0
+  
+  // Check if there's an adjacent class before this slot
+  const hasClassBefore = theorySlots.some(t => t.day === day && t.end_time === slotStart) ||
+                        labSlots.some(l => l.day === day && l.end_time === slotStart)
+  
+  // Check if there's an adjacent class after this slot (for 1-hour slot)
+  const slotEnd = addHours(slotStart, 1)
+  const hasClassAfter = theorySlots.some(t => t.day === day && t.start_time === slotEnd) ||
+                       labSlots.some(l => l.day === day && l.start_time === slotEnd)
+  
+  // CRITICAL: Penalize if this subject already scheduled on this day (subject diversity)
+  if (currentSubjectId) {
+    const subjectAlreadyOnDay = theorySlots.some(t => 
+      t.day === day && 
+      t.subject_id && 
+      t.subject_id.toString() === currentSubjectId.toString()
+    )
+    if (subjectAlreadyOnDay) {
+      score += 50 // Heavy penalty for scheduling same subject multiple times on same day
+    }
+  }
+  
+  // Count how many different subjects already on this day
+  const subjectsOnDay = new Set(
+    theorySlots
+      .filter(t => t.day === day && t.subject_id)
+      .map(t => t.subject_id.toString())
+  )
+  
+  // Slight preference for days with more variety (don't create single-subject days)
+  if (subjectsOnDay.size === 0) {
+    score += 2 // Small penalty for starting a new day (prefer distributing across existing days first)
+  } else if (subjectsOnDay.size === 1) {
+    score -= 3 // Bonus for adding variety to single-subject day!
+  }
+  
+  // Best: Adjacent to existing classes (creates blocks)
+  if (hasClassBefore && hasClassAfter) {
+    score += 0 // Perfect - fills a gap
+  } else if (hasClassBefore || hasClassAfter) {
+    score += 1 // Good - extends a block
+  } else {
+    // Count gap size from nearest class
+    score += 10 // Base penalty for isolated slot
+    
+    // Find nearest class before
+    const classesBefore = [...theorySlots, ...labSlots]
+      .filter(s => s.day === day && s.end_time < slotStart)
+      .map(s => s.end_time)
+    
+    if (classesBefore.length > 0) {
+      const nearestBefore = classesBefore.sort().reverse()[0]
+      const gapBefore = (timeToMinutes(slotStart) - timeToMinutes(nearestBefore)) / 60
+      score += gapBefore * 2 // Penalty increases with gap size
+    }
+    
+    // Find nearest class after
+    const classesAfter = [...theorySlots, ...labSlots]
+      .filter(s => s.day === day && s.start_time > slotEnd)
+      .map(s => s.start_time)
+    
+    if (classesAfter.length > 0) {
+      const nearestAfter = classesAfter.sort()[0]
+      const gapAfter = (timeToMinutes(nearestAfter) - timeToMinutes(slotEnd)) / 60
+      score += gapAfter * 2 // Penalty increases with gap size
+    }
+  }
+  
+  // CRITICAL: Add penalty for 8:00 AM slots if too many early start days already
+  const MAX_EARLY_START_DAYS = 3 // Maximum 3 days per week starting at 8:00 AM
+  
+  if (slotStart === '08:00') {
+    const currentEarlyDays = countEarlyStartDays(timetable)
+    
+    if (currentEarlyDays >= MAX_EARLY_START_DAYS) {
+      // Already have max early days - strongly discourage 8:00 AM slots
+      score += 100 // Heavy penalty to avoid 8:00 AM starts
+    } else if (currentEarlyDays >= MAX_EARLY_START_DAYS - 1) {
+      // Close to limit - moderate penalty
+      score += 20
+    } else {
+      // Still have room for early starts - small penalty for balance
+      score += 5
+    }
+  }
+  
+  return score
+}
+
+/**
+ * Helper: Convert time string to minutes
+ */
+function timeToMinutes(timeStr) {
+  const [h, m] = timeStr.split(':').map(Number)
+  return h * 60 + m
+}
+
+/**
+ * Helper: Get available 1-hour time slots for a day with gap scoring
+ * NOTE: Day length constraint:
+ *  - If day starts at 8:00 AM → must end by 4:00 PM (16:00)
+ *  - If day starts after 8:00 AM → can end by 5:00 PM (17:00)
+ */
+function getAvailableTimeSlots(day, timetable, currentSubjectId = null) {
+  const labSlots = timetable.lab_slots || []
+  const theorySlots = timetable.theory_slots || []
+  
+  // Check if this day starts at 8:00 AM
+  const hasEarlyStartToday = hasEarlyStart(timetable, day)
+  
+  // Determine max end time based on day start
+  const maxEndTime = hasEarlyStartToday ? '16:00' : '17:00'
+  
   // All possible 1-hour slots (avoiding break times)
-  // Maximum end time is 17:00 (5:00 PM)
   const allSlots = [
     { start: '08:00', end: '09:00' },
     { start: '09:00', end: '10:00' },
@@ -127,14 +345,17 @@ function getAvailableTimeSlots(day, labSlots, theorySlots) {
     // BREAK 2: 13:30-14:00 (default)
     { start: '14:00', end: '15:00' },
     { start: '15:00', end: '16:00' },
-    { start: '16:00', end: '17:00' }  // Last slot ends exactly at 5:00 PM
+    { start: '16:00', end: '17:00' }  // Only available if day doesn't start at 8 AM
   ]
   
   // Get adjusted breaks for this day
   const adjustedBreaks = getAdjustedBreaks(day, labSlots)
   
-  // Filter out unavailable slots
-  return allSlots.filter(slot => {
+  // Filter out unavailable slots and add gap scoring
+  const availableSlots = allSlots.filter(slot => {
+    // Day length constraint: if starts at 8 AM, must end by 4 PM
+    if (slot.end > maxEndTime) return false
+    
     // Not during breaks
     if (isBreakTime(slot.start, adjustedBreaks)) return false
     
@@ -146,13 +367,29 @@ function getAvailableTimeSlots(day, labSlots, theorySlots) {
     
     return true
   })
+  
+  // Add gap score to each slot (pass subject ID for diversity scoring)
+  return availableSlots.map(slot => ({
+    ...slot,
+    gapScore: calculateGapScore(slot.start, timetable, day, currentSubjectId)
+  }))
 }
 
 /**
  * Helper: Check if consecutive slots are available for multi-hour session
+ * Also respects day length constraint (8 AM start → 4 PM end max)
  */
-function canScheduleConsecutiveSlots(startSlot, hours, availableSlots) {
+function canScheduleConsecutiveSlots(startSlot, hours, availableSlots, timetable, day) {
   if (hours === 1) return true
+  
+  // Calculate end time for this session
+  const sessionEndTime = addHours(startSlot.start, hours)
+  
+  // Check day length constraint: if day starts at 8 AM, cannot go past 4 PM
+  const hasEarlyStartToday = hasEarlyStart(timetable, day)
+  if (hasEarlyStartToday && sessionEndTime > '16:00') {
+    return false // Would violate 8 AM → 4 PM constraint
+  }
   
   // For 2+ hours, check if next slots are also available
   let currentTime = startSlot.start
@@ -230,35 +467,33 @@ async function scheduleSubjectGroup(subjects, timetable, groupName) {
     const scheduledSlots = []
     const usedDays = new Set() // Track days already used for this subject (respects max_hrs_Day)
     
-    // Shuffle days for random distribution
-    const shuffledDays = shuffleArray([...WORKING_DAYS])
+    // Try each day (don't shuffle - we'll use gap scoring instead)
+    const daysToTry = [...WORKING_DAYS]
     
     // Schedule each session
     for (const sessionHours of sessions) {
       let sessionScheduled = false
+      let bestSlot = null
+      let bestDay = null
+      let bestScore = Infinity
       
-      for (const day of shuffledDays) {
-        if (sessionScheduled) break
-        
+      // Find the best slot across all days (minimize gaps + promote variety)
+      for (const day of daysToTry) {
         // CRITICAL: Respect max_hrs_Day - don't schedule same subject twice on same day
         if (usedDays.has(day)) {
           continue // Already scheduled this subject on this day
         }
         
-        // Get available slots for this day
-        const availableSlots = getAvailableTimeSlots(
-          day,
-          timetable.lab_slots,
-          timetable.theory_slots
-        )
+        // Get available slots for this day (with gap scores + subject diversity)
+        const availableSlots = getAvailableTimeSlots(day, timetable, subject._id)
         
-        // Shuffle slots for random selection
-        const shuffledSlots = shuffleArray(availableSlots)
+        // Sort by gap score (lowest first - best slots)
+        const sortedSlots = availableSlots.sort((a, b) => a.gapScore - b.gapScore)
         
         // Try to find slot that can accommodate session
-        for (const slot of shuffledSlots) {
+        for (const slot of sortedSlots) {
           // Check if consecutive slots available (for multi-hour sessions)
-          if (!canScheduleConsecutiveSlots(slot, sessionHours, availableSlots)) {
+          if (!canScheduleConsecutiveSlots(slot, sessionHours, availableSlots, timetable, day)) {
             continue
           }
           
@@ -269,35 +504,49 @@ async function scheduleSubjectGroup(subjects, timetable, groupName) {
             }
           }
           
-          // Found available slot!
-          const endTime = addHours(slot.start, sessionHours)
-          
-          timetable.theory_slots.push({
-            subject_id: subject._id,
-            subject_name: subject.subject_name,
-            subject_shortform: subject.subject_shortform || subject.subject_code,
-            teacher_id: subject.requires_teacher_assignment && teacher ? teacher._id : null,
-            teacher_name: subject.requires_teacher_assignment && teacher ? teacher.name : '[Other Dept]',
-            teacher_shortform: subject.requires_teacher_assignment && teacher ? teacher.teacher_shortform : 'N/A',
-            classroom_id: null, // Step 6
-            classroom_name: null, // Step 6
-            day: day,
-            start_time: slot.start,
-            end_time: endTime,
-            duration_hours: sessionHours
-          })
-          
-          // Mark teacher as busy (if ISE teacher)
-          if (subject.requires_teacher_assignment && teacher) {
-            markTeacherBusy(teacher._id.toString(), day, slot.start, endTime)
+          // Found a candidate slot - check if it's better than current best
+          if (slot.gapScore < bestScore) {
+            bestScore = slot.gapScore
+            bestSlot = slot
+            bestDay = day
           }
           
-          sessionScheduled = true
-          subjectScheduled++
-          usedDays.add(day) // Mark this day as used for this subject
-          scheduledSlots.push(`${day} ${slot.start}-${endTime}`)
-          break
+          break // Found valid slot for this day, move to next day
         }
+      }
+      
+      // Schedule in the best slot found
+      if (bestSlot && bestDay) {
+        sessionScheduled = true
+        const endTime = addHours(bestSlot.start, sessionHours)
+        
+        timetable.theory_slots.push({
+          subject_id: subject._id,
+          subject_name: subject.subject_name,
+          subject_shortform: subject.subject_shortform || subject.subject_code,
+          teacher_id: subject.requires_teacher_assignment && teacher ? teacher._id : null,
+          teacher_name: subject.requires_teacher_assignment && teacher ? teacher.name : '[Other Dept]',
+          teacher_shortform: subject.requires_teacher_assignment && teacher ? teacher.teacher_shortform : 'N/A',
+          classroom_id: null, // Step 6
+          classroom_name: null, // Step 6
+          day: bestDay,
+          start_time: bestSlot.start,
+          end_time: endTime,
+          duration_hours: sessionHours
+        })
+        
+        // Log early start tracking
+        const currentEarlyDays = countEarlyStartDays(timetable)
+        console.log(`         ✅ Scheduled: ${bestDay} ${bestSlot.start}-${endTime} (gap score: ${bestScore}, early days: ${currentEarlyDays})`)
+        
+        // Mark teacher as busy (if ISE teacher)
+        if (subject.requires_teacher_assignment && teacher) {
+          markTeacherBusy(teacher._id.toString(), bestDay, bestSlot.start, endTime)
+        }
+        
+        subjectScheduled++
+        usedDays.add(bestDay) // Mark this day as used for this subject
+        scheduledSlots.push(`${bestDay} ${bestSlot.start}-${endTime} (gap score: ${bestScore})`)
       }
       
       if (!sessionScheduled) {
@@ -342,27 +591,73 @@ async function scheduleSubjectGroup(subjects, timetable, groupName) {
  */
 export async function scheduleTheory(semType, academicYear) {
   console.log(`\n📚 Step 4: Scheduling theory for ${semType} semester...`)
-  console.log(`   📊 Strategy: Greedy + Random Distribution + Integrated Breaks\n`)
+  console.log(`   📊 Strategy: Gap Minimization + Compact Scheduling + Integrated Breaks`)
+  console.log(`   🎯 Goal: Minimize empty slots between classes for efficient time usage\n`)
   
   try {
     // CRITICAL: Clear data from THIS step and ALL future steps (5, 6, 7)
     // Keep data from Steps 1-3 (section init + fixed slots + labs)
-    console.log(`   🗑️  Flushing data from Steps 4-7 (keeping Steps 1-3 data)...`)
+    console.log(`\n   🗑️  Flushing data from Steps 4-7 (keeping Steps 1-3 data)...\n`)
     
     const timetables = await Timetable.find({
       sem_type: semType,
       academic_year: academicYear
     })
     
+    console.log(`   🔍 BEFORE CLEARING:`)
     for (const tt of timetables) {
-      // Keep theory_slots with is_fixed_slot = true (Step 2 fixed slots)
-      // Remove theory_slots without is_fixed_slot (Step 4 scheduled theory)
-      tt.theory_slots = tt.theory_slots.filter(slot => slot.is_fixed_slot === true)
+      const totalBefore = tt.theory_slots.length
+      const fixedBefore = tt.theory_slots.filter(s => s.is_fixed_slot === true).length
+      const nonFixedBefore = tt.theory_slots.filter(s => !s.is_fixed_slot).length
+      
+      console.log(`      - ${tt.section_name}: ${totalBefore} total (${fixedBefore} fixed + ${nonFixedBefore} non-fixed)`)
+      
+      // CRITICAL FIX: For Sem 7, only keep RECENT fixed slots (not duplicates)
+      // Step 2 should add max 2-3 fixed slots per section (OEC/PEC)
+      if (tt.sem === 7 && fixedBefore > 10) {
+        console.log(`         ⚠️⚠️⚠️ ANOMALY DETECTED: ${fixedBefore} fixed slots!`)
+        console.log(`         This is likely duplicate data from previous runs`)
+        console.log(`         Clearing ALL theory_slots and will re-run Step 2...`)
+        tt.theory_slots = []  // Clear everything - user should re-run Step 2
+      } else {
+        // Keep theory_slots with is_fixed_slot = true (Step 2 fixed slots)
+        // Remove theory_slots without is_fixed_slot (Step 4 scheduled theory)
+        tt.theory_slots = tt.theory_slots.filter(slot => slot.is_fixed_slot === true)
+      }
+      
+      const fixedAfter = tt.theory_slots.length
+      const removedCount = totalBefore - fixedAfter
+      
+      console.log(`         → Keeping ${fixedAfter} fixed, removing ${removedCount} non-fixed`)
+      
       // Keep lab_slots (Step 3)
       tt.generation_metadata.current_step = 3
       tt.generation_metadata.steps_completed = ['load_sections', 'block_fixed_slots', 'schedule_labs']
       await tt.save()
     }
+    
+    console.log(`\n   ✅ Flushed ${timetables.length} timetables (kept fixed slots + labs)`)
+    
+    // VERIFY: Re-read from database
+    console.log(`\n   🔍 AFTER CLEARING (re-read from DB):`)
+    const verifyTimetables = await Timetable.find({
+      sem_type: semType,
+      academic_year: academicYear
+    }).lean()
+    
+    for (const tt of verifyTimetables) {
+      const total = tt.theory_slots.length
+      const fixed = tt.theory_slots.filter(s => s.is_fixed_slot === true).length
+      const nonFixed = tt.theory_slots.filter(s => !s.is_fixed_slot).length
+      
+      console.log(`      - ${tt.section_name}: ${total} total (${fixed} fixed + ${nonFixed} non-fixed)`)
+      
+      if (fixed > 10) {
+        console.log(`         ⚠️⚠️⚠️ WARNING: ${fixed} fixed slots is ABNORMALLY HIGH!`)
+        console.log(`         Expected: 1-3 fixed slots per section (OEC/PEC only)`)
+      }
+    }
+    console.log(``)
     
     console.log(`   ✅ Flushed ${timetables.length} timetables (kept fixed slots + labs)\n`)
     
@@ -383,13 +678,20 @@ export async function scheduleTheory(semType, academicYear) {
     
     let totalTheorySlotsScheduled = 0
     
+    console.log(`\n🔍 DEBUG: Starting fresh - totalTheorySlotsScheduled = ${totalTheorySlotsScheduled}\n`)
+    
     // Process each section
     for (const tt of reloadedTimetables) {
       const section = await Timetable.findById(tt._id).populate('section_id').lean()
       const sectionName = section.section_name
       const sem = section.sem
       
-      console.log(`   📝 Processing Section ${sectionName} (Sem ${sem})...`)
+      console.log(`\n   📝 Processing Section ${sectionName} (Sem ${sem})...`)
+      console.log(`   🔍 DEBUG BEFORE SCHEDULING:`)
+      console.log(`      - tt.theory_slots.length = ${tt.theory_slots?.length || 0}`)
+      console.log(`      - Fixed slots in tt = ${tt.theory_slots?.filter(s => s.is_fixed_slot === true).length || 0}`)
+      console.log(`      - Non-fixed slots in tt = ${tt.theory_slots?.filter(s => !s.is_fixed_slot).length || 0}`)
+      console.log(`      - Current totalTheorySlotsScheduled = ${totalTheorySlotsScheduled}`)
       
       // Load pre-assigned theory subjects for this section (ISE teachers + Professional Electives)
       const sectionLetter = sectionName.slice(-1) // Extract 'A', 'B', 'C'
@@ -464,7 +766,7 @@ export async function scheduleTheory(semType, academicYear) {
       console.log(`      ℹ️  Found ${allAssignments.length} theory subject assignments in database`)
       console.log(`      ℹ️  Breakdown: ${regularISE.length} Regular ISE, ${otherDept.length} Other Dept, ${projects.length} Projects`)
       console.log(`      ⏰ Working Hours: 8:00 AM - 5:00 PM (with breaks at 11:00-11:30 AM, 1:30-2:00 PM)`)
-      console.log(`      🎲 Using Greedy + Random Distribution Strategy\n`)
+      console.log(`      � Using Gap Minimization Strategy (reduces empty slots between classes)\n`)
       
       // Initialize theory_slots array if not exists
       if (!tt.theory_slots) {
@@ -501,6 +803,43 @@ export async function scheduleTheory(semType, academicYear) {
       console.log(`\n         📌 Overall Success Rate: ${totalScheduled}/${totalSubjects} subjects (${successRate}%)`)
       console.log(`         📌 Theory Slots Created: ${tt.theory_slots.length}`)
       
+      // Show early start distribution
+      const finalEarlyDays = countEarlyStartDays(tt)
+      const earlyStartDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].filter(day => 
+        hasEarlyStart(tt, day)
+      )
+      console.log(`\n         📌 Early Start (8:00 AM) Distribution: ${finalEarlyDays} days`)
+      if (earlyStartDays.length > 0) {
+        console.log(`            Days with 8:00 AM classes: ${earlyStartDays.join(', ')}`)
+      } else {
+        console.log(`            No classes scheduled at 8:00 AM`)
+      }
+      
+      // VERIFICATION: Check for teacher conflicts
+      console.log(`\n         🔍 Verifying teacher assignments...`)
+      const teacherConflicts = verifyTeacherConflicts(tt.theory_slots)
+      if (teacherConflicts.length === 0) {
+        console.log(`            ✅ No teacher conflicts detected!`)
+      } else {
+        console.log(`            ❌ WARNING: ${teacherConflicts.length} teacher conflicts found:`)
+        teacherConflicts.forEach(conflict => {
+          console.log(`               - ${conflict.teacher} has ${conflict.count} classes at ${conflict.day} ${conflict.time}`)
+        })
+      }
+      
+      // VERIFICATION: Check day length constraint (8 AM start → 4 PM end)
+      console.log(`\n         🔍 Verifying day length constraint...`)
+      const dayLengthViolations = verifyDayLengthConstraint(tt)
+      if (dayLengthViolations.length === 0) {
+        console.log(`            ✅ All days respect length constraint!`)
+        console.log(`               (8 AM start → ends by 4 PM, later start → ends by 5 PM)`)
+      } else {
+        console.log(`            ❌ WARNING: ${dayLengthViolations.length} violations found:`)
+        dayLengthViolations.forEach(violation => {
+          console.log(`               - ${violation.day}: starts ${violation.startTime}, ends ${violation.endTime} (should end by ${violation.expectedEnd})`)
+        })
+      }
+      
       if (results.regularISE.failed + results.otherDept.failed + results.projects.failed > 0) {
         console.log(`\n         ⚠️  Some subjects could not be fully scheduled due to:`)
         console.log(`            - Limited available time slots after labs`)
@@ -511,10 +850,27 @@ export async function scheduleTheory(semType, academicYear) {
       console.log(`      📊 ═══════════════════════════════════════════════════════\n`)
 
       
+      // CRITICAL: Count ONLY newly scheduled slots (before adding fixed slots back)
+      console.log(`\n   🔍 DEBUG AFTER SCHEDULING:`)
+      console.log(`      - tt.theory_slots.length NOW = ${tt.theory_slots.length}`)
+      console.log(`      - These are NEWLY SCHEDULED (no fixed slots yet)`)
+      
+      const newlyScheduledCount = tt.theory_slots.length
+      const previousTotal = totalTheorySlotsScheduled
+      totalTheorySlotsScheduled += newlyScheduledCount
+      
+      console.log(`      - Adding ${newlyScheduledCount} to total`)
+      console.log(`      - Total was ${previousTotal}, now ${totalTheorySlotsScheduled}`)
+      
       // CRITICAL: Preserve existing theory_slots (Step 2 fixed slots) and add new ones
       const currentTimetable = await Timetable.findById(tt._id)
       const existingFixedSlots = currentTimetable.theory_slots.filter(slot => slot.is_fixed_slot === true)
       const allTheorySlots = [...existingFixedSlots, ...tt.theory_slots]
+      
+      console.log(`      - Fixed slots from DB: ${existingFixedSlots.length}`)
+      console.log(`      - Total slots to save: ${allTheorySlots.length} (${existingFixedSlots.length} fixed + ${tt.theory_slots.length} new)`)
+      
+      console.log(`      ✅ Section slots: ${newlyScheduledCount} newly scheduled, ${existingFixedSlots.length} fixed slots preserved\n`)
       
       // Prepare summary data
       const summaryData = {
@@ -566,21 +922,56 @@ export async function scheduleTheory(semType, academicYear) {
         console.log(`      ❌❌ VERIFICATION FAILED: theory_scheduling_summary NOT FOUND in database!`)
         console.log(`         This means the schema doesn't support this field.`)
       }
-      
-      totalTheorySlotsScheduled += tt.theory_slots.length
-      console.log(`      ✅ Total theory slots: ${allTheorySlots.length} (${existingFixedSlots.length} fixed + ${tt.theory_slots.length} scheduled)\n`)
     }
     
-    console.log(`\n✅ Step 4 Complete!`)
-    console.log(`   📊 Total theory slots scheduled: ${totalTheorySlotsScheduled}`)
+    console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`✅ Step 4 Complete!`)
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`\n🔍 FINAL DEBUG SUMMARY:`)
+    console.log(`   📊 Total NEW theory slots scheduled: ${totalTheorySlotsScheduled}`)
     console.log(`   📊 Sections processed: ${reloadedTimetables.length}`)
+    console.log(`   📊 Average per section: ${(totalTheorySlotsScheduled / reloadedTimetables.length).toFixed(1)} slots`)
+    console.log(`\n   ⚠️  IMPORTANT: This count EXCLUDES fixed slots from Step 2!`)
+    console.log(`   💡 Each section may have 1-3 fixed slots (not counted here)\n`)
+    
+    // Re-verify from database
+    console.log(`\n🔍 DATABASE VERIFICATION:`)
+    const finalVerify = await Timetable.find({
+      sem_type: semType,
+      academic_year: academicYear
+    }).lean()
+    
+    let totalInDB = 0
+    let fixedInDB = 0
+    let newInDB = 0
+    
+    finalVerify.forEach(tt => {
+      const fixed = tt.theory_slots?.filter(s => s.is_fixed_slot === true).length || 0
+      const nonFixed = tt.theory_slots?.filter(s => !s.is_fixed_slot).length || 0
+      const total = tt.theory_slots?.length || 0
+      
+      totalInDB += total
+      fixedInDB += fixed
+      newInDB += nonFixed
+      
+      console.log(`   - ${tt.section_name}: ${total} total (${fixed} fixed + ${nonFixed} new)`)
+    })
+    
+    console.log(`\n   📊 DATABASE TOTALS:`)
+    console.log(`      - Total theory slots in DB: ${totalInDB}`)
+    console.log(`      - Fixed slots (Step 2): ${fixedInDB}`)
+    console.log(`      - NEW slots (Step 4): ${newInDB}`)
+    console.log(`\n   ✅ Counter says: ${totalTheorySlotsScheduled}`)
+    console.log(`   ✅ Database says: ${newInDB}`)
+    console.log(`   ${totalTheorySlotsScheduled === newInDB ? '✅✅ MATCH!' : '❌❌ MISMATCH!'}\n`)
     
     return {
       success: true,
-      message: 'Step 4 complete: Theory classes scheduled with breaks',
+      message: `Step 4 complete: ${totalTheorySlotsScheduled} theory slots scheduled across ${reloadedTimetables.length} sections`,
       data: {
         sections_processed: reloadedTimetables.length,
-        theory_slots_scheduled: totalTheorySlotsScheduled
+        theory_slots_scheduled: totalTheorySlotsScheduled,
+        average_per_section: Math.round(totalTheorySlotsScheduled / reloadedTimetables.length)
       }
     }
     
