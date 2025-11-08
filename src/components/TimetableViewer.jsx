@@ -9,6 +9,7 @@ function TimetableViewer() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [semType, setSemType] = useState('odd')
+  const [theorySummaryExpanded, setTheorySummaryExpanded] = useState(false)
 
   // Time slots: 8:00 AM to 5:00 PM in 30-minute intervals
   const timeSlots = [
@@ -74,6 +75,31 @@ function TimetableViewer() {
 
       if (response.data.success) {
         setTimetable(response.data.data)
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        console.log('📊 FULL TIMETABLE DATA RECEIVED:')
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        console.log('   • Section:', response.data.data.section_name)
+        console.log('   • Sem:', response.data.data.sem)
+        console.log('   • Academic Year:', response.data.data.academic_year)
+        console.log('   • Theory Slots:', response.data.data.theory_slots?.length)
+        console.log('   • Lab Slots:', response.data.data.lab_slots?.length)
+        console.log('\n📊 GENERATION METADATA:')
+        console.log('   • Current Step:', response.data.data.generation_metadata?.current_step)
+        console.log('   • Steps Completed:', response.data.data.generation_metadata?.steps_completed)
+        console.log('\n📚 THEORY SCHEDULING SUMMARY:')
+        if (response.data.data?.generation_metadata?.theory_scheduling_summary) {
+          const summary = response.data.data.generation_metadata.theory_scheduling_summary
+          console.log('   ✅ SUMMARY EXISTS!')
+          console.log('   • Total Subjects:', summary.total_subjects_found)
+          console.log('   • Regular ISE:', `${summary.regular_ise_scheduled}/${summary.regular_ise_found}`)
+          console.log('   • Other Dept:', `${summary.other_dept_scheduled}/${summary.other_dept_found}`)
+          console.log('   • Projects:', `${summary.projects_scheduled}/${summary.projects_found}`)
+          console.log('   • Success Rate:', summary.success_rate + '%')
+        } else {
+          console.log('   ❌ SUMMARY IS UNDEFINED!')
+          console.log('   This means Step 4 needs to be re-run with updated code.')
+        }
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
       } else {
         setError('No timetable found for this section')
       }
@@ -121,7 +147,43 @@ function TimetableViewer() {
 
     if (!timetable) return cells
 
-    // Process theory slots
+    // Define break times
+    const breaks = [
+      { start_time: '11:00', end_time: '11:30', label: 'Morning Break' },
+      { start_time: '13:30', end_time: '14:00', label: 'Afternoon Break' }
+    ]
+
+    // Process break slots first (lowest priority - can be overridden by labs/theory)
+    breaks.forEach((breakSlot) => {
+      const startIndex = getTimeSlotIndex(breakSlot.start_time)
+      const span = getTimeSpan(breakSlot.start_time, breakSlot.end_time)
+      
+      // Only add break if slots are empty
+      let canAddBreak = true
+      for (let i = 0; i < span; i++) {
+        if (cells[startIndex + i]) {
+          canAddBreak = false
+          break
+        }
+      }
+      
+      if (canAddBreak && startIndex >= 0) {
+        cells[startIndex] = {
+          type: 'break',
+          span: span,
+          start_time: breakSlot.start_time,
+          end_time: breakSlot.end_time,
+          label: breakSlot.label
+        }
+
+        // Mark occupied cells
+        for (let i = 1; i < span; i++) {
+          cells[startIndex + i] = { type: 'occupied' }
+        }
+      }
+    })
+
+    // Process theory slots (higher priority - will override breaks)
     timetable.theory_slots?.forEach((slot) => {
       if (slot.day === day) {
         const startIndex = getTimeSlotIndex(slot.start_time)
@@ -140,7 +202,7 @@ function TimetableViewer() {
       }
     })
 
-    // Process lab slots
+    // Process lab slots (highest priority - will override everything)
     timetable.lab_slots?.forEach((slot) => {
       if (slot.day === day) {
         const startIndex = getTimeSlotIndex(slot.start_time)
@@ -171,12 +233,32 @@ function TimetableViewer() {
       return null // Skip occupied cells (already spanned)
     }
 
+    if (cell.type === 'break') {
+      return (
+        <td key={`${dayIndex}-${timeIndex}`} className="break-cell" colSpan={cell.span}>
+          <div className="cell-content">
+            <div className="break-icon">☕</div>
+            <div className="break-label">BREAK</div>
+            <div className="time-range">
+              {convertTo12Hour(cell.start_time)} - {convertTo12Hour(cell.end_time)}
+            </div>
+          </div>
+        </td>
+      )
+    }
+
     if (cell.type === 'theory') {
       const slot = cell.data
+      // Determine subject type for color coding
+      let subjectType = 'regular-ise'
+      if (slot.is_fixed_slot) subjectType = 'fixed'
+      else if (slot.teacher_name === '[Other Dept]') subjectType = 'other-dept'
+      else if (slot.subject_name?.toLowerCase().includes('project')) subjectType = 'project'
+      
       return (
         <td
           key={`${dayIndex}-${timeIndex}`}
-          className="theory-cell"
+          className={`theory-cell theory-${subjectType}`}
           colSpan={cell.span}
           title={`${slot.subject_name}\n${slot.teacher_name}\n${convertTo12Hour(slot.start_time)} - ${convertTo12Hour(slot.end_time)}`}
         >
@@ -358,7 +440,7 @@ function TimetableViewer() {
 
           {timetable.generation_metadata?.teacher_assignment_summary && (
             <div className="summary-stats">
-              <h4>Teacher Assignment Summary:</h4>
+              <h4>📊 Lab Teacher Assignment Summary:</h4>
               <div className="stats-grid">
                 <div className="stat-item">
                   <span className="stat-label">Total Lab Sessions:</span>
@@ -380,25 +462,152 @@ function TimetableViewer() {
             </div>
           )}
 
+          {timetable.generation_metadata?.theory_scheduling_summary ? (
+            <div className="summary-stats theory-summary-compact">
+              <div className="summary-header" onClick={() => setTheorySummaryExpanded(!theorySummaryExpanded)}>
+                <h4>📚 Theory Scheduling Summary</h4>
+                <span className="expand-icon">{theorySummaryExpanded ? '▼' : '▶'}</span>
+              </div>
+              
+              <div className={`summary-quick-view ${theorySummaryExpanded ? 'expanded' : ''}`}>
+                <div className="quick-stats">
+                  <span className="quick-stat">
+                    📊 {timetable.generation_metadata.theory_scheduling_summary.total_subjects_found} Subjects
+                  </span>
+                  <span className="quick-stat success">
+                    ✅ {timetable.generation_metadata.theory_scheduling_summary.success_rate}% Success
+                  </span>
+                  <span className="quick-stat">
+                    {timetable.generation_metadata.theory_scheduling_summary.total_scheduled}/{timetable.generation_metadata.theory_scheduling_summary.total_subjects_found} Scheduled
+                  </span>
+                </div>
+              </div>
+
+              {theorySummaryExpanded && (
+                <div className="theory-summary-expanded">
+                  <div className="theory-summary-grid">
+                    <div className="summary-section">
+                  <h5>📊 Subjects Found in Database</h5>
+                  <div className="stats-grid">
+                    <div className="stat-item">
+                      <span className="stat-label">Total Subjects:</span>
+                      <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.total_subjects_found || 0}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-label">Regular ISE:</span>
+                      <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.regular_ise_found || 0}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-label">Other Department:</span>
+                      <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.other_dept_found || 0}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-label">Projects:</span>
+                      <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.projects_found || 0}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="summary-section">
+                  <h5>✅ Successfully Scheduled</h5>
+                  <div className="stats-grid">
+                    <div className="stat-item">
+                      <span className="stat-label">Total Scheduled:</span>
+                      <span className="stat-value success">{timetable.generation_metadata.theory_scheduling_summary.total_scheduled || 0}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-label">Regular ISE:</span>
+                      <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.regular_ise_scheduled || 0}/{timetable.generation_metadata.theory_scheduling_summary.regular_ise_found || 0}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-label">Other Department:</span>
+                      <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.other_dept_scheduled || 0}/{timetable.generation_metadata.theory_scheduling_summary.other_dept_found || 0}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-label">Projects:</span>
+                      <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.projects_scheduled || 0}/{timetable.generation_metadata.theory_scheduling_summary.projects_found || 0}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="summary-section overall-success">
+                  <h5>🎯 Overall Success Rate</h5>
+                  <div className="success-rate-display">
+                    <div className="success-percentage">{timetable.generation_metadata.theory_scheduling_summary.success_rate || 0}%</div>
+                    <div className="success-label">
+                      {timetable.generation_metadata.theory_scheduling_summary.total_scheduled || 0} / {timetable.generation_metadata.theory_scheduling_summary.total_subjects_found || 0} subjects scheduled
+                    </div>
+                  </div>
+                  {(timetable.generation_metadata.theory_scheduling_summary.regular_ise_failed > 0 || 
+                    timetable.generation_metadata.theory_scheduling_summary.other_dept_failed > 0 || 
+                    timetable.generation_metadata.theory_scheduling_summary.projects_failed > 0) && (
+                    <div className="failed-subjects">
+                      <p>⚠️ Some subjects could not be fully scheduled:</p>
+                      <ul>
+                        {timetable.generation_metadata.theory_scheduling_summary.regular_ise_failed > 0 && (
+                          <li>Regular ISE: {timetable.generation_metadata.theory_scheduling_summary.regular_ise_failed} partial/failed</li>
+                        )}
+                        {timetable.generation_metadata.theory_scheduling_summary.other_dept_failed > 0 && (
+                          <li>Other Dept: {timetable.generation_metadata.theory_scheduling_summary.other_dept_failed} partial/failed</li>
+                        )}
+                        {timetable.generation_metadata.theory_scheduling_summary.projects_failed > 0 && (
+                          <li>Projects: {timetable.generation_metadata.theory_scheduling_summary.projects_failed} partial/failed</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="summary-stats">
+              <h4>📚 Theory Scheduling Summary:</h4>
+              <div className="no-summary-message">
+                <p>⚠️ No theory scheduling summary available for this timetable.</p>
+                <p>This timetable was generated before the summary feature was added.</p>
+                <p><strong>To see the detailed summary:</strong></p>
+                <ol>
+                  <li>Go to <strong>Timetable Generator</strong></li>
+                  <li>Click <strong>"▶️ Run Step 4"</strong> to regenerate theory classes</li>
+                  <li>Return here and re-select this section</li>
+                </ol>
+              </div>
+            </div>
+          )}
+
           {/* Color Legend */}
           <div className="color-legend">
             <h4>📋 Legend</h4>
             <div className="legend-items">
               <div className="legend-item">
-                <div className="legend-box theory-legend"></div>
-                <span>Theory Classes (Blue)</span>
+                <div className="legend-box theory-regular-ise"></div>
+                <span>Regular ISE Subjects (Blue)</span>
+              </div>
+              <div className="legend-item">
+                <div className="legend-box theory-other-dept"></div>
+                <span>Other Department (Purple)</span>
+              </div>
+              <div className="legend-item">
+                <div className="legend-box theory-project"></div>
+                <span>Projects (Green)</span>
+              </div>
+              <div className="legend-item">
+                <div className="legend-box theory-fixed"></div>
+                <span>Fixed Slots - OEC/PEC (Teal)</span>
               </div>
               <div className="legend-item">
                 <div className="legend-box lab-legend"></div>
                 <span>Lab Sessions (Orange)</span>
               </div>
               <div className="legend-item">
-                <div className="legend-box empty-legend"></div>
-                <span>Empty Slots (White)</span>
+                <div className="legend-box break-legend"></div>
+                <span>Break Time (Yellow)</span>
               </div>
               <div className="legend-item">
-                <div className="legend-badge fixed-badge">FIXED</div>
-                <span>Fixed Time Slots (OEC/PEC)</span>
+                <div className="legend-box empty-legend"></div>
+                <span>Empty Slots (White)</span>
               </div>
             </div>
           </div>

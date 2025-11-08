@@ -456,41 +456,55 @@ Timetable Algorithm:
 {
   subject_name: "Data Structures",
   hrs_per_week: 3,        // Total hours needed per week
-  max_hrs_per_day: 2      // Maximum hours in one day
+  max_hrs_per_day: 2      // Maximum hours in one day (can be consecutive)
 }
 ```
 
-**Scheduling Strategy:**
+**Scheduling Strategy - Greedy with Random Distribution:**
+
+**Priority Order:**
+```
+1. Regular ISE subjects (requires_teacher_assignment = true)
+2. Other department subjects (is_non_ise_subject = true)
+3. Project subjects (is_project = true) - lowest priority, flexible placement
+```
+
+**Key Principles:**
+- ✅ Classes spread randomly across the week (avoid clustering on few days)
+- ✅ Consecutive hours allowed if within max_hrs_per_day
+- ✅ Split flexibly: 2+1, 1+1+1, etc. based on availability
+- ✅ Sort subjects by hrs_per_week (descending) for scheduling order
 
 **Example 1: 3 hrs/week, max 2 hrs/day**
 ```
-Option A (Consecutive):
-├── Monday: 9:00-11:00 (2 hours)
-├── Wednesday: 10:00-11:00 (1 hour)
-└── Total: 3 hours ✅
+Option A (Consecutive on same day):
+├── Monday: 9:00-11:00 (2 hours consecutive) ✅
+├── Thursday: 10:00-11:00 (1 hour)
+└── Total: 3 hours spread across week
 
 Option B (Split differently):
 ├── Monday: 9:00-10:00 (1 hour)
-├── Wednesday: 10:00-12:00 (2 hours)
-└── Total: 3 hours ✅
+├── Wednesday: 10:00-11:00 (1 hour)
+├── Friday: 2:00-3:00 (1 hour)
+└── Total: 3 hours, randomly distributed
 
-✅ Both valid - algorithm decides based on convenience
+✅ Both valid - algorithm prefers random spread
 ```
 
 **Example 2: 4 hrs/week, max 2 hrs/day**
 ```
-Option A:
-├── Monday: 9:00-11:00 (2 hours)
-├── Thursday: 2:00-4:00 (2 hours)
+Option A (2+2 split):
+├── Tuesday: 9:00-11:00 (2 hours consecutive) ✅
+├── Friday: 2:00-4:00 (2 hours consecutive) ✅
 └── Total: 4 hours ✅
 
-Option B:
-├── Tuesday: 9:00-11:00 (2 hours)
-├── Wednesday: 10:00-11:00 (1 hour)
-├── Friday: 2:00-3:00 (1 hour)
-└── Total: 4 hours ✅
+Option B (1+2+1 split):
+├── Monday: 9:00-10:00 (1 hour)
+├── Wednesday: 10:00-12:00 (2 hours consecutive) ✅
+├── Friday: 3:00-4:00 (1 hour)
+└── Total: 4 hours, better distribution
 
-✅ Both valid - flexible split
+✅ Both valid - prefer wider spread
 ```
 
 **Invalid Example:**
@@ -503,18 +517,24 @@ Subject: DBMS (4 hrs/week, max 2 hrs/day)
 
 **Key Rules:**
 - ✅ Total weekly hours MUST equal `hrs_per_week`
-- ✅ Any single day session CANNOT exceed `max_hrs_per_day`
-- ✅ Sessions can be consecutive or split across different days
-- ✅ Algorithm decides optimal split based on:
+- ✅ Consecutive hours on same day CANNOT exceed `max_hrs_per_day`
+- ✅ Random distribution preferred (shuffle time slots)
+- ✅ Algorithm decides split based on:
   - Available time slots
-  - Teacher availability
-  - Classroom availability
-  - Minimizing gaps in student schedule
+  - Teacher availability (for ISE subjects)
+  - Avoid clustering on specific days
+  - Break placement constraints
 
 **Batch Handling for Theory:**
 - ✅ All batches (3A1, 3A2, 3A3) attend together as ONE section
-- ✅ Full section (e.g., 60 students) in ONE large classroom
+- ✅ Full section (e.g., 60 students) in ONE classroom
 - ❌ Cannot split batches into different rooms for theory
+
+**Classroom Assignment:**
+- ⏭️ Classroom assignment deferred to separate step (after theory time slots finalized)
+- ℹ️ Theory scheduling focuses ONLY on time slot allocation (no classroom conflicts checked)
+- ✅ Reduces constraint burden during scheduling
+- ✅ Separate classroom assignment step handles room allocation with its own constraints
 
 **Implementation:**
 - Store `max_hrs_per_day` in subjects model
@@ -1105,147 +1125,118 @@ Weekends: Saturday, Sunday (NO classes)
 ```
 
 **Time Slot Flexibility:**
-- ✅ Algorithm can allocate slots flexibly within 8 AM - 5 PM window
-- ✅ Theory classes: Typically 1-2 hour blocks
+- ✅ Algorithm allocates slots in fixed 1-hour blocks (8-9, 9-10, 10-11, etc.)
+- ✅ Theory classes: 1-hour blocks (can be consecutive based on max_hrs_per_day)
 - ✅ Labs: Always 2-hour blocks
-- ✅ No fixed hourly boundaries (can start at 8:30, 9:15, 10:45, etc. as needed)
+- ✅ Randomized distribution: Classes spread across the week to avoid clustering
 
-**Typical Time Structure (Example):**
+**Time Structure:**
 ```
-08:00-09:00 → Slot 1 (1 hour)
-09:00-10:00 → Slot 2 (1 hour)
-10:00-10:30 → Break 1 (30 min) - before noon
-10:30-11:30 → Slot 3 (1 hour)
-11:30-12:30 → Slot 4 (1 hour)
-12:30-01:00 → Slot 5 (30 min)
-01:00-01:30 → Break 2 (30 min) - after noon
-01:30-02:30 → Slot 6 (1 hour)
-02:30-03:30 → Slot 7 (1 hour)
-03:30-04:30 → Slot 8 (1 hour)
-04:30-05:00 → Buffer/End of day
+08:00-09:00 → Slot 1
+09:00-10:00 → Slot 2
+10:00-11:00 → Slot 3
+11:00-11:30 → Break 1 (default, adjustable)
+11:30-12:30 → Slot 4
+12:30-13:00 → Slot 5
+13:00-13:30 → Break 2 (default, adjustable)
+13:30-14:30 → Slot 6
+14:30-15:30 → Slot 7
+15:30-16:30 → Slot 8
+16:30-17:00 → Buffer/End of day
 ```
 
 **Note:** 
-- Actual time slot allocation is determined by algorithm during Phase 3 generation, within the 8 AM - 5 PM constraint.
-- Breaks are NOT fixed college-wide; each section can have breaks at different times.
-- Maximum 2 breaks per day (30 minutes each), ideally one before noon and one after noon.
+- 1-hour time slots provide standard scheduling granularity
+- Breaks are inserted during theory scheduling (not post-processing)
+- Classes are randomly distributed across the week to prevent clustering
 
 ### 5.3 Break Management (CRITICAL!)
-**Rule:** Each section should have breaks distributed across the day, with specific constraints.
+**Rule:** Breaks are inserted DURING theory scheduling (Step 4) based on default timings and lab schedule conflicts.
+
+**Default Break Timings:**
+```
+Break 1 (Morning): 11:00 AM - 11:30 AM
+Break 2 (Afternoon): 1:30 PM - 2:00 PM
+```
+
+**Break Adjustment Logic:**
+```
+For each section, each day:
+  1. Start with default break slots (11:00-11:30, 13:30-14:00)
+  2. If lab already scheduled during default break time:
+     → Adjust break to different time
+     → Ensure break comes after at least 2 hours of continuous classes
+  3. Breaks are 30 minutes, max 2 per day
+  4. Theory classes scheduled around breaks (not over them)
+```
+
+**Example Scenarios:**
+
+**Scenario A: No Lab Conflicts**
+```
+Monday - Section 3A:
+├── 08:00-10:00: Lab (DSL)
+├── 10:00-11:00: Theory (DS)
+├── 11:00-11:30: BREAK 1 ✅ (default time, no conflict)
+├── 11:30-12:30: Theory (DBMS)
+├── 12:30-13:00: Theory (COA)
+├── 13:00-13:30: BREAK 2 ✅ (default time, no conflict)
+└── 13:30-15:30: Lab (CN Lab)
+```
+
+**Scenario B: Lab Conflicts with Default Break**
+```
+Tuesday - Section 5A:
+├── 08:00-09:00: Theory (AI)
+├── 09:00-10:00: Theory (ML)
+├── 10:00-12:00: Lab (AI Lab) ⚠️ (conflicts with 11:00-11:30 break)
+├── 12:00-12:30: BREAK 1 ✅ (adjusted from 11:00 to 12:00)
+├── 12:30-13:00: Theory (DBMS)
+├── 13:00-13:30: BREAK 2 ✅ (default time works)
+└── 13:30-15:30: Lab (DV Lab)
+
+Logic: Lab at 10-12 conflicts with default 11-11:30 break
+       → Move break to 12:00-12:30 (after 2 hrs of classes + lab)
+```
 
 **Break Constraints:**
+- ✅ Exactly 30 minutes each
+- ✅ Maximum 2 per day
+- ✅ After at least 2 hours of continuous classes (if adjusted)
+- ✅ Avoid conflicts with labs
+- ✅ Consecutive theory classes allowed (based on max_hrs_per_day)
 
-**1. Maximum Breaks Per Day:**
-```
-✅ Maximum: 2 breaks per day
-✅ Minimum: 1 break per day (if schedule is very tight)
-❌ Invalid: 3 or more breaks in one day
-```
-
-**2. Break Duration:**
-```
-✅ Each break: Exactly 30 minutes
-❌ Invalid: 60 minutes (one-hour breaks not allowed)
-❌ Invalid: 15 minutes (too short)
-❌ Invalid: 45 minutes (too long)
-```
-
-**3. Break Distribution:**
-```
-Ideal Distribution:
-├── Break 1: Before 12:00 noon (morning break)
-└── Break 2: After 12:00 noon (afternoon break)
-
-Example:
-├── 8:00-10:00: Lab Session
-├── 10:00-10:30: Break 1 (30 min) ✅ (before noon)
-├── 10:30-12:00: Theory Class
-├── 12:00-1:00: Theory Class
-├── 1:00-1:30: Break 2 (30 min) ✅ (after noon)
-└── 1:30-3:30: Lab Session
-```
-
-**4. Flexible Break Placement:**
-```
-Breaks are NOT fixed for all sections
-- Section 3A might have breaks at: 10:00-10:30, 1:00-1:30
-- Section 3B might have breaks at: 10:30-11:00, 2:00-2:30
-- Section 5A might have breaks at: 9:30-10:00, 12:30-1:00
-
-✅ Each section's breaks can be at different times
-✅ Algorithm decides optimal break placement based on schedule
-```
-
-**5. Back-to-Back Classes Allowed:**
-```
-If schedule is tight, back-to-back classes are acceptable:
-
-Example (Tight Schedule):
-├── 8:00-10:00: Lab Session
-├── 10:00-11:00: Theory Class (back-to-back) ✅
-├── 11:00-12:00: Theory Class (back-to-back) ✅
-├── 12:00-12:30: Break (30 min) ✅ (only 1 break today)
-├── 12:30-2:30: Lab Session
-└── 2:30-3:30: Theory Class (back-to-back) ✅
-
-✅ Valid: Only 1 break, but acceptable if schedule requires it
-```
-
-**6. Avoid Excessive Gaps:**
-```
-While breaks are allowed, avoid idle gaps:
-
-❌ Invalid:
-├── 8:00-10:00: Theory Class
-├── 10:00-11:00: GAP (60 min - too long!) ❌
-└── 11:00-1:00: Lab Session
-
-✅ Valid:
-├── 8:00-10:00: Theory Class
-├── 10:00-10:30: Break (30 min) ✅
-├── 10:30-12:30: Lab Session
-```
-
-**Algorithm Strategy:**
+**Implementation:**
 ```javascript
-For each section's daily schedule:
-  1. Identify natural break points (between classes)
-  2. Try to place 1 break before 12:00 noon
-  3. Try to place 1 break after 12:00 noon
-  4. Each break = 30 minutes exactly
-  5. If schedule is very tight:
-     - Allow back-to-back classes
-     - Use only 1 break (acceptable)
-  6. Never exceed 2 breaks per day
-  7. Avoid gaps > 30 minutes (unless it's a scheduled break)
-```
-
-**Break Representation in Timetable:**
-```javascript
-// Breaks are implicit (gaps between classes)
-// Not explicitly stored as separate slots
-
-Example:
-theory_slots: [
-  { start_time: "08:00", end_time: "10:00", ... },
-  { start_time: "10:30", end_time: "12:00", ... }, // 30-min gap before = Break 1
-  { start_time: "12:00", end_time: "13:00", ... },
-  { start_time: "13:30", end_time: "15:30", ... }  // 30-min gap before = Break 2
-]
-
-Implied breaks:
-├── 10:00-10:30: Break (before noon)
-└── 13:00-13:30: Break (after noon)
+// During theory scheduling (Step 4):
+function getAvailableBreakSlots(section, day, labSlots) {
+  const defaultBreaks = [
+    { start: "11:00", end: "11:30" },
+    { start: "13:30", end: "14:00" }
+  ]
+  
+  // Check if labs conflict with default breaks
+  const availableBreaks = []
+  for (const breakSlot of defaultBreaks) {
+    if (!hasLabConflict(labSlots, day, breakSlot.start, breakSlot.end)) {
+      availableBreaks.push(breakSlot)
+    }
+  }
+  
+  // If conflict, find alternative slots after 2 hrs of classes
+  if (availableBreaks.length < 2) {
+    // Adjust break placement logic...
+  }
+  
+  return availableBreaks
+}
 ```
 
 **Benefits:**
-- ✅ Students get adequate rest (1-2 breaks per day)
-- ✅ Breaks are short and efficient (30 min each)
-- ✅ Flexible placement per section (not fixed college-wide)
-- ✅ Maintains student engagement (no long idle periods)
-- ✅ Accommodates tight schedules (back-to-back classes if needed)
-
-**Reason:** Balances student wellbeing with efficient schedule utilization, prevents excessive idle time while ensuring adequate rest periods.
+- ✅ Proactive break management during scheduling (not post-processing)
+- ✅ Default breaks provide consistency when possible
+- ✅ Flexible adjustment when labs conflict
+- ✅ Ensures students get breaks after sustained class periods
 
 ### 5.4 Fixed Time Slots for OEC and PEC (Semester 7 Only)
 **Rule:** Open Elective Courses (OEC) and Professional Elective Courses (PEC) have PRE-DECIDED fixed time slots that must be honored.
@@ -3177,3 +3168,348 @@ Result: Zero conflicts by design!
 
 FINAL NOTE: Phase 2 lab room assignments are NO LONGER NEEDED. Phase 3 dynamically selects compatible rooms in real-time, preventing all conflicts while guaranteeing Rule 4.7 batch rotation.
 
+---
+
+## 🔄 **17. PHASE 3 ALGORITHM WORKFLOW & DATA RETENTION**
+
+### 17.1 Updated Algorithm Steps (Current Implementation)
+
+**Phase 3 Timetable Generation consists of 7 sequential steps:**
+
+```
+Step 1: Load Sections & Initialize Timetables
+├── Load all sections for semester type (odd/even)
+├── Create empty timetable structure for each section
+├── Initialize global tracking (teacher/room availability)
+└── Output: Empty timetables ready for scheduling
+
+Step 2: Block Fixed Slots (OEC/PEC for Semester 7)
+├── For Semester 7 sections only
+├── Block OEC time slots (e.g., Friday 1:30-3:30 PM)
+├── Block PEC time slots (e.g., Monday 10:30-12:30 PM)
+└── Output: Timetables with fixed slots marked as unavailable
+
+Step 3: Schedule Labs (with integrated break awareness)
+├── Use batch rotation formula (Rule 4.7)
+├── Dynamic room selection (no Phase 2 dependency)
+├── Avoid lab times that conflict with default breaks
+├── Prevent consecutive labs for same section
+└── Output: Timetables with lab_slots populated (no teachers yet)
+
+Step 4: Schedule Theory Classes (with integrated break management) ⬅️ NEW
+├── Priority Order:
+│   1. Regular ISE subjects (requires_teacher_assignment = true)
+│   2. Other department subjects (is_non_ise_subject = true)  
+│   3. Project subjects (is_project = true)
+├── Scheduling Strategy:
+│   - Sort subjects by hrs_per_week (descending)
+│   - Random distribution across week (shuffle time slots)
+│   - Respect max_hrs_per_day (consecutive hours allowed)
+│   - Check teacher conflicts (for ISE subjects only)
+│   - NO classroom assignment (deferred to Step 6)
+├── Break Management:
+│   - Default breaks: 11:00-11:30 AM, 1:30-2:00 PM
+│   - Adjust if lab scheduled during break time
+│   - Reserve break slots (30 min each, max 2 per day)
+│   - Theory classes scheduled AROUND breaks
+└── Output: Timetables with theory_slots populated (no classrooms yet)
+
+Step 5: Assign Teachers to Labs
+├── For each lab session (from Step 3)
+├── Try to assign 2 teachers (ideal)
+├── Fall back to 1 teacher if needed
+├── Flag sessions with 0 teachers for review
+└── Output: Lab teachers assigned, summary statistics generated
+
+Step 6: Assign Classrooms to Theory Classes ⬅️ NEW
+├── For each theory slot (from Step 4)
+├── Dynamically find available classroom
+├── Check classroom availability (no conflicts)
+├── Assign classroom to theory slot
+└── Output: Theory classrooms assigned
+
+Step 7: Final Validation & Save
+├── Validate constraints:
+│   - No teacher conflicts (global check)
+│   - No classroom conflicts (global check)
+│   - No consecutive labs for sections
+│   - Batch synchronization maintained
+│   - hrs_per_week requirements met
+│   - Break constraints satisfied (30 min, max 2/day)
+├── Save timetables to database
+└── Output: Complete conflict-free timetables
+```
+
+**Key Changes from Previous Design:**
+- ✅ Theory scheduling (Step 4) now includes integrated break management
+- ✅ Classroom assignment separated to Step 6 (reduces constraint burden)
+- ✅ Theory subjects prioritized: Regular ISE → Other Dept → Projects
+- ✅ Random distribution strategy for better weekly spread
+
+---
+
+### 17.2 Step-wise Data Retention (CRITICAL!)
+
+**Rule:** Each step execution FLUSHES all existing timetables and starts fresh, retaining only data from completed previous steps.
+
+**Why This Matters:**
+```
+Problem Scenario:
+├── Admin runs Step 1-7 (Full generation) → Timetables saved
+├── Admin changes Phase 2 assignments (e.g., swaps teachers)
+├── Admin re-runs from Step 1 → Old timetables still exist!
+└── Result: Conflicts between old and new timetables
+
+Solution:
+├── Each step execution deletes existing timetables for that semester
+├── Starts fresh with only Phase 1 & Phase 2 data
+└── Result: No conflicts, clean generation every time
+```
+
+**Implementation Strategy:**
+
+**Step 1 Execution:**
+```javascript
+// When user clicks "Run Step 1"
+async function loadSectionsAndInitialize(semType, academicYear) {
+  // FLUSH: Delete ALL existing timetables for this semester type
+  await Timetable.deleteMany({
+    sem_type: semType,
+    academic_year: academicYear
+  })
+  
+  // Create fresh timetable structures
+  const sections = await ISESections.find({ sem_type: semType })
+  for (const section of sections) {
+    await Timetable.create({
+      section_id: section._id,
+      sem_type: semType,
+      academic_year: academicYear,
+      theory_slots: [],
+      lab_slots: [],
+      generation_metadata: {
+        current_step: 1,
+        steps_completed: ['load_sections']
+      }
+    })
+  }
+}
+```
+
+**Step 2 Execution:**
+```javascript
+// When user clicks "Run Step 2"
+async function blockFixedSlots(semType, academicYear) {
+  // Load timetables from Step 1 (must exist)
+  const timetables = await Timetable.find({
+    sem_type: semType,
+    academic_year: academicYear
+  })
+  
+  if (timetables.length === 0) {
+    throw new Error('Step 1 not completed. Please run Step 1 first.')
+  }
+  
+  // Block fixed slots for Sem 7 sections
+  // Updates existing timetable documents in place
+  for (const timetable of timetables) {
+    if (timetable.sem === 7) {
+      // Block OEC/PEC slots
+      await Timetable.updateOne(
+        { _id: timetable._id },
+        { 
+          $set: {
+            'generation_metadata.current_step': 2,
+            'generation_metadata.steps_completed': ['load_sections', 'block_fixed_slots']
+          }
+        }
+      )
+    }
+  }
+}
+```
+
+**Step 3-7 Execution:**
+```javascript
+// Each subsequent step follows the same pattern:
+// 1. Load timetables (check previous step completed)
+// 2. Update timetables with new data
+// 3. Mark current step as completed
+
+// Example: Step 4 (Schedule Theory)
+async function scheduleTheory(semType, academicYear) {
+  const timetables = await Timetable.find({
+    sem_type: semType,
+    academic_year: academicYear,
+    'generation_metadata.current_step': { $gte: 3 } // Step 3 must be complete
+  })
+  
+  if (timetables.length === 0) {
+    throw new Error('Step 3 not completed. Please run Steps 1-3 first.')
+  }
+  
+  // Schedule theory classes (adds to theory_slots)
+  // ... algorithm logic ...
+  
+  // Update metadata
+  for (const timetable of timetables) {
+    await Timetable.updateOne(
+      { _id: timetable._id },
+      {
+        $set: {
+          'generation_metadata.current_step': 4,
+          'generation_metadata.steps_completed': [
+            'load_sections',
+            'block_fixed_slots', 
+            'schedule_labs',
+            'schedule_theory'
+          ]
+        }
+      }
+    )
+  }
+}
+```
+
+**Benefits:**
+- ✅ Clean slate with each generation
+- ✅ No conflicts between old and new timetables
+- ✅ Step dependencies enforced (can't skip steps)
+- ✅ Clear audit trail (steps_completed array)
+- ✅ Supports partial re-runs (run from any step)
+
+---
+
+### 17.3 Data Flow Diagram
+
+```
+Phase 1 (Master Data)
+├── Teachers
+├── Subjects
+├── Labs
+├── Sections
+├── Classrooms
+└── Dept Labs
+
+         ↓
+
+Phase 2 (Assignments)
+├── Teacher-Subject Assignments (per section)
+└── (Lab room assignments NO LONGER NEEDED - dynamic in Phase 3)
+
+         ↓
+
+Phase 3 (Generation) - Click "Run Step X"
+         ↓
+    
+Step 1: FLUSH old timetables → Create empty structures
+Step 2: Load Step 1 data → Block fixed slots
+Step 3: Load Step 2 data → Schedule labs (dynamic rooms)
+Step 4: Load Step 3 data → Schedule theory (with breaks)
+Step 5: Load Step 4 data → Assign lab teachers
+Step 6: Load Step 5 data → Assign theory classrooms
+Step 7: Load Step 6 data → Validate & save
+
+         ↓
+
+Output: Complete Timetables
+├── One document per section
+├── All slots assigned (labs + theory)
+├── All teachers assigned (labs + theory)
+├── All rooms assigned (labs + theory)
+├── Breaks integrated
+└── Conflict-free (validated)
+```
+
+---
+
+### 17.4 Frontend Step Execution
+
+**UI Requirements:**
+```javascript
+// Step buttons with dependency checking
+<Button 
+  onClick={() => runStep(1)}
+  disabled={false}  // Step 1 always available
+>
+  Step 1: Load Sections
+</Button>
+
+<Button 
+  onClick={() => runStep(2)}
+  disabled={!isStepCompleted(1)}  // Requires Step 1
+>
+  Step 2: Block Fixed Slots
+</Button>
+
+<Button 
+  onClick={() => runStep(3)}
+  disabled={!isStepCompleted(2)}  // Requires Step 2
+>
+  Step 3: Schedule Labs
+</Button>
+
+// ... and so on
+```
+
+**Step Execution with Flush Confirmation:**
+```javascript
+async function runStep(stepNumber) {
+  if (stepNumber === 1) {
+    // Confirm flush
+    const confirmed = await confirmDialog(
+      'This will delete all existing timetables. Continue?'
+    )
+    if (!confirmed) return
+  }
+  
+  // Execute step API call
+  const response = await axios.post(`/api/timetable/step${stepNumber}`, {
+    sem_type: selectedSemType,
+    academic_year: academicYear
+  })
+  
+  // Show results
+  showToast(response.data.message)
+  refreshStepStatus()
+}
+```
+
+---
+
+### 17.5 Metadata Tracking
+
+**Timetable Document Metadata:**
+```javascript
+generation_metadata: {
+  current_step: 4,  // Last completed step
+  steps_completed: [
+    'load_sections',
+    'block_fixed_slots',
+    'schedule_labs',
+    'schedule_theory'
+  ],
+  generated_at: new Date(),
+  algorithm: 'greedy',
+  teacher_assignment_summary: {
+    total_lab_sessions: 18,
+    sessions_with_2_teachers: 15,
+    sessions_with_1_teacher: 2,
+    sessions_with_0_teachers: 1
+  },
+  break_summary: {
+    total_breaks: 10,  // Across all days
+    days_with_2_breaks: 4,
+    days_with_1_break: 1
+  },
+  validation_status: 'pending'  // 'pending', 'passed', 'failed'
+}
+```
+
+This metadata helps track:
+- Which steps have been completed
+- Can the user run next step?
+- Generation statistics
+- Audit trail for debugging
+
+---

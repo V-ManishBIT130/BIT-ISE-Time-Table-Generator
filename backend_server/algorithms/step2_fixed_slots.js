@@ -49,6 +49,27 @@ export async function blockFixedSlots(semType, academicYear) {
   console.log(`\n🔒 Step 2: Blocking fixed slots for ${semType} semester...`)
   
   try {
+    // CRITICAL: Clear data from THIS step and ALL future steps (3, 4, 5, 6, 7)
+    // Keep data from Step 1 (section initialization)
+    console.log(`   🗑️  Flushing data from Steps 2-7 (keeping Step 1 data)...`)
+    
+    const flushResult = await Timetable.updateMany(
+      {
+        sem_type: semType,
+        academic_year: academicYear
+      },
+      {
+        $set: {
+          theory_slots: [],        // Clear Step 2 fixed slots and Step 4 theory
+          lab_slots: [],           // Clear Step 3 labs
+          'generation_metadata.current_step': 1,
+          'generation_metadata.steps_completed': ['load_sections']
+        }
+      }
+    )
+    
+    console.log(`   ✅ Flushed ${flushResult.modifiedCount} timetables\n`)
+
     // Load timetables from Step 1
     const timetables = await Timetable.find({
       sem_type: semType,

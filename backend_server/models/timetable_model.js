@@ -71,7 +71,23 @@ const TimetableSchema = new mongoose.Schema(
         sessions_with_2_teachers: Number,
         sessions_with_1_teacher: Number,
         sessions_with_0_teachers: Number
-      }
+      },
+      theory_scheduling_summary: {
+        total_subjects_found: Number,
+        regular_ise_found: Number,
+        other_dept_found: Number,
+        projects_found: Number,
+        regular_ise_scheduled: Number,
+        regular_ise_failed: Number,
+        other_dept_scheduled: Number,
+        other_dept_failed: Number,
+        projects_scheduled: Number,
+        projects_failed: Number,
+        total_scheduled: Number,
+        success_rate: String
+      },
+      current_step: Number,
+      steps_completed: [String]
     },
     
     // Theory class slots

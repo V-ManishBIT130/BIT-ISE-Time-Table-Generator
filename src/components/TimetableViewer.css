@@ -413,19 +413,95 @@
   margin-bottom: 0;
 }
 
-/* Theory Cell Colors */
+/* Theory Cell Colors - Different colors for different subject types */
 .theory-cell {
-  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-  border: 2px solid #2196f3;
-  border-left: 4px solid #2196f3;
   padding: 10px;
   font-weight: 600;
   transition: all 0.2s ease;
+  border: 2px solid;
+  border-left-width: 4px;
 }
 
-.theory-cell:hover {
+/* Regular ISE Subjects - Blue */
+.theory-regular-ise {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border-color: #2196f3;
+}
+
+.theory-regular-ise:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
+}
+
+/* Other Department Subjects - Purple */
+.theory-other-dept {
+  background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+  border-color: #9c27b0;
+}
+
+.theory-other-dept:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(156, 39, 176, 0.3);
+}
+
+/* Project Subjects - Green */
+.theory-project {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  border-color: #4caf50;
+}
+
+.theory-project:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+/* Fixed Slots (OEC/PEC) - Teal */
+.theory-fixed {
+  background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%);
+  border-color: #009688;
+}
+
+.theory-fixed:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 150, 136, 0.3);
+}
+
+/* Break Cell - Yellow */
+.break-cell {
+  background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%);
+  border: 2px solid #fbc02d;
+  border-left: 4px solid #fbc02d;
+  padding: 10px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.break-cell .cell-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.break-icon {
+  font-size: 20px;
+  animation: steam 2s ease-in-out infinite;
+}
+
+@keyframes steam {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.break-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f57f17;
+  letter-spacing: 0.5px;
 }
 
 /* Lab Cell Colors */
@@ -916,4 +992,287 @@
 .warning-action strong {
   color: #e65100;
   font-weight: 700;
+}
+
+/* Theory Scheduling Summary */
+.summary-stats {
+  background: white;
+  padding: 24px;
+  margin-top: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.summary-stats h4 {
+  margin: 0 0 20px 0;
+  color: #2c3e50;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #3498db;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #7f8c8d;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 24px;
+  color: #2c3e50;
+  font-weight: 700;
+}
+
+.stat-value.success {
+  color: #27ae60;
+}
+
+.theory-summary-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.summary-section {
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  border: 1px solid #e1e8ed;
+}
+
+.summary-section h5 {
+  margin: 0 0 16px 0;
+  color: #2c3e50;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary-section.overall-success {
+  background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+  border-color: #81c784;
+}
+
+.success-rate-display {
+  text-align: center;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.success-percentage {
+  font-size: 48px;
+  font-weight: 700;
+  color: #27ae60;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.success-label {
+  font-size: 14px;
+  color: #7f8c8d;
+  font-weight: 500;
+}
+
+.failed-subjects {
+  padding: 16px;
+  background: rgba(255, 152, 0, 0.1);
+  border-radius: 8px;
+  border-left: 4px solid #ff9800;
+}
+
+.failed-subjects p {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #e65100;
+  font-weight: 600;
+}
+
+.failed-subjects ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.failed-subjects li {
+  font-size: 13px;
+  color: #5d4037;
+  margin-bottom: 6px;
+}
+
+/* No Summary Message */
+.no-summary-message {
+  padding: 24px;
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border-radius: 10px;
+  border: 2px dashed #ff9800;
+  text-align: center;
+}
+
+.no-summary-message p {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  color: #e65100;
+}
+
+.no-summary-message p:first-child {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e65100;
+}
+
+.no-summary-message strong {
+  color: #d84315;
+  font-weight: 700;
+}
+
+.no-summary-message ol {
+  margin: 16px auto 0;
+  padding-left: 20px;
+  text-align: left;
+  max-width: 500px;
+  background: white;
+  padding: 16px 16px 16px 40px;
+  border-radius: 8px;
+}
+
+.no-summary-message li {
+  font-size: 14px;
+  color: #5d4037;
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+/* Collapsible Theory Summary Styles */
+.theory-summary-compact {
+  background: white;
+  padding: 0;
+  overflow: hidden;
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+.summary-header:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.summary-header h4 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.expand-icon {
+  font-size: 14px;
+  font-weight: bold;
+  transition: transform 0.3s ease;
+}
+
+.summary-quick-view {
+  background: #f8f9fa;
+  padding: 16px 24px;
+  border-bottom: 2px solid #e1e8ed;
+}
+
+.summary-quick-view.expanded {
+  border-bottom: none;
+}
+
+.quick-stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.quick-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2c3e50;
+  background: white;
+  padding: 10px 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.quick-stat.success {
+  color: #27ae60;
+  background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+}
+
+.theory-summary-expanded {
+  padding: 24px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+  }
+}
+
+/* Legend Box Colors */
+.legend-box.theory-regular-ise {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border: 2px solid #2196f3;
+}
+
+.legend-box.theory-other-dept {
+  background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+  border: 2px solid #9c27b0;
+}
+
+.legend-box.theory-project {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  border: 2px solid #4caf50;
+}
+
+.legend-box.theory-fixed {
+  background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%);
+  border: 2px solid #009688;
+}
+
+.legend-box.break-legend {
+  background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%);
+  border: 2px solid #fbc02d;
 }

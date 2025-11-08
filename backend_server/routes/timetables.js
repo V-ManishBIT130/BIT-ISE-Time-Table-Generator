@@ -4,7 +4,7 @@ import { generateTimetables } from '../algorithms/timetable_generator.js'
 import { loadSectionsAndInitialize } from '../algorithms/step1_load_sections.js'
 import { blockFixedSlots } from '../algorithms/step2_fixed_slots.js'
 import { scheduleLabs } from '../algorithms/step3_schedule_labs_v2.js' // Using refactored v2
-import { scheduleTheory } from '../algorithms/step4_schedule_theory.js'
+import { scheduleTheory } from '../algorithms/step4_schedule_theory_breaks.js'
 import { assignLabTeachers } from '../algorithms/step5_assign_teachers.js'
 import { validateAndFinalize } from '../algorithms/step6_validate.js'
 
