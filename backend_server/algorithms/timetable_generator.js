@@ -18,10 +18,10 @@
  * 1. Load all sections for semester type
  * 2. Block fixed slots (OEC/PEC for Semester 7)
  * 3. Schedule labs using batch rotation
- * 4. Schedule theory subjects with load balancing
+ * 4. Schedule theory subjects with integrated break management
  * 5. Assign teachers to labs dynamically
- * 6. Insert breaks (1-2 per day, 30 min each)
- * 7. Validate constraints (no consecutive labs, batch sync)
+ * 6. Assign classrooms to theory slots
+ * 7. Validate constraints and finalize
  * 8. Save timetables
  */
 
@@ -37,9 +37,10 @@ import Timetable from '../models/timetable_model.js'
 import { loadSectionsAndInitialize } from './step1_load_sections.js'
 import { blockFixedSlots } from './step2_fixed_slots.js'
 import { scheduleLabs } from './step3_schedule_labs_v2.js'
-import { scheduleTheory } from './step4_schedule_theory.js'
+import { scheduleTheory } from './step4_schedule_theory_breaks.js'
 import { assignLabTeachers } from './step5_assign_teachers.js'
-import { validateAndFinalize } from './step6_validate.js'
+import { assignClassrooms } from './step6_assign_classrooms.js'
+import { validateAndFinalize } from './step7_validate.js'
 
 // Constants
 const WORKING_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
@@ -146,8 +147,12 @@ export async function generateTimetables(semType, academicYear) {
     console.log(`\n👨‍🏫 Step 5: Assigning teachers to labs...`)
     await assignLabTeachers(timetables, sections)
     
-    // Step 6: Validate constraints
-    console.log(`\n✅ Step 6: Validating constraints...`)
+    // Step 6: Assign classrooms to theory slots
+    console.log(`\n🏫 Step 6: Assigning classrooms...`)
+    await assignClassrooms(semType, academicYear)
+    
+    // Step 7: Validate constraints
+    console.log(`\n✅ Step 7: Validating constraints...`)
     validateConstraints(timetables, sections)
     
     // Step 7: Save timetables
@@ -215,14 +220,16 @@ function calculateDuration(startTime24, endTime24) {
 }
 
 /**
- * Step 6: Validate all constraints
+ * Step 7: Validate all constraints
  */
 function validateConstraints(timetables, sections) {
   console.log(`   🔍 Checking:`)
   console.log(`      - No teacher conflicts`)
   console.log(`      - No room conflicts`)
+  console.log(`      - No classroom conflicts`)
   console.log(`      - Batch synchronization`)
   console.log(`      - No consecutive labs`)
+  console.log(`      - Break constraints`)
   
   // TODO: Implement validation
   
@@ -230,7 +237,7 @@ function validateConstraints(timetables, sections) {
 }
 
 /**
- * Step 7: Save all timetables to database
+ * Step 8: Save all timetables to database
  */
 async function saveTimetables(timetables) {
   const savedTimetables = []

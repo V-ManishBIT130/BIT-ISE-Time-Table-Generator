@@ -223,24 +223,47 @@ export async function scheduleLabs(semType, academicYear) {
   console.log(`📊 Using: In-Memory Global Room Tracking + Better Distribution\n`)
   
   try {
+    // CRITICAL: Clear data from THIS step and ALL future steps (4, 5, 6, 7)
+    // Keep data from Steps 1-2 (section init + fixed slots)
+    console.log(`   🗑️  Flushing data from Steps 3-7 (keeping Steps 1-2 data)...`)
+    
+    const timetables = await Timetable.find({
+      sem_type: semType,
+      academic_year: academicYear
+    })
+    
+    for (const tt of timetables) {
+      tt.lab_slots = []  // Clear Step 3 labs
+      // Keep theory_slots (has Step 2 fixed slots)
+      // But we need to remove any theory from Step 4 (only keep fixed slots from Step 2)
+      tt.theory_slots = tt.theory_slots.filter(slot => 
+        slot.is_fixed_slot === true  // Keep only Step 2 fixed slots
+      )
+      tt.generation_metadata.current_step = 2
+      tt.generation_metadata.steps_completed = ['load_sections', 'block_fixed_slots']
+      await tt.save()
+    }
+    
+    console.log(`   ✅ Flushed ${timetables.length} timetables\n`)
+    
     // Clear global room tracker for fresh start
     globalRoomSchedule.clear()
     
     // Load all timetables from Step 2
-    const timetables = await Timetable.find({
+    const reloadedTimetables = await Timetable.find({
       sem_type: semType,
       academic_year: academicYear
     }).populate('section_id', 'section_name sem sem_type').lean()
     
-    if (timetables.length === 0) {
+    if (reloadedTimetables.length === 0) {
       throw new Error('No timetables found. Please run Steps 1-2 first.')
     }
     
-    console.log(`📋 Found ${timetables.length} sections to process\n`)
+    console.log(`📋 Found ${reloadedTimetables.length} sections to process\n`)
     
     // Prepare in-memory timetable data structure
     const timetableData = {}
-    for (const tt of timetables) {
+    for (const tt of reloadedTimetables) {
       timetableData[tt._id.toString()] = {
         _id: tt._id,
         section_id: tt.section_id._id,

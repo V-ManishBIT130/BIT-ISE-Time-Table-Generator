@@ -77,7 +77,26 @@ function TimetableGenerator() {
           }
           
           alert(alertMessage)
-        } else {
+        } 
+        // Special handling for Step 4 - show theory scheduling report
+        else if (stepNumber === 4 && response.data.data) {
+          const data = response.data.data
+          const sections = data.sections_processed || 0
+          const slotsScheduled = data.theory_slots_scheduled || 0
+          
+          let alertMessage = `✅ STEP 4 COMPLETED: Theory Scheduling Report\n\n`
+          alertMessage += `📊 SUMMARY:\n`
+          alertMessage += `   Sections Processed: ${sections}\n`
+          alertMessage += `   Theory Slots Scheduled: ${slotsScheduled}\n\n`
+          alertMessage += `💡 View the Timetable Viewer to see detailed scheduling statistics per section:\n`
+          alertMessage += `   • Subjects found vs scheduled\n`
+          alertMessage += `   • Success rates by category (ISE, Other Dept, Projects)\n`
+          alertMessage += `   • Visual timetable grid\n\n`
+          alertMessage += `📅 Click "View Timetables" button to see the results!`
+          
+          alert(alertMessage)
+        }
+        else {
           alert(`✅ ${stepName} completed successfully!`)
         }
       } else {
@@ -277,19 +296,20 @@ function TimetableGenerator() {
           <div className="step-card">
             <div className="step-header">
               <span className="step-number">4</span>
-              <h4>Schedule Theory</h4>
+              <h4>Schedule Theory + Breaks</h4>
             </div>
-            <p>Assign theory classes with load balancing</p>
+            <p>Assign theory classes with load balancing and integrated breaks</p>
             <button
               className="step-btn"
-              onClick={() => handleStepExecution(4, 'Step 4: Schedule Theory')}
+              onClick={() => handleStepExecution(4, 'Step 4: Schedule Theory + Breaks')}
               disabled={generating}
             >
               {generating && currentStep === 4 ? '⏳ Running...' : '▶️ Run Step 4'}
             </button>
             {stepResults.step4 && (
               <div className="step-result">
-                ✅ Theory scheduled (placeholder)
+                ✅ {stepResults.step4.data?.theory_slots_scheduled || 0} theory slots scheduled
+                {stepResults.step4.data?.sections_processed && ` across ${stepResults.step4.data.sections_processed} sections`}
               </div>
             )}
           </div>
@@ -436,7 +456,7 @@ function TimetableGenerator() {
           <li><strong>Step 1:</strong> Load all sections for semester type</li>
           <li><strong>Step 2:</strong> Block fixed slots (OEC/PEC for Semester 7)</li>
           <li><strong>Step 3:</strong> Schedule labs using batch rotation</li>
-          <li><strong>Step 4:</strong> Schedule theory subjects with load balancing</li>
+          <li><strong>Step 4:</strong> Schedule theory subjects with breaks (11:00-11:30 AM, 1:30-2:00 PM)</li>
           <li><strong>Step 5:</strong> Assign teachers to labs dynamically</li>
           <li><strong>Step 6:</strong> Validate constraints (no conflicts)</li>
           <li><strong>Step 7:</strong> Save timetables to database</li>
