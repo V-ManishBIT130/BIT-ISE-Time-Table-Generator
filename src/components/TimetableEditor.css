@@ -162,6 +162,44 @@
   box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
 }
 
+/* ====================================
+   Undo/Redo Controls
+   ==================================== */
+
+.undo-redo-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.btn-undo, .btn-redo {
+  padding: 8px 16px;
+  border: 2px solid #8b5cf6;
+  background: white;
+  color: #8b5cf6;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.btn-undo:hover:not(:disabled), 
+.btn-redo:hover:not(:disabled) {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4);
+}
+
+.btn-undo:disabled, 
+.btn-redo:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: #cbd5e0;
+  color: #cbd5e0;
+}
+
 .delete-break-btn {
   padding: 4px 8px;
   border: none;
@@ -413,6 +451,18 @@
   background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
   color: white;
   cursor: not-allowed;
+  border: 3px solid #0f766e;
+  box-shadow: 0 0 15px rgba(20, 184, 166, 0.5);
+  position: relative;
+}
+
+.fixed-slot::before {
+  content: '🔒';
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  font-size: 1.2rem;
+  opacity: 0.8;
 }
 
 /* Lab slots - Orange gradient (locked) */
@@ -420,6 +470,18 @@
   background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
   color: white;
   cursor: not-allowed;
+  border: 3px solid #c2410c;
+  box-shadow: 0 0 15px rgba(249, 115, 22, 0.5);
+  position: relative;
+}
+
+.lab-slot::before {
+  content: '🧪';
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  font-size: 1.2rem;
+  opacity: 0.8;
 }
 
 /* Break slots - Yellow gradient (draggable) */

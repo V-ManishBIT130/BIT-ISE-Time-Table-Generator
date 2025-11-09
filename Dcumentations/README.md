@@ -3,52 +3,72 @@
 ## Overview
 Complete documentation for the ISE Department Timetable Generation System at BIT.
 
+**Last Updated:** November 2025  
+**Major Features:** Drag-drop editing, Undo/Redo, Break management, Divide-and-rule scheduling
+
+---
+
+## 🎯 Quick Start Guide
+
+### System Components
+1. **Algorithm** - 7-step greedy algorithm with constraint satisfaction
+2. **Editor** - Interactive drag-drop timetable editor with conflict detection
+3. **Viewer** - Read-only display with break visualization
+4. **Database** - MongoDB with 8 models for comprehensive data management
+
+### Key Concepts
+- **Sections:** 3A, 3B, 3C (3 sections per semester, Sem 3-8)
+- **Batches:** 3 batches per section for lab rotation
+- **Subjects:** 5 types (ISE, Other Dept, Projects, OEC, PEC)
+- **Breaks:** Default breaks (11:00-11:30, 13:30-14:00) + custom breaks
+
 ---
 
 ## Documentation Files
 
-### Core Constraints
-1. **[DEPARTMENT_SCOPE.md](./DEPARTMENT_SCOPE.md)**
-   - Department semester responsibility (Semesters 3-8)
-   - Odd/Even semester separation
-   - Cross-section conflict prevention strategy
+### Core System Design
+1. **[DEPARTMENT_SCOPE.md](./DEPARTMENT_SCOPE.md)** - Department structure & semester management
+2. **[SECTIONS_AND_BATCHES.md](./SECTIONS_AND_BATCHES.md)** - Section/batch organization & rotation
+3. **[SUBJECT_TYPES.md](./SUBJECT_TYPES.md)** - 5 subject categories & scheduling rules
 
-2. **[SECTIONS_AND_BATCHES.md](./SECTIONS_AND_BATCHES.md)**
-   - Section structure and naming
-   - Batch division rules (3 batches per section)
-   - Batch synchronization requirements
-   - Batch rotation strategy
-
-3. **[SUBJECT_TYPES.md](./SUBJECT_TYPES.md)**
-   - 5 subject categories (Regular, Other Dept, Project, OEC, PEC)
-   - Scheduling requirements by type
-   - Fixed vs flexible time slots
-   - Batch handling for each type
-
-### Scheduling Constraints
-4. **[LAB_SCHEDULING.md](./LAB_SCHEDULING.md)**
-   - Lab duration and structure (2-hour sessions)
-   - Batch rotation formula (Rule 4.7)
-   - Room equipment compatibility
-   - Conflict prevention (global + internal)
-   - Daily lab limits (new constraints)
-   - Consecutive lab prohibition
-
-5. **[TIME_SCHEDULING.md](./TIME_SCHEDULING.md)**
-   - Working hours (8 AM - 5 PM)
-   - Standard breaks (11:00-11:30, 1:30-2:00)
-   - Time slot durations (theory: 1hr, labs: 2hr)
-   - Early start preference (max 3 days at 8 AM)
-   - Day length constraints
-   - Gap minimization strategy
-   - Subject diversity scoring
+### Scheduling Strategy
+4. **[ALGORITHM_STRATEGY.md](./ALGORITHM_STRATEGY.md)** - 7-step algorithm flow & optimization
+5. **[TIME_SCHEDULING.md](./TIME_SCHEDULING.md)** - Time slots, breaks, divide-and-rule strategy
+6. **[LAB_SCHEDULING.md](./LAB_SCHEDULING.md)** - Lab sessions, batch rotation (Rule 4.7)
+7. **[CONSTRAINTS.md](./CONSTRAINTS.md)** - All constraints (teacher, room, time, day length)
 
 ### Resource Management
-6. **[TEACHER_MANAGEMENT.md](./TEACHER_MANAGEMENT.md)**
-   - Teacher categories (ISE vs Other Dept)
-   - Pre-assignment system
-   - Global conflict prevention
-   - Lab teacher requirements (2 per session)
+8. **[TEACHER_MANAGEMENT.md](./TEACHER_MANAGEMENT.md)** - Teacher assignments & global conflict prevention
+9. **[CLASSROOM_MANAGEMENT.md](./CLASSROOM_MANAGEMENT.md)** - Room allocation & equipment compatibility
+
+### Interactive Features
+10. **[DRAG_DROP_FEATURE.md](./DRAG_DROP_FEATURE.md)** - Editor features, undo/redo, break management
+11. **[GLOBAL_CONFLICT_FIX.md](./GLOBAL_CONFLICT_FIX.md)** - Real-time conflict detection across sections
+
+---
+
+## 🆕 Recent Updates (November 2025)
+
+### Editor Enhancements
+- ✅ **Undo/Redo System** - Ctrl+Z/Ctrl+Y keyboard shortcuts with full state management
+- ✅ **Break Management** - Add, delete, move breaks (including default breaks)
+- ✅ **Removed Default Breaks** - Click to remove default breaks and free slots
+- ✅ **Lab Protection** - Hard blocks prevent theory from overriding lab sessions
+
+### Algorithm Improvements
+- ✅ **Divide-and-Rule Scheduling** - Priority cascade for maximum distribution:
+  1. Priority 1: All 1-hour sessions on different days
+  2. Priority 2: One 2-hour block + rest 1-hour sessions  
+  3. Priority 3: Multiple 2-hour blocks (fallback)
+- ✅ **Project Exception** - Projects keep consecutive blocks for continuous work
+- ✅ **Step 3 Break Clearing** - Regeneration clears custom breaks for fresh start
+
+### Data Persistence
+- ✅ **Breaks Schema** - MongoDB schema updated with `isRemoved` flag
+- ✅ **Global Teacher Tracking** - Real-time conflict detection across all sections
+- ✅ **Conflict Detection** - Respects removed breaks (no false warnings)
+
+---   - Lab teacher requirements (2 per session)
    - Workload calculation
    - Display conventions
 

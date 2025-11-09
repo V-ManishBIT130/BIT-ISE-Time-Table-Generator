@@ -1,104 +1,118 @@
 # ⏰ Time Scheduling & Working Hours
 
 ## Overview
-This document defines working hours, break times, and time slot allocation rules for timetable generation.
+Defines working hours, break management, and the **Divide-and-Rule** scheduling strategy for optimal class distribution.
+
+**Last Updated:** November 2025
 
 ---
 
 ## 1. Working Hours
 
-### College Timings
 - **Start Time:** 8:00 AM
 - **End Time:** 5:00 PM (17:00)
-- **Working Days:** Monday to Friday (5 days)
-- **Saturday:** Sometimes included for labs/makeup classes
+- **Working Days:** Monday to Friday
+- **Saturday:** Occasionally for makeup classes
 
 ---
 
-## 2. Standard Breaks
+## 2. Break Management
 
-### Default Break Times
-**Break 1 (Morning):**
-- Time: 11:00 AM - 11:30 AM
-- Duration: 30 minutes
-- Type: Tea/Snack break
+### Default Breaks
+- **Morning Break:** 11:00-11:30 AM (30 min)
+- **Lunch Break:** 13:30-14:00 PM (30 min)
 
-**Break 2 (Afternoon):**
-- Time: 1:30 PM - 2:00 PM
-- Duration: 30 minutes
-- Type: Lunch break
-
-### Flexible Break Management
-- Breaks are NOT strictly fixed at these times
-- Can be adjusted based on lab schedules
-- Maximum 2 breaks per day (30 minutes each)
-- Algorithm ensures breaks don't conflict with labs
+### Dynamic Break System (November 2025)
+- ✅ **Custom Breaks** - Add breaks at any empty slot via Editor
+- ✅ **Remove Default Breaks** - Delete default breaks to free slots for theory
+- ✅ **Break Persistence** - Breaks saved to database with `isRemoved` flag
+- ✅ **Conflict-Free** - Breaks respect lab schedules and theory slots
 
 ---
 
 ## 3. Time Slot Duration
 
 ### Theory Classes
-- **Standard Duration:** 1 hour per slot
-- **Can be consecutive:** Yes, up to `max_hrs_per_day`
-- **Example:** 2-hour session = 10:00-12:00 (two consecutive 1-hour slots)
+- **Standard:** 1 hour per slot
+- **Can be consecutive:** Yes, but subject to Divide-and-Rule strategy
 
 ### Lab Sessions
-- **Fixed Duration:** 2 hours per session
-- **Not divisible:** Always scheduled as complete 2-hour blocks
-- **Example:** 8:00-10:00, 10:00-12:00, 2:00-4:00
+- **Fixed:** 2 hours (non-divisible)
+- **Examples:** 8:00-10:00, 10:00-12:00, 14:00-16:00
 
 ---
 
-## 4. Available Time Slots
+## 4. 🎯 Divide-and-Rule Scheduling Strategy (NEW)
 
-### Theory Time Slots (1 hour each)
-- 8:00-9:00 AM
-- 9:00-10:00 AM
-- 10:00-11:00 AM
-- **[BREAK: 11:00-11:30 AM]**
-- 11:30-12:30 PM
-- 12:30-1:30 PM
-- **[BREAK: 1:30-2:00 PM]**
-- 2:00-3:00 PM
-- 3:00-4:00 PM
-- 4:00-5:00 PM
+### Goal
+**Maximize distribution** of classes across the week to reduce student/teacher fatigue and improve learning retention.
 
-### Lab Time Slots (2 hours each)
-- 8:00-10:00 AM
-- 10:00-12:00 PM
-- 12:00-2:00 PM (includes lunch time)
-- 2:00-4:00 PM
-- 3:00-5:00 PM
+### For Regular ISE & Other Dept Subjects
+
+**Priority 1 (BEST): All 1-hour sessions on different days**
+```
+Example: SEPM (4 hrs/week)
+Sessions: [1, 1, 1, 1]
+Result:
+  Monday:    10:00-11:00
+  Tuesday:   14:00-15:00
+  Thursday:  11:30-12:30
+  Friday:    09:00-10:00
+```
+✅ Maximum distribution, minimal fatigue
+
+**Priority 2 (FALLBACK): One 2-hour block + 1-hour sessions**
+```
+Example: TOC (5 hrs/week)
+Sessions: [2, 1, 1, 1]
+Result:
+  Monday:    11:30-13:30 (2-hr block)
+  Wednesday: 10:00-11:00
+  Thursday:  14:00-15:00
+  Friday:    09:00-10:00
+```
+✅ Balanced approach
+
+**Priority 3 (LAST RESORT): Multiple 2-hour blocks**
+```
+Example: CN (4 hrs/week)
+Sessions: [2, 2]
+Result:
+  Monday:    11:30-13:30
+  Thursday:  14:00-16:00
+```
+⚠️ Only if Priorities 1 & 2 fail
+
+### For Project Subjects
+**Always keep consecutive blocks**
+```
+Example: Mini Project (2 hrs/week)
+Sessions: [2]
+Result:
+  Monday: 11:30-13:30 (continuous work time)
+```
+✅ Projects need uninterrupted blocks
+
+### Benefits
+- 📚 Better learning retention (spaced repetition)
+- 😊 Reduced mental fatigue
+- 🎯 More variety in daily schedule
+- ⏰ Flexible time management
 
 ---
 
 ## 5. Early Start Preference
 
-### Rule
-Limit 8:00 AM classes to **maximum 3 days per week**.
+**Rule:** Maximum 3 days per week starting at 8:00 AM
 
-### Reason
-- Addresses concerns for students/teachers commuting from far distances
+**Reason:**
+- Reduces commute stress
 - Better work-life balance
-- Reduces morning rush stress
+- Phased implementation across sections
 
-### Counting
-Includes BOTH theory and lab slots starting at 8:00 AM.
+**Applies to:** Both theory and lab slots
 
-### Example
-✅ **Allowed:**
-- Monday: 8:00 AM start (Lab)
-- Tuesday: 9:00 AM start
-- Wednesday: 8:00 AM start (Theory)
-- Thursday: 10:00 AM start
-- Friday: 8:00 AM start (Lab)
-- **Total: 3 early starts** ✅
-
-❌ **Blocked:**
-- Monday, Tuesday, Wednesday, Thursday all at 8:00 AM
-- **Total: 4 early starts** ❌
-
+---
 ---
 
 ## 6. Day Length Constraints (NEW)

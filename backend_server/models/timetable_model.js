@@ -202,6 +202,37 @@ const TimetableSchema = new mongoose.Schema(
       }]
     }],
     
+    // Custom breaks (manually added or default breaks)
+    breaks: [{
+      day: {
+        type: String,
+        enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        required: true
+      },
+      start_time: {
+        type: String,
+        required: true
+      },
+      end_time: {
+        type: String,
+        required: true
+      },
+      label: {
+        type: String,
+        default: 'Break'
+      },
+      isDefault: {
+        type: Boolean,
+        default: false
+      },
+      isRemoved: {
+        type: Boolean,
+        default: false
+        // When true, indicates a default break was removed by user
+        // This prevents the default break from reappearing in the grid
+      }
+    }],
+    
     // Flagged sessions needing admin attention
     flagged_sessions: [{
       type: {
