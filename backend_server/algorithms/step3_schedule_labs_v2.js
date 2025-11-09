@@ -263,6 +263,7 @@ export async function scheduleLabs(semType, academicYear) {
       tt.theory_slots = tt.theory_slots.filter(slot => 
         slot.is_fixed_slot === true  // Keep only Step 2 fixed slots
       )
+      tt.breaks = []  // Clear custom breaks (added in Editor or Step 4)
       tt.generation_metadata.current_step = 2
       tt.generation_metadata.steps_completed = ['load_sections', 'block_fixed_slots']
       await tt.save()

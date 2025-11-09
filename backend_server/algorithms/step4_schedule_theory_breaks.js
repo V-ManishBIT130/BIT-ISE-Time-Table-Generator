@@ -404,19 +404,95 @@ function canScheduleConsecutiveSlots(startSlot, hours, availableSlots, timetable
 }
 
 /**
- * Helper: Calculate session splits based on hrs_per_week and max_hrs_per_day
+ * Helper: Calculate session splits based on hrs_per_week and subject type
+ * 
+ * DIVIDE AND RULE STRATEGY (Nov 2025):
+ * 
+ * For PROJECT subjects:
+ * - Keep consecutive blocks (projects need continuous work time)
+ * - Example: 2 hrs/week → [2] as one block
+ * 
+ * For REGULAR ISE & OTHER DEPT subjects:
+ * - Priority 1: All 1-hour sessions on DIFFERENT days [1,1,1,1]
+ * - Priority 2: Max ONE 2-hour block + rest 1-hour [2,1,1]
+ * - Priority 3: Multiple 2-hour blocks (last resort) [2,2]
+ * 
+ * Goal: Maximum distribution = Better learning retention + Less fatigue
  */
-function calculateSessionSplits(hrsPerWeek, maxHrsPerDay) {
-  const sessions = []
-  let remaining = hrsPerWeek
-  
-  while (remaining > 0) {
-    const sessionHours = Math.min(remaining, maxHrsPerDay)
-    sessions.push(sessionHours)
-    remaining -= sessionHours
+function calculateSessionSplits(hrsPerWeek, maxHrsPerDay, isProject = false) {
+  // PROJECT SUBJECTS: Keep consecutive blocks
+  if (isProject) {
+    console.log(`      📦 [PROJECT] Keeping consecutive blocks for project subject`)
+    const sessions = []
+    let remaining = hrsPerWeek
+    
+    while (remaining > 0) {
+      const sessionHours = Math.min(remaining, maxHrsPerDay || 2)
+      sessions.push(sessionHours)
+      remaining -= sessionHours
+    }
+    
+    return sessions
   }
   
-  return sessions
+  // REGULAR ISE & OTHER DEPT: Attempt cascade (handled in scheduling loop)
+  // We'll try multiple strategies in the scheduling function itself
+  // This function just returns the list of attempts to try
+  
+  const attempts = []
+  
+  // ATTEMPT 1: All 1-hour sessions (maximum distribution)
+  attempts.push({
+    priority: 1,
+    name: 'All 1-hr sessions (different days)',
+    sessions: Array(hrsPerWeek).fill(1),
+    constraint: 'different_days_only'
+  })
+  
+  // ATTEMPT 2: One 2-hour block + rest 1-hour
+  if (hrsPerWeek >= 3 && maxHrsPerDay >= 2) {
+    const sessions = [2]
+    let remaining = hrsPerWeek - 2
+    while (remaining > 0) {
+      sessions.push(1)
+      remaining -= 1
+    }
+    attempts.push({
+      priority: 2,
+      name: 'One 2-hr block + 1-hr sessions',
+      sessions: sessions,
+      constraint: 'max_one_2hr_block'
+    })
+  }
+  
+  // ATTEMPT 3: Multiple 2-hour blocks (last resort)
+  if (hrsPerWeek >= 4 && maxHrsPerDay >= 2) {
+    const sessions = []
+    let remaining = hrsPerWeek
+    while (remaining > 0) {
+      const sessionHours = Math.min(remaining, maxHrsPerDay)
+      sessions.push(sessionHours)
+      remaining -= sessionHours
+    }
+    attempts.push({
+      priority: 3,
+      name: 'Multiple 2-hr blocks (fallback)',
+      sessions: sessions,
+      constraint: 'no_restrictions'
+    })
+  }
+  
+  // Fallback for subjects with < 3 hrs or maxHrsPerDay < 2
+  if (attempts.length === 0) {
+    attempts.push({
+      priority: 1,
+      name: 'Default split',
+      sessions: Array(hrsPerWeek).fill(1),
+      constraint: 'none'
+    })
+  }
+  
+  return attempts
 }
 
 /**
@@ -437,6 +513,7 @@ function markTeacherBusy(teacherId, day, startTime, endTime) {
 
 /**
  * Main: Schedule a group of subjects (by priority)
+ * Implements CASCADE FALLBACK strategy for Regular ISE & Other Dept subjects
  */
 async function scheduleSubjectGroup(subjects, timetable, groupName) {
   if (subjects.length === 0) {
@@ -456,111 +533,87 @@ async function scheduleSubjectGroup(subjects, timetable, groupName) {
   for (const assignment of subjects) {
     const subject = assignment.subject_id
     const teacher = assignment.teacher_id
+    const isProject = subject.is_project === true
     
-    // Calculate session splits
-    const sessions = calculateSessionSplits(
+    // Get cascade attempts (for non-projects) or simple split (for projects)
+    const sessionAttempts = calculateSessionSplits(
       subject.hrs_per_week,
-      subject.max_hrs_Day || 2
+      subject.max_hrs_Day || 2,
+      isProject
     )
     
-    let subjectScheduled = 0
-    const scheduledSlots = []
-    const usedDays = new Set() // Track days already used for this subject (respects max_hrs_Day)
+    let subjectFullyScheduled = false
+    let bestAttemptResult = null
     
-    // Try each day (don't shuffle - we'll use gap scoring instead)
-    const daysToTry = [...WORKING_DAYS]
-    
-    // Schedule each session
-    for (const sessionHours of sessions) {
-      let sessionScheduled = false
-      let bestSlot = null
-      let bestDay = null
-      let bestScore = Infinity
+    // For projects: Direct scheduling (no cascade)
+    if (isProject) {
+      const result = await tryScheduleSessions(
+        sessionAttempts, // Simple array like [2] or [2, 1]
+        subject,
+        teacher,
+        timetable,
+        'no_restrictions'
+      )
       
-      // Find the best slot across all days (minimize gaps + promote variety)
-      for (const day of daysToTry) {
-        // CRITICAL: Respect max_hrs_Day - don't schedule same subject twice on same day
-        if (usedDays.has(day)) {
-          continue // Already scheduled this subject on this day
-        }
-        
-        // Get available slots for this day (with gap scores + subject diversity)
-        const availableSlots = getAvailableTimeSlots(day, timetable, subject._id)
-        
-        // Sort by gap score (lowest first - best slots)
-        const sortedSlots = availableSlots.sort((a, b) => a.gapScore - b.gapScore)
-        
-        // Try to find slot that can accommodate session
-        for (const slot of sortedSlots) {
-          // Check if consecutive slots available (for multi-hour sessions)
-          if (!canScheduleConsecutiveSlots(slot, sessionHours, availableSlots, timetable, day)) {
-            continue
-          }
-          
-          // Check teacher conflict (for ISE subjects only)
-          if (subject.requires_teacher_assignment && teacher) {
-            if (isTeacherBusy(teacher._id.toString(), day, slot.start)) {
-              continue // Teacher busy, try next slot
-            }
-          }
-          
-          // Found a candidate slot - check if it's better than current best
-          if (slot.gapScore < bestScore) {
-            bestScore = slot.gapScore
-            bestSlot = slot
-            bestDay = day
-          }
-          
-          break // Found valid slot for this day, move to next day
-        }
+      if (result.success && result.scheduledCount === sessionAttempts.length) {
+        subjectFullyScheduled = true
+        bestAttemptResult = result
+      } else {
+        bestAttemptResult = result
       }
+    } else {
+      // Regular ISE & Other Dept: Try cascade attempts
+      console.log(`         🔄 Trying ${sessionAttempts.length} scheduling strategies for ${subject.subject_shortform}...`)
       
-      // Schedule in the best slot found
-      if (bestSlot && bestDay) {
-        sessionScheduled = true
-        const endTime = addHours(bestSlot.start, sessionHours)
+      for (const attempt of sessionAttempts) {
+        console.log(`            Attempt ${attempt.priority}: ${attempt.name} → [${attempt.sessions.join(', ')}]`)
         
-        timetable.theory_slots.push({
-          subject_id: subject._id,
-          subject_name: subject.subject_name,
-          subject_shortform: subject.subject_shortform || subject.subject_code,
-          teacher_id: subject.requires_teacher_assignment && teacher ? teacher._id : null,
-          teacher_name: subject.requires_teacher_assignment && teacher ? teacher.name : '[Other Dept]',
-          teacher_shortform: subject.requires_teacher_assignment && teacher ? teacher.teacher_shortform : 'N/A',
-          classroom_id: null, // Step 6
-          classroom_name: null, // Step 6
-          day: bestDay,
-          start_time: bestSlot.start,
-          end_time: endTime,
-          duration_hours: sessionHours
-        })
+        const result = await tryScheduleSessions(
+          attempt.sessions,
+          subject,
+          teacher,
+          timetable,
+          attempt.constraint
+        )
         
-        // Log early start tracking
-        const currentEarlyDays = countEarlyStartDays(timetable)
-        console.log(`         ✅ Scheduled: ${bestDay} ${bestSlot.start}-${endTime} (gap score: ${bestScore}, early days: ${currentEarlyDays})`)
-        
-        // Mark teacher as busy (if ISE teacher)
-        if (subject.requires_teacher_assignment && teacher) {
-          markTeacherBusy(teacher._id.toString(), bestDay, bestSlot.start, endTime)
+        if (result.success && result.scheduledCount === attempt.sessions.length) {
+          // Full success with this attempt!
+          console.log(`            ✅ Success with ${attempt.name}!`)
+          subjectFullyScheduled = true
+          bestAttemptResult = result
+          break // Stop trying other attempts
+        } else if (result.scheduledCount > 0) {
+          // Partial success - keep as fallback
+          if (!bestAttemptResult || result.scheduledCount > bestAttemptResult.scheduledCount) {
+            bestAttemptResult = result
+          }
         }
-        
-        subjectScheduled++
-        usedDays.add(bestDay) // Mark this day as used for this subject
-        scheduledSlots.push(`${bestDay} ${bestSlot.start}-${endTime} (gap score: ${bestScore})`)
-      }
-      
-      if (!sessionScheduled) {
-        console.log(`         ⚠️  Could not schedule session for ${subject.subject_shortform} (${sessionHours} hrs)`)
       }
     }
     
-    const status = subjectScheduled === sessions.length ? '✅' : '⚠️'
+    // Commit the best result found
+    if (bestAttemptResult && bestAttemptResult.scheduledCount > 0) {
+      // Add slots to timetable
+      timetable.theory_slots.push(...bestAttemptResult.slots)
+      
+      // Mark teachers as busy
+      bestAttemptResult.slots.forEach(slot => {
+        if (slot.teacher_id) {
+          markTeacherBusy(slot.teacher_id.toString(), slot.day, slot.start_time, slot.end_time)
+        }
+      })
+    }
+    
+    const status = subjectFullyScheduled ? '✅' : '⚠️'
     const teacherName = teacher ? teacher.teacher_shortform || teacher.name : '[Other Dept]'
+    const totalSessions = isProject ? sessionAttempts.length : sessionAttempts[0].sessions.length
+    const scheduledSessions = bestAttemptResult ? bestAttemptResult.scheduledCount : 0
+    const scheduledSlots = bestAttemptResult ? bestAttemptResult.slotSummary : []
     
     console.log(`         ${status} ${subject.subject_shortform} (${subject.hrs_per_week} hrs/week) - Teacher: ${teacherName}`)
-    console.log(`            Scheduled: ${subjectScheduled}/${sessions.length} sessions → ${scheduledSlots.join(', ') || 'None'}`)
+    console.log(`            Scheduled: ${scheduledSessions}/${totalSessions} sessions → ${scheduledSlots.join(', ') || 'None'}`)
     
-    if (subjectScheduled === sessions.length) {
+    if (subjectFullyScheduled) {
       successCount++
     } else {
       failCount++
@@ -569,8 +622,8 @@ async function scheduleSubjectGroup(subjects, timetable, groupName) {
     details.push({
       subject: subject.subject_shortform,
       required_hours: subject.hrs_per_week,
-      sessions_needed: sessions.length,
-      sessions_scheduled: subjectScheduled,
+      sessions_needed: totalSessions,
+      sessions_scheduled: scheduledSessions,
       teacher: teacherName,
       slots: scheduledSlots
     })
@@ -586,6 +639,116 @@ async function scheduleSubjectGroup(subjects, timetable, groupName) {
   }
 }
 
+/**
+ * Helper: Try to schedule sessions with given constraint
+ */
+async function tryScheduleSessions(sessions, subject, teacher, timetable, constraint) {
+  const scheduledSlots = []
+  const slotSummary = []
+  const usedDays = new Set()
+  const dayHourCount = new Map() // Track hours per day
+  
+  for (const sessionHours of sessions) {
+    let sessionScheduled = false
+    let bestSlot = null
+    let bestDay = null
+    let bestScore = Infinity
+    
+    // Try each day
+    for (const day of WORKING_DAYS) {
+      // Apply constraints
+      if (constraint === 'different_days_only' && usedDays.has(day)) {
+        continue // Must use different days
+      }
+      
+      if (constraint === 'max_one_2hr_block') {
+        const hoursOnDay = dayHourCount.get(day) || 0
+        if (sessionHours === 2 && hoursOnDay >= 2) {
+          continue // Already have a 2-hr block on this day
+        }
+        if (hoursOnDay > 0 && sessionHours === 2) {
+          continue // Don't add 2-hr block if day already has sessions
+        }
+      }
+      
+      // Get available slots
+      const availableSlots = getAvailableTimeSlots(day, timetable, subject._id)
+      const sortedSlots = availableSlots.sort((a, b) => a.gapScore - b.gapScore)
+      
+      for (const slot of sortedSlots) {
+        // Check if consecutive slots available
+        if (!canScheduleConsecutiveSlots(slot, sessionHours, availableSlots, timetable, day)) {
+          continue
+        }
+        
+        // Check teacher conflict
+        if (subject.requires_teacher_assignment && teacher) {
+          if (isTeacherBusy(teacher._id.toString(), day, slot.start)) {
+            continue
+          }
+        }
+        
+        // This slot is valid - check if it's the best
+        if (slot.gapScore < bestScore) {
+          bestScore = slot.gapScore
+          bestSlot = slot
+          bestDay = day
+        }
+        
+        break // Found valid slot on this day, move to next day
+      }
+    }
+    
+    // Schedule in best slot found
+    if (bestSlot && bestDay) {
+      const endTime = addHours(bestSlot.start, sessionHours)
+      
+      const newSlot = {
+        day: bestDay,
+        start_time: bestSlot.start,
+        end_time: endTime,
+        duration_hours: sessionHours,
+        subject_id: subject._id,
+        subject_name: subject.subject_name,
+        subject_shortform: subject.subject_shortform || subject.subject_code,
+        teacher_id: teacher ? teacher._id : null,
+        teacher_name: teacher ? teacher.name : '[Other Dept]',
+        teacher_shortform: teacher ? (teacher.teacher_shortform || teacher.name) : '[Other Dept]',
+        is_fixed_slot: false
+      }
+      
+      scheduledSlots.push(newSlot)
+      slotSummary.push(`${bestDay} ${convertTo12Hour(bestSlot.start)}`)
+      usedDays.add(bestDay)
+      
+      // Update day hour count
+      dayHourCount.set(bestDay, (dayHourCount.get(bestDay) || 0) + sessionHours)
+      
+      sessionScheduled = true
+    }
+    
+    if (!sessionScheduled) {
+      break // Stop trying remaining sessions
+    }
+  }
+  
+  return {
+    success: scheduledSlots.length === sessions.length,
+    scheduledCount: scheduledSlots.length,
+    slots: scheduledSlots,
+    slotSummary: slotSummary
+  }
+}
+
+/**
+ * Helper: Convert to 12-hour format
+ */
+function convertTo12Hour(time24) {
+  const [hours, minutes] = time24.split(':').map(Number)
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const hours12 = hours % 12 || 12
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
+}
 /**
  * Main: Schedule theory for all sections
  */

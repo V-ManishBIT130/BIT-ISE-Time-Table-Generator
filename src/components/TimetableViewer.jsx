@@ -11,11 +11,12 @@ function TimetableViewer() {
   const [semType, setSemType] = useState('odd')
   const [theorySummaryExpanded, setTheorySummaryExpanded] = useState(false)
 
-  // Time slots: 8:00 AM to 5:00 PM in 30-minute intervals
+  // Time slots: 8:00 AM to 4:30 PM in 30-minute intervals
+  // Note: Last slot (4:30 PM) represents 4:30-5:00 PM (working hours end at 5:00 PM)
   const timeSlots = [
     '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM',
     '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM',
-    '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM', '5:00 PM'
+    '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM'
   ]
 
   const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
@@ -116,6 +117,18 @@ function TimetableViewer() {
         console.log('   • Academic Year:', response.data.data.academic_year)
         console.log('   • Theory Slots:', response.data.data.theory_slots?.length)
         console.log('   • Lab Slots:', response.data.data.lab_slots?.length)
+        console.log('   • Breaks Array:', response.data.data.breaks?.length || 0)
+        console.log('\n☕ [BREAKS DATA] Detailed break information:')
+        if (response.data.data.breaks && response.data.data.breaks.length > 0) {
+          console.log('   ✅ Breaks array exists with', response.data.data.breaks.length, 'breaks')
+          response.data.data.breaks.forEach((brk, idx) => {
+            console.log(`      Break ${idx + 1}: ${brk.day} ${brk.start_time}-${brk.end_time} (${brk.label})`)
+          })
+        } else if (response.data.data.breaks && response.data.data.breaks.length === 0) {
+          console.log('   ⚠️ Breaks array exists but is EMPTY')
+        } else {
+          console.log('   ❌ Breaks array does NOT exist (will use default breaks)')
+        }
         console.log('\n📊 GENERATION METADATA:')
         console.log('   • Current Step:', response.data.data.generation_metadata?.current_step)
         console.log('   • Steps Completed:', response.data.data.generation_metadata?.steps_completed)
@@ -176,55 +189,22 @@ function TimetableViewer() {
 
   // Build grid cells for each day
   const buildDayGrid = (day) => {
+    console.log(`\n🔨 [BUILD GRID] Building grid for ${day}...`)
     const cells = new Array(timeSlots.length).fill(null)
 
     if (!timetable) return cells
 
-    // Get breaks from timetable.breaks (includes both default and custom breaks)
-    // If no breaks array exists, fallback to default breaks
-    const breaks = timetable.breaks && timetable.breaks.length > 0
-      ? timetable.breaks.filter(b => b.day === day)
-      : [
-          // Default breaks (only used if timetable.breaks doesn't exist)
-          { day: day, start_time: '11:00', end_time: '11:30', label: 'Morning Break' },
-          { day: day, start_time: '13:30', end_time: '14:00', label: 'Afternoon Break' }
-        ].filter(b => b.day === day)
+    console.log(`   📊 [INITIAL STATE] Empty cells array created (${cells.length} slots)`)
 
-    // Process break slots first (lowest priority - can be overridden by labs/theory)
-    breaks.forEach((breakSlot) => {
-      const startIndex = getTimeSlotIndex(breakSlot.start_time)
-      const span = getTimeSpan(breakSlot.start_time, breakSlot.end_time)
-      
-      // Only add break if slots are empty
-      let canAddBreak = true
-      for (let i = 0; i < span; i++) {
-        if (cells[startIndex + i]) {
-          canAddBreak = false
-          break
-        }
-      }
-      
-      if (canAddBreak && startIndex >= 0) {
-        cells[startIndex] = {
-          type: 'break',
-          span: span,
-          start_time: breakSlot.start_time,
-          end_time: breakSlot.end_time,
-          label: breakSlot.label || 'Break'
-        }
-
-        // Mark occupied cells
-        for (let i = 1; i < span; i++) {
-          cells[startIndex + i] = { type: 'occupied' }
-        }
-      }
-    })
-
-    // Process theory slots (higher priority - will override breaks)
+    // First, process theory and lab slots to mark occupied times
+    // Theory slots (medium priority)
+    console.log(`   📚 [THEORY PROCESSING] Processing ${timetable.theory_slots?.length || 0} theory slots...`)
     timetable.theory_slots?.forEach((slot) => {
       if (slot.day === day) {
         const startIndex = getTimeSlotIndex(slot.start_time)
         const span = getTimeSpan(slot.start_time, slot.end_time)
+
+        console.log(`      ✅ Theory: ${slot.subject_shortform} at ${slot.start_time}-${slot.end_time} (index ${startIndex}, span ${span})`)
 
         cells[startIndex] = {
           type: 'theory',
@@ -240,10 +220,13 @@ function TimetableViewer() {
     })
 
     // Process lab slots (highest priority - will override everything)
+    console.log(`   🧪 [LAB PROCESSING] Processing ${timetable.lab_slots?.length || 0} lab slots...`)
     timetable.lab_slots?.forEach((slot) => {
       if (slot.day === day) {
         const startIndex = getTimeSlotIndex(slot.start_time)
         const span = getTimeSpan(slot.start_time, slot.end_time)
+
+        console.log(`      ✅ Lab: Session at ${slot.start_time}-${slot.end_time} (index ${startIndex}, span ${span})`)
 
         cells[startIndex] = {
           type: 'lab',
@@ -257,6 +240,130 @@ function TimetableViewer() {
         }
       }
     })
+
+    // LAST: Process breaks - only fill empty slots (lowest priority)
+    // SMART MERGE: Combine default breaks with custom breaks
+    console.log(`   ☕ [BREAK PROCESSING] Checking timetable.breaks...`)
+    console.log(`      • timetable.breaks exists? ${!!timetable.breaks}`)
+    console.log(`      • timetable.breaks length: ${timetable.breaks?.length || 0}`)
+    console.log(`      • timetable.breaks content:`, timetable.breaks)
+
+    // Default breaks for all days
+    const defaultBreaks = [
+      { day: 'Monday', start_time: '11:00', end_time: '11:30', label: 'Default', isDefault: true },
+      { day: 'Monday', start_time: '13:30', end_time: '14:00', label: 'Default', isDefault: true },
+      { day: 'Tuesday', start_time: '11:00', end_time: '11:30', label: 'Default', isDefault: true },
+      { day: 'Tuesday', start_time: '13:30', end_time: '14:00', label: 'Default', isDefault: true },
+      { day: 'Wednesday', start_time: '11:00', end_time: '11:30', label: 'Default', isDefault: true },
+      { day: 'Wednesday', start_time: '13:30', end_time: '14:00', label: 'Default', isDefault: true },
+      { day: 'Thursday', start_time: '11:00', end_time: '11:30', label: 'Default', isDefault: true },
+      { day: 'Thursday', start_time: '13:30', end_time: '14:00', label: 'Default', isDefault: true },
+      { day: 'Friday', start_time: '11:00', end_time: '11:30', label: 'Default', isDefault: true },
+      { day: 'Friday', start_time: '13:30', end_time: '14:00', label: 'Default', isDefault: true }
+    ]
+
+    // Get custom breaks for this day from database (exclude removed markers)
+    const customBreaksForDay = (timetable.breaks || []).filter(b => b.day === day && !b.isRemoved)
+    
+    // Get removed default breaks for this day
+    const removedDefaultBreaks = (timetable.breaks || []).filter(b => 
+      b.day === day && b.isDefault && b.isRemoved
+    )
+    
+    // Get default breaks for this day (excluding any that were removed by user)
+    const defaultBreaksForDay = defaultBreaks.filter(b => {
+      const isRemovedByUser = removedDefaultBreaks.some(removed => 
+        removed.start_time === b.start_time && removed.end_time === b.end_time
+      )
+      return b.day === day && !isRemovedByUser
+    })
+    
+    console.log(`      • Custom breaks for ${day}: ${customBreaksForDay.length}`)
+    console.log(`      • Default breaks for ${day}: ${defaultBreaksForDay.length}`)
+    console.log(`      • Removed default breaks for ${day}: ${removedDefaultBreaks.length}`)
+    
+    // Merge logic: Custom breaks override defaults at same time slot
+    const mergedBreaks = [...defaultBreaksForDay]
+    
+    customBreaksForDay.forEach(customBreak => {
+      // Check if this custom break replaces a default break (same time)
+      const replacesDefaultIndex = mergedBreaks.findIndex(
+        defBreak => defBreak.start_time === customBreak.start_time && 
+                    defBreak.end_time === customBreak.end_time
+      )
+      
+      if (replacesDefaultIndex >= 0) {
+        // Replace default with custom at same time
+        mergedBreaks[replacesDefaultIndex] = customBreak
+        console.log(`      🔄 Custom break replaces default at ${customBreak.start_time}`)
+      } else {
+        // Add as new custom break (different time)
+        mergedBreaks.push(customBreak)
+        console.log(`      ➕ Adding new custom break at ${customBreak.start_time}`)
+      }
+    })
+
+    const breaks = mergedBreaks
+    console.log(`   ☕ [BREAKS TO PROCESS] ${breaks.length} breaks for ${day}:`, breaks)
+
+    breaks.forEach((breakSlot, idx) => {
+      const startIndex = getTimeSlotIndex(breakSlot.start_time)
+      const span = getTimeSpan(breakSlot.start_time, breakSlot.end_time)
+      
+      console.log(`\n      🔍 [BREAK ${idx + 1}] Checking break at ${breakSlot.start_time}-${breakSlot.end_time}`)
+      console.log(`         • Start index: ${startIndex}`)
+      console.log(`         • Span: ${span}`)
+      console.log(`         • Label: ${breakSlot.label}`)
+      
+      // Only add break if ALL slots in the span are empty (not occupied by theory/labs)
+      let canAddBreak = true
+      for (let i = 0; i < span; i++) {
+        const checkIndex = startIndex + i
+        const cellState = cells[checkIndex]
+        console.log(`         • Checking cell[${checkIndex}]: ${cellState === null ? 'EMPTY' : cellState.type}`)
+        
+        if (cells[checkIndex] !== null) {
+          canAddBreak = false
+          console.log(`         ❌ Cell[${checkIndex}] is occupied by ${cellState.type}! Cannot add break.`)
+          break
+        }
+      }
+      
+      if (canAddBreak && startIndex >= 0) {
+        console.log(`         ✅ All cells empty! Adding break...`)
+        cells[startIndex] = {
+          type: 'break',
+          span: span,
+          start_time: breakSlot.start_time,
+          end_time: breakSlot.end_time,
+          label: breakSlot.label || 'Break'
+        }
+
+        // Mark occupied cells
+        for (let i = 1; i < span; i++) {
+          cells[startIndex + i] = { type: 'occupied' }
+        }
+        console.log(`         ✅ Break added successfully!`)
+      } else {
+        console.log(`         ❌ Cannot add break (canAddBreak: ${canAddBreak}, startIndex: ${startIndex})`)
+      }
+    })
+
+    console.log(`\n   📊 [FINAL GRID] Grid for ${day} complete. Summary:`)
+    const summary = cells.reduce((acc, cell, idx) => {
+      if (cell === null) acc.empty++
+      else if (cell.type === 'theory') acc.theory++
+      else if (cell.type === 'lab') acc.lab++
+      else if (cell.type === 'break') acc.break++
+      else if (cell.type === 'occupied') acc.occupied++
+      return acc
+    }, { empty: 0, theory: 0, lab: 0, break: 0, occupied: 0 })
+    console.log(`      • Empty: ${summary.empty}`)
+    console.log(`      • Theory: ${summary.theory}`)
+    console.log(`      • Lab: ${summary.lab}`)
+    console.log(`      • Break: ${summary.break}`)
+    console.log(`      • Occupied: ${summary.occupied}`)
+    console.log(`   ✅ [BUILD COMPLETE] Grid for ${day} ready!\n`)
 
     return cells
   }

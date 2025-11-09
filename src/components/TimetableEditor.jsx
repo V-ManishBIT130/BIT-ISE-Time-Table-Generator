@@ -4,6 +4,30 @@ import { restrictToWindowEdges } from '@dnd-kit/modifiers'
 import axios from 'axios'
 import './TimetableEditor.css'
 
+/**
+ * TIMETABLE EDITOR - DRAG & DROP WITH PROTECTED SLOTS
+ * 
+ * CRITICAL FIX (Nov 2025):
+ * ========================
+ * Labs and Fixed Slots (OEC/PEC) are now PROTECTED from being overridden.
+ * 
+ * Changes Made:
+ * 1. Added HARD BLOCK conflict detection for lab slots
+ * 2. Added HARD BLOCK conflict detection for fixed slots (OEC/PEC)
+ * 3. Time overlap checking (not just exact time match)
+ * 4. Visual indicators: 🔒 for fixed slots, 🧪 for labs
+ * 5. Enhanced CSS: thicker borders + glow effect for protected slots
+ * 6. Alert modal changed: Hard blocks show error (no "OK to proceed")
+ * 
+ * Protected Slots:
+ * - Lab Sessions: Cannot be moved or overridden (orange with 🧪)
+ * - Fixed Slots (OEC/PEC): Cannot be moved or overridden (teal with 🔒)
+ * 
+ * Theory slots can still be dragged, but will be BLOCKED if:
+ * - Target time overlaps with any lab session
+ * - Target time overlaps with any fixed slot (OEC/PEC)
+ */
+
 // Draggable Slot Component
 function DraggableSlot({ slot, children }) {
   const slotId = slot._id || slot.id || 'unknown'
@@ -53,6 +77,8 @@ function TimetableEditor() {
   const [changeHistory, setChangeHistory] = useState([])
   const [unsavedChanges, setUnsavedChanges] = useState(0)
   const [addBreakMode, setAddBreakMode] = useState(false)
+  const [undoStack, setUndoStack] = useState([])
+  const [redoStack, setRedoStack] = useState([])
 
   // Drag & Drop sensors
   const sensors = useSensors(
@@ -63,11 +89,12 @@ function TimetableEditor() {
     })
   )
 
-  // Time slots: 8:00 AM to 5:00 PM in 30-minute intervals
+  // Time slots: 8:00 AM to 4:30 PM in 30-minute intervals
+  // Note: Last slot (4:30 PM) represents 4:30-5:00 PM (working hours end at 5:00 PM)
   const timeSlots = [
     '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM',
     '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM',
-    '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM', '5:00 PM'
+    '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM'
   ]
 
   const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -123,6 +150,25 @@ function TimetableEditor() {
     fetchSections()
   }, [semType])
 
+  // Keyboard shortcuts for Undo/Redo
+  useEffect(() => {
+    const handleKeyboard = (e) => {
+      // Ctrl+Z or Cmd+Z (Mac) for Undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        handleUndo()
+      }
+      // Ctrl+Y or Ctrl+Shift+Z for Redo
+      else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+        e.preventDefault()
+        handleRedo()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyboard)
+    return () => window.removeEventListener('keydown', handleKeyboard)
+  }, [undoStack, redoStack, timetable]) // Re-bind when stacks change
+
   const fetchSections = async () => {
     try {
       const response = await axios.get('/api/sections', {
@@ -145,6 +191,8 @@ function TimetableEditor() {
     setConflicts([])
     setChangeHistory([])
     setUnsavedChanges(0)
+    setUndoStack([])
+    setRedoStack([])
 
     try {
       const response = await axios.get(`/api/timetables/${sectionId}`, {
@@ -239,6 +287,7 @@ function TimetableEditor() {
       )
       
       if (breakIndex !== -1) {
+        const oldBreak = timetable.breaks[breakIndex]
         const updatedBreaks = [...timetable.breaks]
         updatedBreaks[breakIndex] = {
           ...updatedBreaks[breakIndex],
@@ -253,6 +302,17 @@ function TimetableEditor() {
           ...prev,
           breaks: updatedBreaks
         }))
+
+        // Add to undo stack
+        pushToUndoStack({
+          type: 'move_break',
+          oldDay: oldDay,
+          oldStartTime: oldTime,
+          oldEndTime: oldBreak.end_time,
+          newDay: newDay,
+          newStartTime: newStartTime,
+          newEndTime: addHours(newStartTime, 0.5)
+        })
         
         setUnsavedChanges(prev => prev + 1)
       }
@@ -292,8 +352,8 @@ function TimetableEditor() {
     if (conflictCheck.hasConflicts) {
       console.error('❌ [CONFLICTS FOUND]', conflictCheck.conflicts)
       setConflicts(conflictCheck.conflicts)
-      // Show conflict modal - user can revert or force
-      showConflictModal(slot, newDay, newStartTime, newEndTime, conflictCheck.conflicts)
+      // Show conflict modal - user can revert or force (unless hard block)
+      showConflictModal(slot, newDay, newStartTime, newEndTime, conflictCheck.conflicts, conflictCheck.isHardBlock)
     } else {
       console.log('✅ [NO CONFLICTS] Move is safe, updating...')
       // No conflicts - update immediately
@@ -320,6 +380,55 @@ function TimetableEditor() {
     })
 
     const conflicts = []
+
+    // Check 0: CRITICAL - Lab or Fixed Slot Conflict (HARD BLOCK - cannot override)
+    const labConflict = (timetable.lab_slots || []).some(labSlot => {
+      if (labSlot.day !== newDay) return false
+      // Check if the new time range overlaps with the lab session
+      const labStart = labSlot.start_time
+      const labEnd = labSlot.end_time
+      return (newStartTime < labEnd && newEndTime > labStart)
+    })
+
+    const fixedSlotConflict = (timetable.theory_slots || []).some(theorySlot => {
+      if (theorySlot._id === slot._id) return false // Skip self
+      if (!theorySlot.is_fixed_slot) return false // Only check fixed slots
+      if (theorySlot.day !== newDay) return false
+      // Check if the new time range overlaps with the fixed slot
+      return (newStartTime < theorySlot.end_time && newEndTime > theorySlot.start_time)
+    })
+
+    console.log('   🚫 [CRITICAL CHECK] Lab/Fixed slot conflicts?', {
+      lab: labConflict,
+      fixed: fixedSlotConflict
+    })
+
+    if (labConflict) {
+      console.log('   ❌ [BLOCKED] Cannot move - LAB SESSION at this time!')
+      conflicts.push({
+        type: 'lab_hard_block',
+        message: `🚫 BLOCKED: Cannot schedule here - Lab session occupies ${newDay} at ${convertTo12Hour(newStartTime)}. Labs cannot be moved or overridden!`,
+        isHardBlock: true
+      })
+    }
+
+    if (fixedSlotConflict) {
+      console.log('   ❌ [BLOCKED] Cannot move - FIXED SLOT (OEC/PEC) at this time!')
+      conflicts.push({
+        type: 'fixed_slot_hard_block',
+        message: `🚫 BLOCKED: Cannot schedule here - Fixed slot (OEC/PEC) occupies ${newDay} at ${convertTo12Hour(newStartTime)}. Fixed slots cannot be moved or overridden!`,
+        isHardBlock: true
+      })
+    }
+
+    // If lab or fixed slot conflict detected, return immediately (don't proceed with other checks)
+    if (labConflict || fixedSlotConflict) {
+      return {
+        hasConflicts: true,
+        conflicts,
+        isHardBlock: true
+      }
+    }
 
     // Check 1: Teacher conflict ACROSS ALL SECTIONS (backend check)
     if (slot.teacher_id && slot.teacher_name !== '[Other Dept]') {
@@ -407,9 +516,11 @@ function TimetableEditor() {
       s.start_time === newStartTime
     )
     
+    // Check for ACTIVE breaks only (exclude removed markers)
     const slotBusyBreak = (timetable.breaks || []).some(b =>
       b.day === newDay &&
-      b.start_time === newStartTime
+      b.start_time === newStartTime &&
+      !b.isRemoved  // ← CRITICAL: Ignore removed breaks!
     )
 
     console.log('   ⏰ [SLOT CHECK] Time slot occupied?', {
@@ -427,16 +538,29 @@ function TimetableEditor() {
       })
     }
 
-    // Check 3: Break time conflict (if moving TO a default break time)
+    // Check 4: Break time conflict (if moving TO a default break time that hasn't been removed)
     const isDefaultBreakTime = (newStartTime === '11:00' || newStartTime === '13:30')
-    if (isDefaultBreakTime) {
+    
+    // Check if this default break was explicitly removed by the user
+    const defaultBreakWasRemoved = (timetable.breaks || []).some(b =>
+      b.day === newDay &&
+      b.start_time === newStartTime &&
+      b.isDefault === true &&
+      b.isRemoved === true
+    )
+    
+    // Only warn if it's a default break time AND hasn't been removed
+    if (isDefaultBreakTime && !defaultBreakWasRemoved) {
+      console.log('   ⚠️ [BREAK WARNING] Scheduling over default break time (not removed)')
       conflicts.push({
         type: 'break',
         message: `⚠️ Warning: Scheduling during default break time (${convertTo12Hour(newStartTime)}). This will override the break.`
       })
+    } else if (isDefaultBreakTime && defaultBreakWasRemoved) {
+      console.log('   ✅ [BREAK REMOVED] Default break was removed - slot is free!')
     }
 
-    // Check 4: Day length constraint (8 AM start → 4 PM end)
+    // Check 5: Day length constraint (8 AM start → 4 PM end)
     const hasEarlyStart = [...(timetable.theory_slots || []), ...(timetable.lab_slots || [])].some(s =>
       s.day === newDay && s.start_time === '08:00'
     )
@@ -476,9 +600,24 @@ function TimetableEditor() {
   }
 
   // Show conflict modal
-  const showConflictModal = (slot, newDay, newStartTime, newEndTime, conflicts) => {
-    console.log('⚠️ [CONFLICT MODAL] Showing user conflict warning')
-    const message = `⚠️ CONFLICTS DETECTED!\n\nMoving: ${slot.subject_shortform} (${slot.teacher_name})\nTo: ${newDay} ${convertTo12Hour(newStartTime)}\n\nConflicts:\n${conflicts.map(c => `❌ ${c.message}`).join('\n')}\n\nDo you want to continue anyway?`
+  const showConflictModal = (slot, newDay, newStartTime, newEndTime, conflicts, isHardBlock = false) => {
+    console.log('⚠️ [CONFLICT MODAL] Showing user conflict warning', { isHardBlock })
+    
+    // Check if any conflict is a hard block (lab or fixed slot)
+    const hasHardBlock = conflicts.some(c => c.isHardBlock === true)
+    
+    if (hasHardBlock) {
+      // HARD BLOCK - Cannot proceed!
+      const message = `🚫 MOVE BLOCKED!\n\nCannot move: ${slot.subject_shortform} (${slot.teacher_name})\nTo: ${newDay} ${convertTo12Hour(newStartTime)}\n\n${conflicts.map(c => c.message).join('\n')}\n\n❌ This move is NOT ALLOWED. Labs and Fixed Slots (OEC/PEC) are protected and cannot be overridden.`
+      
+      alert(message)
+      console.log('🚫 [HARD BLOCK] Move completely blocked - no user override allowed')
+      setConflicts([])
+      return // Do not proceed
+    }
+    
+    // SOFT CONFLICTS - Allow user override
+    const message = `⚠️ CONFLICTS DETECTED!\n\nMoving: ${slot.subject_shortform} (${slot.teacher_name})\nTo: ${newDay} ${convertTo12Hour(newStartTime)}\n\nConflicts:\n${conflicts.map(c => c.message).join('\n')}\n\nDo you want to continue anyway?`
     
     if (confirm(message)) {
       console.log('⚠️ [USER OVERRIDE] User chose to proceed despite conflicts')
@@ -518,6 +657,18 @@ function TimetableEditor() {
         timestamp: new Date(),
         forced
       }])
+
+      // Add to undo stack
+      pushToUndoStack({
+        type: 'move_slot',
+        slotId: slot._id,
+        oldDay: slot.day,
+        oldStartTime: slot.start_time,
+        oldEndTime: slot.end_time,
+        newDay: newDay,
+        newStartTime: newStartTime,
+        newEndTime: newEndTime
+      })
 
       setUnsavedChanges(prev => prev + 1)
       setConflicts([])
@@ -585,21 +736,84 @@ function TimetableEditor() {
 
   // Delete a break
   const deleteBreak = (day, startTime) => {
-    if (!confirm('Delete this break?')) return
+    console.log('🗑️ [DELETE BREAK] Attempting to remove break:', { day, startTime })
 
-    console.log('🗑️ [DELETE BREAK] Removing break:', { day, startTime })
-
-    const updatedBreaks = timetable.breaks.filter(b => 
-      !(b.day === day && b.start_time === startTime)
+    // Check if this is a default break being deleted
+    const existingCustomBreak = (timetable.breaks || []).find(b => 
+      b.day === day && b.start_time === startTime
     )
 
-    setTimetable(prev => ({
-      ...prev,
-      breaks: updatedBreaks
-    }))
+    const isDefaultBreak = !existingCustomBreak
+
+    if (isDefaultBreak) {
+      // Deleting a default break - confirm with user
+      if (!confirm('Remove this default break? This will free the slot for theory classes.')) {
+        return
+      }
+
+      console.log('☕ [REMOVE DEFAULT] User is removing default break at', `${day} ${startTime}`)
+
+      // Add a "removed" marker to the breaks array
+      // This tells the grid builder to skip this default break
+      const removedBreakMarker = {
+        day: day,
+        start_time: startTime,
+        end_time: addHours(startTime, 0.5),
+        label: 'Removed',
+        isDefault: true,
+        isRemoved: true  // Special flag to skip default break
+      }
+
+      setTimetable(prev => ({
+        ...prev,
+        breaks: [...(prev.breaks || []), removedBreakMarker]
+      }))
+
+      // Add to undo stack
+      pushToUndoStack({
+        type: 'remove_default_break',
+        day: day,
+        startTime: startTime,
+        endTime: addHours(startTime, 0.5)
+      })
+
+      console.log('✅ [REMOVE SUCCESS] Default break removed (slot now free)')
+    } else {
+      // Deleting a custom break - standard deletion
+      if (!confirm('Delete this break?')) {
+        return
+      }
+
+      console.log('🗑️ [DELETE CUSTOM] Removing custom break at', `${day} ${startTime}`)
+
+      // Find the break data before deleting (for undo)
+      const breakToDelete = timetable.breaks.find(b =>
+        b.day === day && b.start_time === startTime
+      )
+
+      const updatedBreaks = timetable.breaks.filter(b => 
+        !(b.day === day && b.start_time === startTime)
+      )
+
+      setTimetable(prev => ({
+        ...prev,
+        breaks: updatedBreaks
+      }))
+
+      // Add to undo stack
+      if (breakToDelete) {
+        pushToUndoStack({
+          type: 'delete_break',
+          day: day,
+          startTime: startTime,
+          breakData: breakToDelete
+        })
+      }
+
+      console.log('✅ [DELETE SUCCESS] Custom break removed')
+    }
 
     setUnsavedChanges(prev => prev + 1)
-    console.log('✅ [DELETE SUCCESS] Break removed')
   }
 
   // Handle slot click for adding break
@@ -624,17 +838,219 @@ function TimetableEditor() {
       breaks: updatedBreaks
     }))
 
+    // Add to undo stack
+    pushToUndoStack({
+      type: 'add_break',
+      day: day,
+      startTime: startTime,
+      endTime: newBreak.end_time,
+      label: 'Break'
+    })
+
     setUnsavedChanges(prev => prev + 1)
     setAddBreakMode(false) // Deactivate after adding
     
     console.log('✅ [ADD BREAK SUCCESS] Break added to', `${day} ${convertTo12Hour(startTime)}`)
   }
 
+  // Undo/Redo System
+  const pushToUndoStack = (action) => {
+    console.log('📝 [UNDO STACK] Saving action:', action.type)
+    setUndoStack(prev => [...prev, action])
+    setRedoStack([]) // Clear redo stack when new action is performed
+  }
+
+  const handleUndo = () => {
+    if (undoStack.length === 0) {
+      console.log('⚠️ [UNDO] Nothing to undo')
+      return
+    }
+
+    const action = undoStack[undoStack.length - 1]
+    console.log('↩️ [UNDO] Reverting action:', action.type)
+
+    // Remove from undo stack
+    setUndoStack(prev => prev.slice(0, -1))
+
+    // Apply undo based on action type
+    switch (action.type) {
+      case 'move_slot':
+        // Revert slot to original position
+        const updatedTheorySlots = timetable.theory_slots.map(s =>
+          s._id === action.slotId
+            ? { ...s, day: action.oldDay, start_time: action.oldStartTime, end_time: action.oldEndTime }
+            : s
+        )
+        setTimetable(prev => ({
+          ...prev,
+          theory_slots: updatedTheorySlots
+        }))
+        setRedoStack(prev => [...prev, action])
+        setUnsavedChanges(prev => prev - 1)
+        console.log('✅ [UNDO] Slot moved back to', `${action.oldDay} ${action.oldStartTime}`)
+        break
+
+      case 'move_break':
+        // Revert break to original position
+        const updatedBreaksMove = timetable.breaks.map(b =>
+          b.day === action.newDay && b.start_time === action.newStartTime
+            ? { ...b, day: action.oldDay, start_time: action.oldStartTime, end_time: action.oldEndTime }
+            : b
+        )
+        setTimetable(prev => ({
+          ...prev,
+          breaks: updatedBreaksMove
+        }))
+        setRedoStack(prev => [...prev, action])
+        setUnsavedChanges(prev => prev - 1)
+        console.log('✅ [UNDO] Break moved back to', `${action.oldDay} ${action.oldStartTime}`)
+        break
+
+      case 'add_break':
+        // Remove the break that was added
+        const updatedBreaksRemove = timetable.breaks.filter(b =>
+          !(b.day === action.day && b.start_time === action.startTime)
+        )
+        setTimetable(prev => ({
+          ...prev,
+          breaks: updatedBreaksRemove
+        }))
+        setRedoStack(prev => [...prev, action])
+        setUnsavedChanges(prev => prev - 1)
+        console.log('✅ [UNDO] Break addition reverted')
+        break
+
+      case 'delete_break':
+        // Re-add the deleted break
+        setTimetable(prev => ({
+          ...prev,
+          breaks: [...(prev.breaks || []), action.breakData]
+        }))
+        setRedoStack(prev => [...prev, action])
+        setUnsavedChanges(prev => prev - 1)
+        console.log('✅ [UNDO] Break deletion reverted')
+        break
+
+      case 'remove_default_break':
+        // Remove the "removed" marker
+        const updatedBreaksRestore = timetable.breaks.filter(b =>
+          !(b.day === action.day && b.start_time === action.startTime && b.isRemoved)
+        )
+        setTimetable(prev => ({
+          ...prev,
+          breaks: updatedBreaksRestore
+        }))
+        setRedoStack(prev => [...prev, action])
+        setUnsavedChanges(prev => prev - 1)
+        console.log('✅ [UNDO] Default break restored')
+        break
+
+      default:
+        console.warn('⚠️ [UNDO] Unknown action type:', action.type)
+    }
+  }
+
+  const handleRedo = () => {
+    if (redoStack.length === 0) {
+      console.log('⚠️ [REDO] Nothing to redo')
+      return
+    }
+
+    const action = redoStack[redoStack.length - 1]
+    console.log('↪️ [REDO] Re-applying action:', action.type)
+
+    // Remove from redo stack
+    setRedoStack(prev => prev.slice(0, -1))
+
+    // Re-apply action
+    switch (action.type) {
+      case 'move_slot':
+        const updatedTheorySlots = timetable.theory_slots.map(s =>
+          s._id === action.slotId
+            ? { ...s, day: action.newDay, start_time: action.newStartTime, end_time: action.newEndTime }
+            : s
+        )
+        setTimetable(prev => ({
+          ...prev,
+          theory_slots: updatedTheorySlots
+        }))
+        setUndoStack(prev => [...prev, action])
+        setUnsavedChanges(prev => prev + 1)
+        console.log('✅ [REDO] Slot moved to', `${action.newDay} ${action.newStartTime}`)
+        break
+
+      case 'move_break':
+        const updatedBreaksMove = timetable.breaks.map(b =>
+          b.day === action.oldDay && b.start_time === action.oldStartTime
+            ? { ...b, day: action.newDay, start_time: action.newStartTime, end_time: action.newEndTime }
+            : b
+        )
+        setTimetable(prev => ({
+          ...prev,
+          breaks: updatedBreaksMove
+        }))
+        setUndoStack(prev => [...prev, action])
+        setUnsavedChanges(prev => prev + 1)
+        console.log('✅ [REDO] Break moved to', `${action.newDay} ${action.newStartTime}`)
+        break
+
+      case 'add_break':
+        const newBreak = {
+          day: action.day,
+          start_time: action.startTime,
+          end_time: action.endTime,
+          label: action.label
+        }
+        setTimetable(prev => ({
+          ...prev,
+          breaks: [...(prev.breaks || []), newBreak]
+        }))
+        setUndoStack(prev => [...prev, action])
+        setUnsavedChanges(prev => prev + 1)
+        console.log('✅ [REDO] Break re-added')
+        break
+
+      case 'delete_break':
+        const updatedBreaksRemove = timetable.breaks.filter(b =>
+          !(b.day === action.day && b.start_time === action.startTime)
+        )
+        setTimetable(prev => ({
+          ...prev,
+          breaks: updatedBreaksRemove
+        }))
+        setUndoStack(prev => [...prev, action])
+        setUnsavedChanges(prev => prev + 1)
+        console.log('✅ [REDO] Break deleted again')
+        break
+
+      case 'remove_default_break':
+        const removedMarker = {
+          day: action.day,
+          start_time: action.startTime,
+          end_time: action.endTime,
+          label: 'Removed',
+          isDefault: true,
+          isRemoved: true
+        }
+        setTimetable(prev => ({
+          ...prev,
+          breaks: [...(prev.breaks || []), removedMarker]
+        }))
+        setUndoStack(prev => [...prev, action])
+        setUnsavedChanges(prev => prev + 1)
+        console.log('✅ [REDO] Default break removed again')
+        break
+
+      default:
+        console.warn('⚠️ [REDO] Unknown action type:', action.type)
+    }
+  }
+
   // Build grid data
   const buildDayGrid = (day) => {
     const cells = Array(timeSlots.length).fill(null).map(() => ({ type: 'empty' }))
 
-    // Add default breaks (if no custom breaks exist for that slot)
+    // Add default breaks (if no custom breaks exist for that slot AND not marked as removed)
     const customBreaks = timetable.breaks || []
     
     defaultBreakTimes.forEach((breakTime) => {
@@ -643,10 +1059,16 @@ function TimetableEditor() {
       
       // Check if there's already a custom break at this time
       const hasCustomBreak = customBreaks.some(b => 
-        b.day === day && b.start_time === breakTime.start
+        b.day === day && b.start_time === breakTime.start && !b.isRemoved
+      )
+
+      // Check if this default break was explicitly removed by the user
+      const isRemovedByUser = customBreaks.some(b => 
+        b.day === day && b.start_time === breakTime.start && b.isDefault && b.isRemoved
       )
       
-      if (!hasCustomBreak) {
+      // Only show default break if: not replaced by custom AND not removed by user
+      if (!hasCustomBreak && !isRemovedByUser) {
         cells[startIndex] = {
           type: 'break',
           span,
@@ -665,9 +1087,9 @@ function TimetableEditor() {
       }
     })
 
-    // Add custom breaks
+    // Add custom breaks (skip removed markers)
     customBreaks.forEach((breakSlot) => {
-      if (breakSlot.day === day) {
+      if (breakSlot.day === day && !breakSlot.isRemoved) {
         const startIndex = getTimeSlotIndex(breakSlot.start_time)
         const span = getTimeSpan(breakSlot.start_time, breakSlot.end_time)
 
@@ -676,7 +1098,7 @@ function TimetableEditor() {
           span,
           data: {
             ...breakSlot,
-            isDefault: false
+            isDefault: breakSlot.isDefault || false
           }
         }
 
@@ -768,15 +1190,14 @@ function TimetableEditor() {
           </div>
           <div className="slot-details">
             <span className="slot-time">{convertTo12Hour(breakData.start_time)} - {convertTo12Hour(breakData.end_time)}</span>
-            {!breakData.isDefault && (
-              <button 
-                className="delete-break-btn"
-                onClick={() => deleteBreak(breakData.day, breakData.start_time)}
-                title="Delete this break"
-              >
-                🗑️ Delete
-              </button>
-            )}
+            {/* ALL breaks are now deletable - including defaults! */}
+            <button 
+              className="delete-break-btn"
+              onClick={() => deleteBreak(breakData.day, breakData.start_time)}
+              title={breakData.isDefault ? "Remove default break (frees slot for theory)" : "Delete this break"}
+            >
+              🗑️ {breakData.isDefault ? 'Remove' : 'Delete'}
+            </button>
           </div>
         </div>
       )
@@ -886,6 +1307,27 @@ function TimetableEditor() {
             <span className="changes-count">⚠️ {unsavedChanges} unsaved changes</span>
             <button className="btn-save" onClick={saveChanges}>💾 Save All</button>
             <button className="btn-revert" onClick={revertChanges}>↩️ Revert</button>
+          </div>
+        )}
+
+        {timetable && (
+          <div className="undo-redo-controls">
+            <button 
+              className="btn-undo" 
+              onClick={handleUndo}
+              disabled={undoStack.length === 0}
+              title="Undo (Ctrl+Z)"
+            >
+              ↩️ Undo {undoStack.length > 0 && `(${undoStack.length})`}
+            </button>
+            <button 
+              className="btn-redo" 
+              onClick={handleRedo}
+              disabled={redoStack.length === 0}
+              title="Redo (Ctrl+Y)"
+            >
+              ↪️ Redo {redoStack.length > 0 && `(${redoStack.length})`}
+            </button>
           </div>
         )}
       </div>
