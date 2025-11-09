@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import './TimetableGenerator.css'
@@ -16,9 +16,272 @@ function TimetableGenerator() {
     step3: null,
     step4: null,
     step5: null,
-    step6: null
+    step6: null,
+    step7: null
   })
   const navigate = useNavigate()
+
+  // Fetch existing timetables to check which steps were completed
+  useEffect(() => {
+    fetchExistingStepStatus()
+  }, [semType, academicYear])
+
+  const fetchExistingStepStatus = async () => {
+    try {
+      // Fetch all timetables for current semester
+      const response = await axios.get('/api/timetables', {
+        params: {
+          sem_type: semType,
+          academic_year: academicYear
+        }
+      })
+
+      if (response.data.success && response.data.data.length > 0) {
+        // Get the first timetable to check metadata
+        const sampleTimetable = response.data.data[0]
+        const metadata = sampleTimetable.generation_metadata
+
+        console.log('📊 [LOAD STATUS] Found existing timetables:', {
+          count: response.data.data.length,
+          current_step: metadata?.current_step,
+          metadata
+        })
+
+        // Reconstruct step results based on metadata
+        const reconstructedResults = {}
+
+        // Step 1: Load Sections
+        if (metadata?.current_step >= 1) {
+          reconstructedResults.step1 = {
+            success: true,
+            message: `${response.data.data.length} sections loaded`,
+            data: { sections_count: response.data.data.length }
+          }
+        }
+
+        // Step 2: Block Fixed Slots (aggregate from all timetables)
+        if (metadata?.current_step >= 2) {
+          let totalFixedSlots = 0
+          response.data.data.forEach(tt => {
+            const fixedSlots = tt.theory_slots?.filter(slot => slot.is_fixed_slot === true) || []
+            totalFixedSlots += fixedSlots.length
+          })
+          
+          reconstructedResults.step2 = {
+            success: true,
+            message: `${totalFixedSlots} fixed slots added`,
+            data: { fixed_slots_added: totalFixedSlots }
+          }
+        }
+
+        // Step 3: Schedule Labs (aggregate from all timetables)
+        if (metadata?.current_step >= 3) {
+          let totalLabsScheduled = 0
+          let totalLabsExpected = 0
+          
+          // Count scheduled labs
+          response.data.data.forEach(tt => {
+            totalLabsScheduled += tt.lab_slots?.length || 0
+          })
+          
+          console.log('🔍 [STEP 3 STATUS] Scheduled labs:', totalLabsScheduled)
+          
+          // Try to get expected count from metadata
+          response.data.data.forEach(tt => {
+            if (tt.generation_metadata?.step3_summary) {
+              const expected = parseFloat(tt.generation_metadata.step3_summary.lab_sessions_expected || 0)
+              totalLabsExpected += expected
+              console.log(`   Section ${tt.section_name}: ${tt.lab_slots?.length || 0}/${expected} labs`)
+            } else {
+              console.log(`   ⚠️ Section ${tt.section_name}: No step3_summary in metadata`)
+            }
+          })
+          
+          console.log('🔍 [STEP 3 STATUS] Total expected:', totalLabsExpected)
+          
+          // If no expected count in metadata, use scheduled count as expected (assumes 100% success)
+          if (totalLabsExpected === 0) {
+            console.log('⚠️ [STEP 3 STATUS] No expected count found, defaulting to scheduled count')
+            totalLabsExpected = totalLabsScheduled
+          }
+          
+          const labSuccessRate = totalLabsExpected > 0 ? (totalLabsScheduled / totalLabsExpected) * 100 : 100
+          
+          reconstructedResults.step3 = {
+            success: true,
+            message: 'Lab scheduling completed',
+            data: {
+              lab_sessions_scheduled: totalLabsScheduled,
+              lab_sessions_expected: totalLabsExpected,
+              success_rate: labSuccessRate,
+              unresolved_conflicts: 0
+            }
+          }
+        }
+
+        // Step 4: Schedule Theory + Breaks (aggregate from all timetables)
+        if (metadata?.current_step >= 4) {
+          let totalTheoryScheduled = 0
+          
+          response.data.data.forEach(tt => {
+            // Count only non-fixed, non-lab theory slots
+            const theorySlots = tt.theory_slots?.filter(slot => 
+              slot.is_fixed_slot !== true
+            ) || []
+            totalTheoryScheduled += theorySlots.length
+          })
+          
+          reconstructedResults.step4 = {
+            success: true,
+            message: 'Theory scheduling completed',
+            data: {
+              theory_slots_scheduled: totalTheoryScheduled,
+              sections_processed: response.data.data.length
+            }
+          }
+        }
+
+        // Step 5: Assign Classrooms (aggregate from all timetables)
+        // Step 5: Assign Classrooms (reconstruct from actual data)
+        if (metadata?.current_step >= 5) {
+          console.log('🔍 [STEP 5 CHECK] Metadata current_step:', metadata.current_step)
+          console.log('🔍 [STEP 5 CHECK] Number of timetables:', response.data.data.length)
+          
+          let totalSlotsAssigned = 0
+          let totalSlotsUnassigned = 0
+          let totalFixedAssigned = 0
+          
+          response.data.data.forEach(tt => {
+            console.log(`🔍 [STEP 5 CHECK] Section ${tt.section_name}:`, {
+              total_theory_slots: tt.theory_slots?.length || 0,
+              has_classrooms: tt.theory_slots?.filter(s => s.classroom_name).length || 0
+            })
+            
+            // Count theory slots with classrooms assigned
+            const assignedSlots = tt.theory_slots?.filter(slot => 
+              slot.classroom_name && !slot.is_project
+            ) || []
+            
+            // Count fixed slots with classrooms
+            const fixedWithRooms = tt.theory_slots?.filter(slot =>
+              slot.is_fixed_slot && slot.classroom_name
+            ) || []
+            
+            // Count theory slots without classrooms (excluding projects)
+            const unassignedSlots = tt.theory_slots?.filter(slot =>
+              !slot.classroom_name && !slot.is_fixed_slot && !slot.is_project
+            ) || []
+            
+            totalSlotsAssigned += assignedSlots.length
+            totalFixedAssigned += fixedWithRooms.length
+            totalSlotsUnassigned += unassignedSlots.length
+            
+            console.log(`   Section ${tt.section_name}: ${assignedSlots.length} assigned, ${unassignedSlots.length} unassigned`)
+          })
+          
+          console.log('🏫 [STEP 5 STATUS] Total:', {
+            assigned: totalSlotsAssigned,
+            fixed: totalFixedAssigned,
+            unassigned: totalSlotsUnassigned,
+            total: totalSlotsAssigned + totalFixedAssigned
+          })
+          
+          const totalSlots = totalSlotsAssigned + totalFixedAssigned + totalSlotsUnassigned
+          const totalAssigned = totalSlotsAssigned + totalFixedAssigned
+          const successRate = totalSlots > 0 ? Math.round((totalAssigned / totalSlots) * 100) : 0
+          
+          reconstructedResults.step5 = {
+            success: true,
+            message: 'Classroom assignment completed',
+            data: {
+              fixed_slots_assigned: totalFixedAssigned,
+              fixed_slots_unassigned: 0, // We counted already assigned fixed slots
+              regular_slots_assigned: totalSlotsAssigned,
+              regular_slots_unassigned: totalSlotsUnassigned,
+              total_unassigned: totalSlotsUnassigned,
+              success_rate: successRate,
+              projects_skipped: 0
+            }
+          }
+          
+          console.log('✅ [STEP 5 RESULT] Created step5 result:', reconstructedResults.step5)
+        } else {
+          console.log('❌ [STEP 5 CHECK] Not reconstructing - current_step:', metadata?.current_step)
+        }
+
+        // Step 6: Assign Teachers (aggregate from all timetables)
+        if (metadata?.current_step >= 6) {
+          let totalBatches = 0
+          let batchesWithTwoTeachers = 0
+          let batchesWithOneTeacher = 0
+          let batchesWithNoTeachers = 0
+          
+          response.data.data.forEach(tt => {
+            const labSlots = tt.lab_slots || []
+            labSlots.forEach(slot => {
+              const batches = slot.batches || []
+              batches.forEach(batch => {
+                totalBatches++
+                if (batch.teacher1_id && batch.teacher2_id) {
+                  batchesWithTwoTeachers++
+                } else if (batch.teacher1_id || batch.teacher2_id) {
+                  batchesWithOneTeacher++
+                } else {
+                  batchesWithNoTeachers++
+                }
+              })
+            })
+          })
+          
+          const successRate = totalBatches > 0 
+            ? ((batchesWithTwoTeachers + batchesWithOneTeacher) / totalBatches * 100).toFixed(2) 
+            : 0
+          
+          reconstructedResults.step6 = {
+            success: true,
+            message: 'Teacher assignment completed',
+            data: {
+              sections_processed: response.data.data.length,
+              total_batches: totalBatches,
+              batches_with_two_teachers: batchesWithTwoTeachers,
+              batches_with_one_teacher: batchesWithOneTeacher,
+              batches_with_no_teachers: batchesWithNoTeachers,
+              success_rate: successRate
+            }
+          }
+          
+          console.log('✅ [STEP 6 RESULT] Created step6 result:', reconstructedResults.step6)
+        }
+
+        // Step 7: Validate
+        if (metadata?.current_step >= 7 && metadata.step7_summary) {
+          reconstructedResults.step7 = {
+            success: true,
+            message: 'Validation completed',
+            data: metadata.step7_summary
+          }
+        }
+
+        setStepResults(reconstructedResults)
+        console.log('✅ [LOAD STATUS] Step results restored:', reconstructedResults)
+      } else {
+        // No timetables exist - reset step results
+        setStepResults({
+          step1: null,
+          step2: null,
+          step3: null,
+          step4: null,
+          step5: null,
+          step6: null,
+          step7: null
+        })
+        console.log('ℹ️ [LOAD STATUS] No existing timetables found')
+      }
+    } catch (err) {
+      console.error('❌ [LOAD STATUS] Error fetching step status:', err)
+      // Don't show error to user - just means no timetables exist yet
+    }
+  }
 
   const handleStepExecution = async (stepNumber, stepName) => {
     if (!confirm(`⚠️ WARNING: This will clear existing timetables and execute ${stepName}.\n\nAre you sure you want to continue?`)) {
@@ -29,6 +292,17 @@ function TimetableGenerator() {
     setCurrentStep(stepNumber)
     setError('')
     setResult(null)
+    
+    // Clear future steps when running a step
+    setStepResults(prev => {
+      const newResults = { ...prev }
+      // Clear all steps after the current one
+      for (let i = stepNumber + 1; i <= 7; i++) {
+        delete newResults[`step${i}`]
+      }
+      console.log(`🧹 [STEP ${stepNumber}] Cleared future steps ${stepNumber + 1} to 7`)
+      return newResults
+    })
 
     try {
       const response = await axios.post(`/api/timetables/step${stepNumber}`, {
@@ -83,16 +357,64 @@ function TimetableGenerator() {
           const data = response.data.data
           const sections = data.sections_processed || 0
           const slotsScheduled = data.theory_slots_scheduled || 0
+          const totalFound = data.total_subjects_found || 0
+          const totalToSchedule = data.subjects_to_schedule_step4 || 0
+          const fixedSlots = data.subjects_in_fixed_slots || 0
+          const successRate = data.success_rate || 0
           
           let alertMessage = `✅ STEP 4 COMPLETED: Theory Scheduling Report\n\n`
-          alertMessage += `📊 SUMMARY:\n`
+          alertMessage += `📊 OVERALL SUMMARY:\n`
           alertMessage += `   Sections Processed: ${sections}\n`
-          alertMessage += `   Theory Slots Scheduled: ${slotsScheduled}\n\n`
-          alertMessage += `💡 View the Timetable Viewer to see detailed scheduling statistics per section:\n`
-          alertMessage += `   • Subjects found vs scheduled\n`
-          alertMessage += `   • Success rates by category (ISE, Other Dept, Projects)\n`
-          alertMessage += `   • Visual timetable grid\n\n`
+          alertMessage += `   Total Subjects Found: ${totalFound}\n`
+          alertMessage += `   Already in Fixed Slots: ${fixedSlots}\n`
+          alertMessage += `   Subjects to Schedule: ${totalToSchedule}\n`
+          alertMessage += `   Slots Scheduled: ${slotsScheduled}/${totalToSchedule}\n`
+          alertMessage += `   Success Rate: ${successRate.toFixed(2)}%\n\n`
+          
+          // Category breakdown if available
+          if (data.regular_ise_found !== undefined) {
+            alertMessage += `📚 BREAKDOWN BY CATEGORY:\n`
+            alertMessage += `   ISE Subjects: ${data.regular_ise_scheduled || 0}/${data.regular_ise_found || 0}\n`
+            alertMessage += `   Other Dept: ${data.other_dept_scheduled || 0}/${data.other_dept_found || 0}\n`
+            alertMessage += `   Projects: ${data.projects_scheduled || 0}/${data.projects_found || 0}\n\n`
+          }
+          
+          if (slotsScheduled < totalToSchedule) {
+            alertMessage += `⚠️ NOTICE:\n`
+            alertMessage += `   ${totalToSchedule - slotsScheduled} subject(s) could not be scheduled\n`
+            alertMessage += `   Check the detailed report in Timetable Viewer\n\n`
+          }
+          
+          alertMessage += `💡 View detailed per-section statistics in Timetable Viewer!\n`
           alertMessage += `📅 Click "View Timetables" button to see the results!`
+          
+          alert(alertMessage)
+        }
+        // Special handling for Step 5 - show classroom assignment report
+        else if (stepNumber === 5 && response.data.data) {
+          const data = response.data.data
+          const fixedTotal = data.fixed_slots_assigned + data.fixed_slots_unassigned
+          const regularTotal = data.regular_slots_assigned + data.regular_slots_unassigned
+          const fixedRate = fixedTotal > 0 ? ((data.fixed_slots_assigned / fixedTotal) * 100).toFixed(1) : '0.0'
+          const regularRate = regularTotal > 0 ? ((data.regular_slots_assigned / regularTotal) * 100).toFixed(1) : '0.0'
+          
+          let alertMessage = `✅ STEP 5 COMPLETED: Classroom Assignment Report\n\n`
+          alertMessage += `📌 FIXED SLOTS (OEC/PEC):\n`
+          alertMessage += `   Assigned: ${data.fixed_slots_assigned}/${fixedTotal} (${fixedRate}%)\n`
+          if (data.fixed_slots_unassigned > 0) {
+            alertMessage += `   ⚠️ Unassigned: ${data.fixed_slots_unassigned}\n`
+          }
+          alertMessage += `\n📚 REGULAR SLOTS (ISE/Other Dept):\n`
+          alertMessage += `   Assigned: ${data.regular_slots_assigned}/${regularTotal} (${regularRate}%)\n`
+          if (data.regular_slots_unassigned > 0) {
+            alertMessage += `   ⚠️ Unassigned: ${data.regular_slots_unassigned}\n`
+          }
+          if (data.projects_skipped > 0) {
+            alertMessage += `\n⏭️ PROJECTS SKIPPED: ${data.projects_skipped} (no classroom needed)\n`
+          }
+          alertMessage += `\n🎯 OVERALL SUCCESS: ${data.success_rate}%\n`
+          alertMessage += `   Total Assigned: ${data.total_assigned}\n`
+          alertMessage += `   Total Unassigned: ${data.total_unassigned}\n`
           
           alert(alertMessage)
         }
@@ -155,6 +477,16 @@ function TimetableGenerator() {
       if (response.data.success) {
         alert(`Deleted ${response.data.deletedCount} timetables`)
         setResult(null)
+        // Clear step results after deletion
+        setStepResults({
+          step1: null,
+          step2: null,
+          step3: null,
+          step4: null,
+          step5: null,
+          step6: null,
+          step7: null
+        })
       }
     } catch (err) {
       console.error('Error clearing timetables:', err)
@@ -317,19 +649,33 @@ function TimetableGenerator() {
           <div className="step-card">
             <div className="step-header">
               <span className="step-number">5</span>
-              <h4>Assign Lab Teachers</h4>
+              <h4>Assign Classrooms</h4>
             </div>
-            <p>Dynamically assign 2 or 1 teachers per lab</p>
+            <p>Assign theory classrooms (fixed slots first, then regular)</p>
             <button
               className="step-btn"
-              onClick={() => handleStepExecution(5, 'Step 5: Assign Teachers')}
+              onClick={() => handleStepExecution(5, 'Step 5: Assign Classrooms')}
               disabled={generating}
             >
               {generating && currentStep === 5 ? '⏳ Running...' : '▶️ Run Step 5'}
             </button>
             {stepResults.step5 && (
               <div className="step-result">
-                ✅ Teachers assigned (placeholder)
+                ✅ Classrooms Assigned ({stepResults.step5.data?.success_rate}% success)
+                <br />
+                <small style={{ fontSize: '0.85em', color: '#666' }}>
+                  📌 Fixed: {stepResults.step5.data?.fixed_slots_assigned}/{stepResults.step5.data?.fixed_slots_assigned + stepResults.step5.data?.fixed_slots_unassigned || 0}
+                  {' | '}
+                  📚 Regular: {stepResults.step5.data?.regular_slots_assigned}/{stepResults.step5.data?.regular_slots_assigned + stepResults.step5.data?.regular_slots_unassigned || 0}
+                  {stepResults.step5.data?.projects_skipped > 0 && (
+                    <span> | ⏭️ Projects: {stepResults.step5.data.projects_skipped}</span>
+                  )}
+                </small>
+                {(stepResults.step5.data?.fixed_slots_unassigned > 0 || stepResults.step5.data?.regular_slots_unassigned > 0) && (
+                  <div style={{ color: '#ff9800', marginTop: '4px', fontSize: '0.9em' }}>
+                    ⚠️ {stepResults.step5.data.total_unassigned} slot(s) unassigned
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -337,17 +683,63 @@ function TimetableGenerator() {
           <div className="step-card">
             <div className="step-header">
               <span className="step-number">6</span>
-              <h4>Validate & Finalize</h4>
+              <h4>Assign Lab Teachers</h4>
             </div>
-            <p>Check conflicts and mark as complete</p>
+            <p>Dynamically assign 2 or 1 teachers per lab</p>
             <button
               className="step-btn"
-              onClick={() => handleStepExecution(6, 'Step 6: Validate')}
+              onClick={() => handleStepExecution(6, 'Step 6: Assign Teachers')}
               disabled={generating}
             >
               {generating && currentStep === 6 ? '⏳ Running...' : '▶️ Run Step 6'}
             </button>
             {stepResults.step6 && (
+              <div className="step-result">
+                <div className="result-header">✅ Teacher Assignment Complete</div>
+                {stepResults.step6.data && (
+                  <div className="result-details">
+                    <div className="result-item">
+                      <span className="label">Total Batches:</span>
+                      <span className="value">{stepResults.step6.data.total_batches}</span>
+                    </div>
+                    <div className="result-item success">
+                      <span className="label">👥 With 2 Teachers:</span>
+                      <span className="value">{stepResults.step6.data.batches_with_two_teachers}</span>
+                    </div>
+                    <div className="result-item warning">
+                      <span className="label">👤 With 1 Teacher:</span>
+                      <span className="value">{stepResults.step6.data.batches_with_one_teacher}</span>
+                    </div>
+                    {stepResults.step6.data.batches_with_no_teachers > 0 && (
+                      <div className="result-item error">
+                        <span className="label">❌ With 0 Teachers:</span>
+                        <span className="value">{stepResults.step6.data.batches_with_no_teachers}</span>
+                      </div>
+                    )}
+                    <div className="result-item">
+                      <span className="label">Success Rate:</span>
+                      <span className="value">{stepResults.step6.data.success_rate}%</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="step-card">
+            <div className="step-header">
+              <span className="step-number">7</span>
+              <h4>Validate & Finalize</h4>
+            </div>
+            <p>Check conflicts and mark as complete</p>
+            <button
+              className="step-btn"
+              onClick={() => handleStepExecution(7, 'Step 7: Validate')}
+              disabled={generating}
+            >
+              {generating && currentStep === 7 ? '⏳ Running...' : '▶️ Run Step 7'}
+            </button>
+            {stepResults.step7 && (
               <div className="step-result">
                 ✅ Validation complete
               </div>
@@ -457,9 +849,9 @@ function TimetableGenerator() {
           <li><strong>Step 2:</strong> Block fixed slots (OEC/PEC for Semester 7)</li>
           <li><strong>Step 3:</strong> Schedule labs using batch rotation</li>
           <li><strong>Step 4:</strong> Schedule theory subjects with breaks (11:00-11:30 AM, 1:30-2:00 PM)</li>
-          <li><strong>Step 5:</strong> Assign teachers to labs dynamically</li>
-          <li><strong>Step 6:</strong> Validate constraints (no conflicts)</li>
-          <li><strong>Step 7:</strong> Save timetables to database</li>
+          <li><strong>Step 5:</strong> Assign classrooms to theory slots (fixed first, then regular)</li>
+          <li><strong>Step 6:</strong> Assign teachers to labs dynamically</li>
+          <li><strong>Step 7:</strong> Validate constraints and finalize</li>
         </ol>
       </div>
     </div>

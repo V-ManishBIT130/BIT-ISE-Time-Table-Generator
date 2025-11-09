@@ -541,13 +541,27 @@ export async function scheduleLabs(semType, academicYear) {
     for (const ttId in timetableData) {
       const tt = timetableData[ttId]
       
+      // Calculate step summary for this timetable
+      const labs = await SyllabusLabs.find({
+        lab_sem: tt.sem,
+        lab_sem_type: semType
+      }).lean()
+      
+      const step3Summary = {
+        lab_sessions_scheduled: tt.lab_slots.length,
+        lab_sessions_expected: labs.length,
+        batches_scheduled: tt.lab_slots.reduce((sum, slot) => sum + (slot.batches?.length || 0), 0),
+        success_rate: labs.length > 0 ? ((tt.lab_slots.length / labs.length) * 100).toFixed(2) : '0.00'
+      }
+      
       await Timetable.updateOne(
         { _id: tt._id },
         {
           $set: {
             lab_slots: tt.lab_slots,
             'generation_metadata.current_step': 3,
-            'generation_metadata.steps_completed': ['load_sections', 'block_fixed_slots', 'schedule_labs']
+            'generation_metadata.steps_completed': ['load_sections', 'block_fixed_slots', 'schedule_labs'],
+            'generation_metadata.step3_summary': step3Summary
           }
         }
       )

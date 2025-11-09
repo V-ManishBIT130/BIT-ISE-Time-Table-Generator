@@ -133,6 +133,10 @@ const TimetableSchema = new mongoose.Schema(
       is_fixed_slot: {
         type: Boolean,
         default: false
+      },
+      is_project: {
+        type: Boolean,
+        default: false  // true for projects (Mini/Major) - no classroom needed
       }
     }],
     
