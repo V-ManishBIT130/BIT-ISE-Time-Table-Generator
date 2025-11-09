@@ -3,10 +3,11 @@ import Timetable from '../models/timetable_model.js'
 import { generateTimetables } from '../algorithms/timetable_generator.js'
 import { loadSectionsAndInitialize } from '../algorithms/step1_load_sections.js'
 import { blockFixedSlots } from '../algorithms/step2_fixed_slots.js'
-import { scheduleLabs } from '../algorithms/step3_schedule_labs_v2.js' // Using refactored v2
+import { scheduleLabs } from '../algorithms/step3_schedule_labs_v2.js'
 import { scheduleTheory } from '../algorithms/step4_schedule_theory_breaks.js'
-import { assignLabTeachers } from '../algorithms/step5_assign_teachers.js'
-import { validateAndFinalize } from '../algorithms/step6_validate.js'
+import { assignClassrooms } from '../algorithms/step5_assign_classrooms.js'
+import { assignLabTeachers } from '../algorithms/step6_assign_teachers.js'
+import { validateAndFinalize } from '../algorithms/step7_validate.js'
 
 const router = express.Router()
 
@@ -143,6 +144,85 @@ router.get('/check-teacher-conflict', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to check teacher conflict',
+      error: error.message
+    })
+  }
+})
+
+/**
+ * GET /api/timetables/available-rooms
+ * Get available classrooms for a specific day/time
+ * IMPORTANT: This route MUST come BEFORE /:section_id route to avoid path conflicts
+ * Query params:
+ * - day: Monday, Tuesday, etc.
+ * - start_time: 10:00 (24-hour format)
+ * - sem_type: odd/even
+ * - academic_year: 2024-2025
+ * - exclude_timetable_id: (optional) Exclude current timetable's slots
+ */
+router.get('/available-rooms', async (req, res) => {
+  try {
+    const { day, start_time, sem_type, academic_year, exclude_timetable_id } = req.query
+    
+    if (!day || !start_time || !sem_type || !academic_year) {
+      return res.status(400).json({
+        success: false,
+        message: 'day, start_time, sem_type, and academic_year are required'
+      })
+    }
+    
+    console.log('🔍 [AVAILABLE ROOMS] Query:', { day, start_time, sem_type, academic_year })
+    
+    // Import Classroom model
+    const Classroom = (await import('../models/dept_class_model.js')).default
+    
+    // Get all theory classrooms
+    const allClassrooms = await Classroom.find({ room_type: 'theory' }).lean()
+    console.log(`   📋 Total classrooms: ${allClassrooms.length}`)
+    
+    // Get all timetables for this semester
+    const filter = { sem_type, academic_year }
+    if (exclude_timetable_id) {
+      filter._id = { $ne: exclude_timetable_id }
+    }
+    
+    const timetables = await Timetable.find(filter).lean()
+    console.log(`   📚 Checking ${timetables.length} timetables`)
+    
+    // Build set of occupied rooms at this day/time
+    const occupiedRooms = new Set()
+    
+    for (const tt of timetables) {
+      for (const slot of tt.theory_slots || []) {
+        if (slot.day === day && slot.start_time === start_time && slot.classroom_name) {
+          occupiedRooms.add(slot.classroom_name)
+          console.log(`   ❌ Room ${slot.classroom_name} occupied by ${tt.section_name} (${slot.subject_shortform})`)
+        }
+      }
+    }
+    
+    // Filter available rooms
+    const availableRooms = allClassrooms.filter(room => !occupiedRooms.has(room.room_no))
+    
+    console.log(`   ✅ Available rooms: ${availableRooms.length}/${allClassrooms.length}`)
+    console.log(`   📍 Rooms: ${availableRooms.map(r => r.room_no).join(', ')}`)
+    
+    res.json({
+      success: true,
+      available_rooms: availableRooms.map(r => ({
+        _id: r._id,
+        classroom_name: r.room_no,
+        room_type: r.room_type
+      })),
+      total_rooms: allClassrooms.length,
+      occupied_rooms: occupiedRooms.size
+    })
+    
+  } catch (error) {
+    console.error('❌ [AVAILABLE ROOMS ERROR]', error)
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch available rooms',
       error: error.message
     })
   }
@@ -374,7 +454,7 @@ router.post('/step4', async (req, res) => {
 
 /**
  * POST /api/timetables/step5
- * Step 5: Assign teachers to labs
+ * Step 5: Assign classrooms to theory slots (NEW - was Step 6 before)
  * Body: { sem_type: 'odd' | 'even', academic_year: '2024-2025' }
  */
 router.post('/step5', async (req, res) => {
@@ -388,7 +468,7 @@ router.post('/step5', async (req, res) => {
       })
     }
     
-    const result = await assignLabTeachers(sem_type, academic_year)
+    const result = await assignClassrooms(sem_type, academic_year)
     res.json(result)
     
   } catch (error) {
@@ -403,10 +483,39 @@ router.post('/step5', async (req, res) => {
 
 /**
  * POST /api/timetables/step6
- * Step 6: Validate and finalize
+ * Step 6: Assign teachers to labs (MOVED from Step 5)
  * Body: { sem_type: 'odd' | 'even', academic_year: '2024-2025' }
  */
 router.post('/step6', async (req, res) => {
+  try {
+    const { sem_type, academic_year } = req.body
+    
+    if (!sem_type || !academic_year) {
+      return res.status(400).json({
+        success: false,
+        message: 'sem_type and academic_year are required'
+      })
+    }
+    
+    const result = await assignLabTeachers(sem_type, academic_year)
+    res.json(result)
+    
+  } catch (error) {
+    console.error('Error in Step 6:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Failed to execute Step 6',
+      error: error.message
+    })
+  }
+})
+
+/**
+ * POST /api/timetables/step7
+ * Step 7: Validate and finalize (MOVED from Step 6)
+ * Body: { sem_type: 'odd' | 'even', academic_year: '2024-2025' }
+ */
+router.post('/step7', async (req, res) => {
   try {
     const { sem_type, academic_year } = req.body
     
@@ -421,10 +530,143 @@ router.post('/step6', async (req, res) => {
     res.json(result)
     
   } catch (error) {
-    console.error('Error in Step 6:', error)
+    console.error('Error in Step 7:', error)
     res.status(500).json({
       success: false,
-      message: 'Failed to execute Step 6',
+      message: 'Failed to execute Step 7',
+      error: error.message
+    })
+  }
+})
+
+/**
+ * PATCH /api/timetables/:timetableId/theory-slot/:slotId/classroom
+ * Update classroom assignment for a specific theory slot
+ * Body: { classroom_id, classroom_name }
+ */
+router.patch('/:timetableId/theory-slot/:slotId/classroom', async (req, res) => {
+  try {
+    const { timetableId, slotId } = req.params
+    const { classroom_id, classroom_name, current_day, current_start_time } = req.body
+    
+    if (!classroom_id || !classroom_name) {
+      return res.status(400).json({
+        success: false,
+        message: 'classroom_id and classroom_name are required'
+      })
+    }
+    
+    console.log('🏫 [UPDATE CLASSROOM] Request:', { 
+      timetableId, 
+      slotId, 
+      classroom_name,
+      current_day,
+      current_start_time 
+    })
+    
+    // Find the timetable
+    const timetable = await Timetable.findById(timetableId)
+    
+    if (!timetable) {
+      return res.status(404).json({
+        success: false,
+        message: 'Timetable not found'
+      })
+    }
+    
+    // Find the slot
+    const slot = timetable.theory_slots.find(s => s._id.toString() === slotId)
+    
+    if (!slot) {
+      return res.status(404).json({
+        success: false,
+        message: 'Theory slot not found'
+      })
+    }
+    
+    // Use current position from frontend if provided (handles unsaved moves)
+    // Otherwise fall back to database position
+    const checkDay = current_day || slot.day
+    const checkStartTime = current_start_time || slot.start_time
+    
+    console.log('🔍 [CONFLICT CHECK] Checking room availability at:', { 
+      day: checkDay, 
+      time: checkStartTime,
+      room: classroom_name
+    })
+    
+    // Check if the room is available at this day/time (conflict detection)
+    const conflictingTimetables = await Timetable.find({
+      _id: { $ne: timetableId },
+      sem_type: timetable.sem_type,
+      academic_year: timetable.academic_year,
+      'theory_slots': {
+        $elemMatch: {
+          day: checkDay,
+          start_time: checkStartTime,
+          classroom_name: classroom_name
+        }
+      }
+    }).lean()
+    
+    if (conflictingTimetables.length > 0) {
+      const conflict = conflictingTimetables[0]
+      const conflictSlot = conflict.theory_slots.find(s => 
+        s.day === checkDay && 
+        s.start_time === checkStartTime && 
+        s.classroom_name === classroom_name
+      )
+      
+      console.log('   ❌ Conflict detected:', { 
+        section: conflict.section_name, 
+        subject: conflictSlot?.subject_shortform 
+      })
+      
+      return res.status(409).json({
+        success: false,
+        message: `Classroom ${classroom_name} is already occupied by ${conflict.section_name} (${conflictSlot?.subject_shortform}) at ${checkDay} ${checkStartTime}`
+      })
+    }
+    
+    console.log('   ✅ No conflicts - room is available!')
+    
+    // Update slot position if current position was provided (unsaved move)
+    if (current_day && current_start_time) {
+      console.log('📍 [UPDATE POSITION] Updating slot position to match frontend:', {
+        oldDay: slot.day,
+        oldTime: slot.start_time,
+        newDay: current_day,
+        newTime: current_start_time
+      })
+      slot.day = current_day
+      slot.start_time = current_start_time
+      // Update end time based on duration
+      const duration = slot.duration_hours || 1
+      const [h, m] = current_start_time.split(':').map(Number)
+      const totalMinutes = h * 60 + m + (duration * 60)
+      const newHours = Math.floor(totalMinutes / 60)
+      const newMinutes = totalMinutes % 60
+      slot.end_time = `${newHours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`
+    }
+    
+    // Update the classroom
+    slot.classroom_id = classroom_id
+    slot.classroom_name = classroom_name
+    
+    await timetable.save()
+    
+    console.log('   ✅ Classroom updated successfully')
+    
+    res.json({
+      success: true,
+      message: 'Classroom assignment updated successfully'
+    })
+    
+  } catch (error) {
+    console.error('❌ [UPDATE CLASSROOM ERROR]', error)
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update classroom',
       error: error.message
     })
   }

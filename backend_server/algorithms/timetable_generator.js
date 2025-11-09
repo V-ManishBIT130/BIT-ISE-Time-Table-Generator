@@ -38,8 +38,8 @@ import { loadSectionsAndInitialize } from './step1_load_sections.js'
 import { blockFixedSlots } from './step2_fixed_slots.js'
 import { scheduleLabs } from './step3_schedule_labs_v2.js'
 import { scheduleTheory } from './step4_schedule_theory_breaks.js'
-import { assignLabTeachers } from './step5_assign_teachers.js'
-import { assignClassrooms } from './step6_assign_classrooms.js'
+import { assignClassrooms } from './step5_assign_classrooms.js'
+import { assignLabTeachers } from './step6_assign_teachers.js'
 import { validateAndFinalize } from './step7_validate.js'
 
 // Constants
@@ -143,13 +143,13 @@ export async function generateTimetables(semType, academicYear) {
     console.log(`\n📚 Step 4: Scheduling theory subjects...`)
     await scheduleTheory(timetables, sections)
     
-    // Step 5: Assign teachers to labs
-    console.log(`\n👨‍🏫 Step 5: Assigning teachers to labs...`)
-    await assignLabTeachers(timetables, sections)
-    
-    // Step 6: Assign classrooms to theory slots
-    console.log(`\n🏫 Step 6: Assigning classrooms...`)
+    // Step 5: Assign classrooms to theory slots
+    console.log(`\n🏫 Step 5: Assigning classrooms...`)
     await assignClassrooms(semType, academicYear)
+    
+    // Step 6: Assign teachers to labs
+    console.log(`\n👨‍🏫 Step 6: Assigning teachers to labs...`)
+    await assignLabTeachers(semType, academicYear)
     
     // Step 7: Validate constraints
     console.log(`\n✅ Step 7: Validating constraints...`)

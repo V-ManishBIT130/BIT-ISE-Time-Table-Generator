@@ -215,7 +215,12 @@ export async function blockFixedSlots(semType, academicYear) {
           $set: {
             theory_slots: fixedSlots,
             'generation_metadata.current_step': 2,
-            'generation_metadata.steps_completed': ['load_sections', 'block_fixed_slots']
+            'generation_metadata.steps_completed': ['load_sections', 'block_fixed_slots'],
+            'generation_metadata.step2_summary': {
+              sections_processed: timetables.length,
+              fixed_slots_added: totalFixedSlots,
+              sem7_sections: timetables.filter(tt => tt.sem === 7).length
+            }
           }
         }
       )
@@ -228,7 +233,12 @@ export async function blockFixedSlots(semType, academicYear) {
         {
           $set: {
             'generation_metadata.current_step': 2,
-            'generation_metadata.steps_completed': ['load_sections', 'block_fixed_slots']
+            'generation_metadata.steps_completed': ['load_sections', 'block_fixed_slots'],
+            'generation_metadata.step2_summary': {
+              sections_processed: timetables.length,
+              fixed_slots_added: totalFixedSlots,
+              sem7_sections: timetables.filter(tt => tt.sem === 7).length
+            }
           }
         }
       )

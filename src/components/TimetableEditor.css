@@ -25,6 +25,18 @@
   opacity: 0.9;
 }
 
+.editor-header .warning-message {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #78350f;
+  padding: 15px 25px;
+  border-radius: 12px;
+  font-weight: 600;
+  margin: 15px auto;
+  max-width: 800px;
+  box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4);
+  border: 2px solid #fbbf24;
+}
+
 /* ====================================
    Controls Section
    ==================================== */
@@ -690,3 +702,288 @@
 .timetable-grid {
   animation: fadeIn 0.5s ease-out;
 }
+
+/* ====================================
+   Classroom Assignment Features (Step 5)
+   ==================================== */
+
+/* Classroom badge in slot */
+.classroom-badge {
+  display: block;
+  margin-top: 5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Make classroom badge clickable */
+.classroom-badge.clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.classroom-badge.clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.classroom-badge.clickable:active {
+  transform: translateY(0);
+}
+
+.classroom-badge.fixed-classroom {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+.classroom-badge.regular-classroom {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+/* Locked badge for theory slots after step 5 */
+.locked-badge {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+/* Warning badge for slots needing room assignment */
+.warning-badge {
+  display: block;
+  margin-top: 5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #78350f;
+  animation: pulse 2s infinite;
+}
+
+/* Make warning badge clickable */
+.warning-badge.clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  animation: none; /* Remove pulse animation when clickable */
+}
+
+.warning-badge.clickable:hover {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(251, 191, 36, 0.4);
+}
+
+.warning-badge.clickable:active {
+  transform: translateY(0);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* ====================================
+   Room Selection Modal
+   ==================================== */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.modal-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-body p {
+  margin: 10px 0;
+  color: #4a5568;
+}
+
+.modal-body hr {
+  margin: 20px 0;
+  border: none;
+  border-top: 2px solid #e2e8f0;
+}
+
+.modal-body h4 {
+  color: #2d3748;
+  margin-bottom: 15px;
+  font-size: 1.1rem;
+}
+
+.loading-rooms {
+  padding: 30px;
+  text-align: center;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.no-rooms {
+  padding: 30px;
+  text-align: center;
+  color: #f59e0b;
+  font-weight: 600;
+  background: #fef3c7;
+  border-radius: 10px;
+}
+
+.room-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.room-item {
+  padding: 15px;
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.room-item:hover {
+  background: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 100%);
+  border-color: #10b981;
+  transform: translateX(5px);
+  box-shadow: 0 5px 15px rgba(16, 185, 129, 0.2);
+}
+
+.room-item.current {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border-color: #3b82f6;
+}
+
+.room-name {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 1rem;
+}
+
+.room-type {
+  font-size: 0.85rem;
+  color: #718096;
+  padding: 4px 10px;
+  background: white;
+  border-radius: 6px;
+}
+
+.current-badge {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.modal-footer {
+  padding: 15px 20px;
+  background: #f7fafc;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 2px solid #e2e8f0;
+}
+
+.btn-cancel {
+  padding: 10px 20px;
+  background: white;
+  color: #718096;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+}
+

@@ -79,6 +79,10 @@ function TimetableEditor() {
   const [addBreakMode, setAddBreakMode] = useState(false)
   const [undoStack, setUndoStack] = useState([])
   const [redoStack, setRedoStack] = useState([])
+  const [showRoomModal, setShowRoomModal] = useState(false)
+  const [selectedSlotForRoom, setSelectedSlotForRoom] = useState(null)
+  const [availableRooms, setAvailableRooms] = useState([])
+  const [loadingRooms, setLoadingRooms] = useState(false)
 
   // Drag & Drop sensors
   const sensors = useSensors(
@@ -636,11 +640,30 @@ function TimetableEditor() {
       slot: slot.subject_shortform
     })
 
+    // Check if classrooms were assigned (step >= 5)
+    const classroomsAssigned = timetable.generation_metadata?.current_step >= 5
+    const hadClassroom = slot.classroom_id || slot.classroom_name
+
+    if (classroomsAssigned && hadClassroom) {
+      console.log('🗑️ [CLASSROOM RESET] Slot is being moved after Step 5 - clearing classroom assignment:', {
+        oldRoom: slot.classroom_name,
+        slot: slot.subject_shortform
+      })
+    }
+
     try {
-      // Optimistic update
+      // Optimistic update - Reset classroom if step >= 5
       const updatedTheorySlots = timetable.theory_slots.map(s => 
         s._id === slot._id
-          ? { ...s, day: newDay, start_time: newStartTime, end_time: newEndTime }
+          ? { 
+              ...s, 
+              day: newDay, 
+              start_time: newStartTime, 
+              end_time: newEndTime,
+              // Clear classroom assignment if step >= 5
+              classroom_id: classroomsAssigned ? null : s.classroom_id,
+              classroom_name: classroomsAssigned ? null : s.classroom_name
+            }
           : s
       )
 
@@ -665,15 +688,22 @@ function TimetableEditor() {
         oldDay: slot.day,
         oldStartTime: slot.start_time,
         oldEndTime: slot.end_time,
+        oldClassroomId: slot.classroom_id,
+        oldClassroomName: slot.classroom_name,
         newDay: newDay,
         newStartTime: newStartTime,
-        newEndTime: newEndTime
+        newEndTime: newEndTime,
+        classroomWasReset: classroomsAssigned && hadClassroom
       })
 
       setUnsavedChanges(prev => prev + 1)
       setConflicts([])
 
       console.log('✅ [UPDATE SUCCESS] Slot position updated in state')
+      
+      if (classroomsAssigned && hadClassroom) {
+        console.log('⚠️ [USER REMINDER] Classroom was cleared - admin needs to reassign room')
+      }
 
     } catch (err) {
       console.error('❌ [UPDATE ERROR] Failed to update slot:', err)
@@ -853,6 +883,141 @@ function TimetableEditor() {
     console.log('✅ [ADD BREAK SUCCESS] Break added to', `${day} ${convertTo12Hour(startTime)}`)
   }
 
+  // Fetch available rooms for a slot
+  const fetchAvailableRooms = async (day, startTime) => {
+    console.log('🔍 [FETCH ROOMS] Getting available classrooms for', { day, startTime })
+    
+    setLoadingRooms(true)
+    try {
+      const response = await axios.get('/api/timetables/available-rooms', {
+        params: {
+          day,
+          start_time: startTime,
+          sem_type: semType,
+          academic_year: timetable.academic_year,
+          exclude_timetable_id: timetable._id
+        }
+      })
+
+      if (response.data.success) {
+        console.log('✅ [ROOMS FETCHED]', response.data.available_rooms.length, 'rooms available')
+        setAvailableRooms(response.data.available_rooms)
+      } else {
+        console.error('❌ [FETCH FAILED]', response.data.message)
+        setAvailableRooms([])
+      }
+    } catch (err) {
+      console.error('❌ [FETCH ERROR]', err)
+      setError('Failed to fetch available rooms')
+      setAvailableRooms([])
+    } finally {
+      setLoadingRooms(false)
+    }
+  }
+
+  // Open room selection modal
+  const handleChangeRoom = async (slot) => {
+    console.log('🏫 [CHANGE ROOM] Opening room selector for', slot.subject_shortform)
+    
+    // Find the CURRENT slot position from state (in case it was just moved)
+    const currentSlot = timetable.theory_slots.find(s => s._id === slot._id)
+    
+    if (!currentSlot) {
+      console.error('❌ [CHANGE ROOM ERROR] Slot not found in current timetable')
+      setError('Slot not found')
+      return
+    }
+    
+    console.log('📍 [CURRENT POSITION]', {
+      day: currentSlot.day,
+      time: currentSlot.start_time,
+      subject: currentSlot.subject_shortform
+    })
+    
+    setSelectedSlotForRoom(currentSlot)
+    setShowRoomModal(true)
+    
+    // Fetch available rooms for this slot's CURRENT time
+    await fetchAvailableRooms(currentSlot.day, currentSlot.start_time)
+  }
+
+  // Update classroom assignment
+  const handleUpdateClassroom = async (newRoomId, newRoomName) => {
+    if (!selectedSlotForRoom) return
+
+    console.log('💾 [UPDATE ROOM] Assigning', newRoomName, 'to', selectedSlotForRoom.subject_shortform)
+
+    try {
+      const response = await axios.patch(
+        `/api/timetables/${timetable._id}/theory-slot/${selectedSlotForRoom._id}/classroom`,
+        {
+          classroom_id: newRoomId,
+          classroom_name: newRoomName,
+          // Send current position from frontend (in case slot was moved but not saved yet)
+          current_day: selectedSlotForRoom.day,
+          current_start_time: selectedSlotForRoom.start_time
+        }
+      )
+
+      if (response.data.success) {
+        console.log('✅ [ROOM UPDATED] Classroom assigned successfully')
+        
+        // Store old values for undo
+        const oldRoomId = selectedSlotForRoom.classroom_id
+        const oldRoomName = selectedSlotForRoom.classroom_name
+
+        // Update local state
+        const updatedTheorySlots = timetable.theory_slots.map(s =>
+          s._id === selectedSlotForRoom._id
+            ? { ...s, classroom_id: newRoomId, classroom_name: newRoomName }
+            : s
+        )
+
+        setTimetable(prev => ({
+          ...prev,
+          theory_slots: updatedTheorySlots
+        }))
+
+        // Add to undo stack
+        pushToUndoStack({
+          type: 'change_classroom',
+          slotId: selectedSlotForRoom._id,
+          oldRoomId,
+          oldRoomName,
+          newRoomId,
+          newRoomName
+        })
+
+        setUnsavedChanges(prev => prev + 1)
+        setShowRoomModal(false)
+        setSelectedSlotForRoom(null)
+      } else {
+        console.error('❌ [UPDATE FAILED]', response.data.message)
+        setError(response.data.message || 'Failed to update classroom')
+      }
+    } catch (err) {
+      console.error('❌ [UPDATE ERROR]', err)
+      if (err.response?.status === 409) {
+        const conflictMsg = '⚠️ Conflict: This classroom is already occupied at this time by another section. Please choose a different room.'
+        alert(conflictMsg)
+        setError(conflictMsg)
+        // Re-fetch available rooms to show updated list
+        await fetchAvailableRooms(selectedSlotForRoom.day, selectedSlotForRoom.start_time)
+      } else {
+        const errorMsg = 'Failed to update classroom: ' + (err.response?.data?.message || err.message)
+        alert('❌ ' + errorMsg)
+        setError(errorMsg)
+      }
+    }
+  }
+
+  // Close room modal
+  const closeRoomModal = () => {
+    setShowRoomModal(false)
+    setSelectedSlotForRoom(null)
+    setAvailableRooms([])
+  }
+
   // Undo/Redo System
   const pushToUndoStack = (action) => {
     console.log('📝 [UNDO STACK] Saving action:', action.type)
@@ -875,10 +1040,18 @@ function TimetableEditor() {
     // Apply undo based on action type
     switch (action.type) {
       case 'move_slot':
-        // Revert slot to original position
+        // Revert slot to original position (and restore classroom if it was reset)
         const updatedTheorySlots = timetable.theory_slots.map(s =>
           s._id === action.slotId
-            ? { ...s, day: action.oldDay, start_time: action.oldStartTime, end_time: action.oldEndTime }
+            ? { 
+                ...s, 
+                day: action.oldDay, 
+                start_time: action.oldStartTime, 
+                end_time: action.oldEndTime,
+                // Restore classroom if it was reset during move
+                classroom_id: action.classroomWasReset ? action.oldClassroomId : s.classroom_id,
+                classroom_name: action.classroomWasReset ? action.oldClassroomName : s.classroom_name
+              }
             : s
         )
         setTimetable(prev => ({
@@ -888,6 +1061,9 @@ function TimetableEditor() {
         setRedoStack(prev => [...prev, action])
         setUnsavedChanges(prev => prev - 1)
         console.log('✅ [UNDO] Slot moved back to', `${action.oldDay} ${action.oldStartTime}`)
+        if (action.classroomWasReset) {
+          console.log('✅ [UNDO] Classroom restored:', action.oldClassroomName)
+        }
         break
 
       case 'move_break':
@@ -945,6 +1121,22 @@ function TimetableEditor() {
         console.log('✅ [UNDO] Default break restored')
         break
 
+      case 'change_classroom':
+        // Revert classroom assignment to old room
+        const updatedSlotsUndo = timetable.theory_slots.map(s =>
+          s._id === action.slotId
+            ? { ...s, classroom_id: action.oldRoomId, classroom_name: action.oldRoomName }
+            : s
+        )
+        setTimetable(prev => ({
+          ...prev,
+          theory_slots: updatedSlotsUndo
+        }))
+        setRedoStack(prev => [...prev, action])
+        setUnsavedChanges(prev => prev - 1)
+        console.log('✅ [UNDO] Classroom reverted to', action.oldRoomName || 'unassigned')
+        break
+
       default:
         console.warn('⚠️ [UNDO] Unknown action type:', action.type)
     }
@@ -967,7 +1159,15 @@ function TimetableEditor() {
       case 'move_slot':
         const updatedTheorySlots = timetable.theory_slots.map(s =>
           s._id === action.slotId
-            ? { ...s, day: action.newDay, start_time: action.newStartTime, end_time: action.newEndTime }
+            ? { 
+                ...s, 
+                day: action.newDay, 
+                start_time: action.newStartTime, 
+                end_time: action.newEndTime,
+                // Clear classroom again if it was reset during original move
+                classroom_id: action.classroomWasReset ? null : s.classroom_id,
+                classroom_name: action.classroomWasReset ? null : s.classroom_name
+              }
             : s
         )
         setTimetable(prev => ({
@@ -977,6 +1177,9 @@ function TimetableEditor() {
         setUndoStack(prev => [...prev, action])
         setUnsavedChanges(prev => prev + 1)
         console.log('✅ [REDO] Slot moved to', `${action.newDay} ${action.newStartTime}`)
+        if (action.classroomWasReset) {
+          console.log('🗑️ [REDO] Classroom cleared again (needs reassignment)')
+        }
         break
 
       case 'move_break':
@@ -1039,6 +1242,22 @@ function TimetableEditor() {
         setUndoStack(prev => [...prev, action])
         setUnsavedChanges(prev => prev + 1)
         console.log('✅ [REDO] Default break removed again')
+        break
+
+      case 'change_classroom':
+        // Re-apply classroom assignment to new room
+        const updatedSlotsRedo = timetable.theory_slots.map(s =>
+          s._id === action.slotId
+            ? { ...s, classroom_id: action.newRoomId, classroom_name: action.newRoomName }
+            : s
+        )
+        setTimetable(prev => ({
+          ...prev,
+          theory_slots: updatedSlotsRedo
+        }))
+        setUndoStack(prev => [...prev, action])
+        setUnsavedChanges(prev => prev + 1)
+        console.log('✅ [REDO] Classroom changed to', action.newRoomName)
         break
 
       default:
@@ -1181,49 +1400,74 @@ function TimetableEditor() {
       const breakData = cell.data
       const breakId = `break_${breakData.day}_${breakData.start_time}`
       
+      // Check if editing is allowed (Step 5 completed)
+      const classroomsAssigned = timetable.generation_metadata?.current_step >= 5
+      
       const breakContent = (
         <div className="slot-content">
           <div className="slot-header">
             <span className="slot-subject">☕ {breakData.label || 'Break'}</span>
-            <span className="drag-handle">⋮⋮</span>
+            {classroomsAssigned && <span className="drag-handle">⋮⋮</span>}
+            {!classroomsAssigned && <span className="locked-badge">🔒 Run Step 5</span>}
             {breakData.isDefault && <span className="break-badge">Default</span>}
           </div>
           <div className="slot-details">
             <span className="slot-time">{convertTo12Hour(breakData.start_time)} - {convertTo12Hour(breakData.end_time)}</span>
-            {/* ALL breaks are now deletable - including defaults! */}
-            <button 
-              className="delete-break-btn"
-              onClick={() => deleteBreak(breakData.day, breakData.start_time)}
-              title={breakData.isDefault ? "Remove default break (frees slot for theory)" : "Delete this break"}
-            >
-              🗑️ {breakData.isDefault ? 'Remove' : 'Delete'}
-            </button>
+            {/* Breaks are only deletable after Step 5 */}
+            {classroomsAssigned && (
+              <button 
+                className="delete-break-btn"
+                onClick={() => deleteBreak(breakData.day, breakData.start_time)}
+                title={breakData.isDefault ? "Remove default break (frees slot for theory)" : "Delete this break"}
+              >
+                🗑️ {breakData.isDefault ? 'Remove' : 'Delete'}
+              </button>
+            )}
           </div>
         </div>
       )
 
-      // ALL breaks are now draggable (including default ones!)
-      return (
-        <td 
-          key={timeIndex} 
-          colSpan={cell.span} 
-          className="slot-cell break-slot draggable"
-        >
-          <DraggableSlot slot={{ _id: breakId, ...breakData }}>
+      // Breaks are only draggable after Step 5
+      if (classroomsAssigned) {
+        return (
+          <td 
+            key={timeIndex} 
+            colSpan={cell.span} 
+            className="slot-cell break-slot draggable"
+          >
+            <DraggableSlot slot={{ _id: breakId, ...breakData }}>
+              {breakContent}
+            </DraggableSlot>
+          </td>
+        )
+      } else {
+        // Before Step 5: breaks are not draggable
+        return (
+          <td 
+            key={timeIndex} 
+            colSpan={cell.span} 
+            className="slot-cell break-slot fixed"
+          >
             {breakContent}
-          </DraggableSlot>
-        </td>
-      )
+          </td>
+        )
+      }
     }
 
     const slot = cell.data
-    const isDraggable = cell.type === 'theory' && !cell.data.is_fixed_slot
+    // Check if classrooms have been assigned (step >= 5)
+    const classroomsAssigned = timetable.generation_metadata?.current_step >= 5
+    // Theory slots are ONLY draggable AFTER step 5 is completed
+    // Before Step 5: No editing allowed (you need classrooms assigned first)
+    // After Step 5: Draggable (classroom will be reset on move)
+    const isDraggable = classroomsAssigned && cell.type === 'theory' && !cell.data.is_fixed_slot
 
     const slotContent = (
       <div className="slot-content">
         <div className="slot-header">
           <span className="slot-subject">{slot.subject_shortform || slot.subject_name}</span>
           {isDraggable && <span className="drag-handle">⋮⋮</span>}
+          {!classroomsAssigned && cell.type === 'theory' && <span className="locked-badge">🔒 Run Step 5</span>}
           {cell.type === 'fixed' && <span className="fixed-badge">🔒 Fixed</span>}
           {cell.type === 'lab' && <span className="lab-badge">🧪 Lab</span>}
         </div>
@@ -1231,6 +1475,28 @@ function TimetableEditor() {
           <span className="slot-teacher">{slot.teacher_name}</span>
           <span className="slot-time">{convertTo12Hour(slot.start_time)} - {convertTo12Hour(slot.end_time)}</span>
         </div>
+        
+        {/* Show clickable classroom badge if step >= 5 and classroom assigned */}
+        {classroomsAssigned && cell.type === 'theory' && slot.classroom_name && !slot.is_project && (
+          <div 
+            className={`classroom-badge clickable ${slot.is_fixed_slot ? 'fixed-classroom' : 'regular-classroom'}`}
+            onClick={() => handleChangeRoom(slot)}
+            title="Click to change classroom"
+          >
+            📍 {slot.classroom_name} ▼
+          </div>
+        )}
+        
+        {/* Show clickable warning badge if step >= 5 but classroom NOT assigned */}
+        {classroomsAssigned && cell.type === 'theory' && !slot.classroom_name && !slot.is_project && (
+          <div 
+            className="warning-badge clickable"
+            onClick={() => handleChangeRoom(slot)}
+            title="Click to assign classroom"
+          >
+            ⚠️ Needs Room (Click)
+          </div>
+        )}
       </div>
     )
 
@@ -1263,7 +1529,13 @@ function TimetableEditor() {
     <div className="timetable-editor">
       <div className="editor-header">
         <h2>✏️ Timetable Editor</h2>
-        <p>Drag & drop theory classes to adjust schedule (Labs and fixed slots cannot be moved)</p>
+        {timetable && timetable.generation_metadata?.current_step >= 5 ? (
+          <p>✏️ Drag theory slots to reschedule. <strong>Note:</strong> Moving a slot will clear its classroom assignment - you'll need to reassign a room.</p>
+        ) : timetable && timetable.generation_metadata?.current_step === 4 ? (
+          <p className="warning-message">⚠️ Editing is disabled until Step 5 (Classroom Assignment) is completed. Please run Step 5 first to assign classrooms, then you can edit the timetable.</p>
+        ) : (
+          <p>Please complete Step 4 (Theory Scheduling) and Step 5 (Classroom Assignment) before editing the timetable.</p>
+        )}
       </div>
 
       <div className="editor-controls">
@@ -1335,7 +1607,7 @@ function TimetableEditor() {
       {loading && <div className="loading">Loading timetable...</div>}
       {error && <div className="error-message">{error}</div>}
 
-      {timetable && (
+      {timetable && timetable.generation_metadata?.current_step >= 5 && (
         <div className="add-break-instruction">
           <button 
             className={`btn-add-break-mode ${addBreakMode ? 'active' : ''}`}
@@ -1418,6 +1690,54 @@ function TimetableEditor() {
               ❌ {conflict.message}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Room Selection Modal */}
+      {showRoomModal && selectedSlotForRoom && (
+        <div className="modal-overlay" onClick={closeRoomModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>🏫 Change Classroom</h3>
+              <button className="modal-close" onClick={closeRoomModal}>✕</button>
+            </div>
+            
+            <div className="modal-body">
+              <p><strong>Subject:</strong> {selectedSlotForRoom.subject_name}</p>
+              <p><strong>Current Room:</strong> {selectedSlotForRoom.classroom_name || 'Not assigned'}</p>
+              <p><strong>Time:</strong> {selectedSlotForRoom.day} {convertTo12Hour(selectedSlotForRoom.start_time)}</p>
+              
+              <hr />
+              
+              <h4>Available Classrooms:</h4>
+              
+              {loadingRooms ? (
+                <div className="loading-rooms">Loading available rooms...</div>
+              ) : availableRooms.length === 0 ? (
+                <div className="no-rooms">⚠️ No classrooms available at this time</div>
+              ) : (
+                <div className="room-list">
+                  {availableRooms.map((room) => (
+                    <div 
+                      key={room._id} 
+                      className={`room-item ${selectedSlotForRoom.classroom_id === room._id ? 'current' : ''}`}
+                      onClick={() => handleUpdateClassroom(room._id, room.classroom_name)}
+                    >
+                      <span className="room-name">📍 {room.classroom_name}</span>
+                      <span className="room-type">{room.room_type}</span>
+                      {selectedSlotForRoom.classroom_id === room._id && (
+                        <span className="current-badge">✓ Current</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={closeRoomModal}>Cancel</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

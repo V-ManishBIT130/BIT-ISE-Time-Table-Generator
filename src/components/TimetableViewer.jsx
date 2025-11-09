@@ -404,7 +404,7 @@ function TimetableViewer() {
           key={`${dayIndex}-${timeIndex}`}
           className={`theory-cell theory-${subjectType}`}
           colSpan={cell.span}
-          title={`${slot.subject_name}\n${slot.teacher_name}\n${convertTo12Hour(slot.start_time)} - ${convertTo12Hour(slot.end_time)}`}
+          title={`${slot.subject_name}\n${slot.teacher_name}\n${convertTo12Hour(slot.start_time)} - ${convertTo12Hour(slot.end_time)}${slot.classroom_name ? `\nRoom: ${slot.classroom_name}` : ''}`}
         >
           <div className="cell-content">
             <div className="subject-code">{slot.subject_shortform}</div>
@@ -413,6 +413,11 @@ function TimetableViewer() {
               {convertTo12Hour(slot.start_time)} - {convertTo12Hour(slot.end_time)}
             </div>
             {slot.is_fixed_slot && <div className="fixed-badge">FIXED</div>}
+            {slot.is_project !== true && slot.classroom_name && (
+              <div className={`classroom-badge ${slot.is_fixed_slot ? 'fixed-classroom' : 'regular-classroom'}`} title={`Classroom: ${slot.classroom_name}`}>
+                📍 {slot.classroom_name}
+              </div>
+            )}
           </div>
         </td>
       )
@@ -421,11 +426,13 @@ function TimetableViewer() {
     if (cell.type === 'lab') {
       const slot = cell.data
       
-      // Extract batch details for display
+      // Extract batch details for display (including teachers per batch)
       const batchDetails = slot.batches?.map(b => ({
         name: b.batch_name,
         lab: b.lab_shortform || b.lab_name,
-        room: b.lab_room_name || 'TBD'
+        room: b.lab_room_name || 'TBD',
+        teacher1: b.teacher1_shortform || b.teacher1_name,
+        teacher2: b.teacher2_shortform || b.teacher2_name
       })) || []
       
       return (
@@ -433,7 +440,7 @@ function TimetableViewer() {
           key={`${dayIndex}-${timeIndex}`}
           className="lab-cell"
           colSpan={cell.span}
-          title={`Lab Session\n${batchDetails.map(b => `${b.name}: ${b.lab} in ${b.room}`).join('\n')}\n${convertTo12Hour(slot.start_time)} - ${convertTo12Hour(slot.end_time)}`}
+          title={`Lab Session\n${batchDetails.map(b => `${b.name}: ${b.lab} in ${b.room}\nTeachers: ${b.teacher1 || 'TBD'}${b.teacher2 ? ', ' + b.teacher2 : ''}`).join('\n')}\n${convertTo12Hour(slot.start_time)} - ${convertTo12Hour(slot.end_time)}`}
         >
           <div className="cell-content">
             <div className="lab-name">LAB SESSION</div>
@@ -441,20 +448,20 @@ function TimetableViewer() {
               {batchDetails.map((b, idx) => (
                 <div key={idx} className="batch-detail">
                   <strong>{b.name}:</strong> {b.lab} in {b.room}
+                  {/* Show teachers for this batch */}
+                  {(b.teacher1 || b.teacher2) && (
+                    <div className="batch-teachers">
+                      {b.teacher1 && <span className="teacher-badge-small">{b.teacher1}</span>}
+                      {b.teacher2 && <span className="teacher-badge-small">{b.teacher2}</span>}
+                      {!b.teacher1 && !b.teacher2 && <span className="no-teacher-badge">No Teachers</span>}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
             <div className="time-range">
               {convertTo12Hour(slot.start_time)} - {convertTo12Hour(slot.end_time)}
             </div>
-            {slot.batches?.[0]?.teacher1_name && (
-              <div className="teachers-info">
-                <span className="teacher-badge">{slot.batches[0].teacher1_shortform || slot.batches[0].teacher1_name}</span>
-                {slot.batches[0].teacher2_name && (
-                  <span className="teacher-badge">{slot.batches[0].teacher2_shortform || slot.batches[0].teacher2_name}</span>
-                )}
-              </div>
-            )}
           </div>
         </td>
       )

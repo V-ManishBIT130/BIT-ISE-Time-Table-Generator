@@ -1,4 +1,246 @@
-# 🏫 Classroom Management & Assignment
+# 🏫 Classroom Management & Assignment (Step 5)
+
+## Overview
+Step 5 assigns classrooms to theory slots using a priority-based algorithm with global conflict prevention. After assignment, admins can edit classrooms interactively while the system maintains conflict-free scheduling.
+
+---
+
+## Assignment Strategy (Step 5 Algorithm)
+
+### Priority Order
+1. **Fixed Slots First** (OEC/PEC) - Highest priority
+2. **Regular Theory Slots** - Second priority  
+3. **Project Slots** - Skipped (no classroom needed)
+
+### Global Conflict Prevention
+- Maintains in-memory room usage tracker across ALL sections
+- Key format: `roomId_day_startTime`
+- Prevents double-booking at the same time
+
+### Process Flow
+1. Fetch all available theory classrooms
+2. Build global classroom schedule (what's used when)
+3. For each timetable:
+   - Process fixed slots → Assign first available room
+   - Process regular slots → Assign first available room
+   - Skip project slots
+4. Save updated timetables to database
+
+### Results Tracked
+- Fixed slots assigned
+- Regular slots assigned
+- Unassigned slots (if rooms ran out)
+- Success rate percentage
+
+---
+
+## Interactive Editing (Post-Step 5)
+
+### Editing Philosophy
+After Step 5, theory slots remain **editable** to allow schedule adjustments:
+- **Drag slots** to different times
+- **Change classrooms** via modal
+- **Delete slots** if needed
+- System maintains conflict-free state throughout
+
+### Key Features
+
+#### 1. Flexible Slot Movement
+- Theory slots stay draggable even after Step 5
+- When moved, classroom assignment is **cleared automatically**
+- This frees up the room for other slots
+- Admin must reassign classroom after moving
+
+**Example Workflow:**
+```
+Initial: Monday 10:00 - DS + Room 301
+Action: Drag DS to Monday 11:30
+Result: Monday 11:30 - DS + (No Room) 
+        Monday 10:00 - Empty + Room 301 freed
+```
+
+#### 2. Classroom Change Modal
+- Appears when clicking classroom badge
+- Shows current room and slot details
+- Displays only **available rooms** at that time slot
+- Real-time conflict detection
+- One-click room reassignment
+
+#### 3. Break Management
+- Breaks remain fully editable after Step 5
+- Can add/delete custom breaks anytime
+- Doesn't affect classroom assignments
+- Locked slots (fixed/labs) stay protected
+
+### Editing Restrictions
+- **Fixed slots** (OEC/PEC) → Cannot move or delete
+- **Lab slots** → Cannot move or delete (batch rotation must stay intact)
+- **Theory slots** → Fully editable
+- **Breaks** → Fully editable
+
+---
+
+## Conflict Detection
+
+### Three Levels of Validation
+
+#### 1. Backend Algorithm (Step 5)
+- Runs during initial classroom assignment
+- Checks all sections before assigning
+- Prevents conflicts globally
+
+#### 2. Available Rooms API
+- Called when opening "Change Room" modal
+- Queries database for occupied rooms at specific time
+- Returns only free rooms
+
+#### 3. Update Classroom API
+- Validates before saving change
+- Checks if room is still available (race condition protection)
+- Returns 409 Conflict if room was just taken
+
+### Conflict Types Handled
+✅ Same classroom, same time, different section  
+✅ Fixed slot conflicts (cannot override)  
+✅ Lab session conflicts (cannot override)  
+✅ Race conditions (optimistic locking)
+
+---
+
+## User Workflows
+
+### Workflow 1: Run Step 5 (Initial Assignment)
+1. Navigate to **TimetableGenerator**
+2. Run Steps 1-4 first
+3. Click **"Run Step 5: Assign Classrooms"**
+4. View results showing:
+   - Fixed slots assigned: X/Y
+   - Regular slots assigned: X/Y
+   - Success rate: Z%
+5. Go to **TimetableViewer** to see classroom badges on slots
+
+### Workflow 2: Change Classroom
+1. Navigate to **TimetableEditor**
+2. Select semester and section
+3. Click **classroom badge** on any theory slot
+4. Modal opens showing:
+   - Current room
+   - Slot details (subject, teacher, time)
+   - List of available rooms
+5. Click desired room
+6. System validates and updates
+7. Classroom badge updates instantly
+
+### Workflow 3: Move Slot (Clears Classroom)
+1. Navigate to **TimetableEditor**
+2. Drag theory slot to new time
+3. System clears classroom assignment automatically
+4. Badge changes to **"⚠️ No Room"**
+5. Click badge to assign new room
+6. Select room from available list
+
+### Workflow 4: Undo Changes
+1. Make any edit (move slot, change room, etc.)
+2. Press **Ctrl+Z** or click **Undo button**
+3. Change is reverted
+4. Classroom restored to previous state
+
+---
+
+## Classroom Types & Equipment
+
+### Theory Classrooms
+- Regular lecture rooms
+- Capacity: 60-70 students
+- Basic equipment: Projector, whiteboard
+
+### Lab Rooms
+- Computer labs with workstations
+- Capacity: 30 students (2-3 per PC)
+- Equipment: Computers, network, projector
+
+### Compatibility Rules
+- Theory subjects → Theory classrooms only
+- Lab sessions → Lab rooms only
+- No mixing (validated at assignment time)
+
+---
+
+## Best Practices
+
+### For Admins
+1. **Run Step 5 after Steps 1-4 are complete**
+2. **Check success rate** - if low, investigate unassigned slots
+3. **Use TimetableViewer first** to see overall picture
+4. **Then use TimetableEditor** for fine-tuning
+5. **Make small changes** and save frequently
+
+### For Developers
+1. **Always clear previous assignments** before re-running Step 5
+2. **Use global trackers** to prevent conflicts
+3. **Validate on both frontend and backend**
+4. **Handle race conditions** with 409 Conflict responses
+5. **Log conflicts** for debugging
+
+---
+
+## API Reference
+
+### POST /api/timetables/step5
+Runs classroom assignment algorithm
+```
+Request: { sem_type: "odd", academic_year: "2024-2025" }
+Response: {
+  success: true,
+  data: {
+    fixed_slots_assigned: 12,
+    regular_slots_assigned: 138,
+    unassigned_slots: 3,
+    success_rate: 98.0
+  }
+}
+```
+
+### GET /api/timetables/available-rooms
+Fetches free classrooms at specific time
+```
+Query: ?day=Monday&start_time=10:00&sem_type=odd&academic_year=2024-2025
+Response: {
+  available_rooms: [
+    { _id: "...", classroom_name: "C301", room_type: "THEORY" }
+  ]
+}
+```
+
+### PATCH /api/timetables/:id/theory-slot/:slotId/classroom
+Updates classroom for a slot
+```
+Body: { classroom_id: "...", classroom_name: "C305" }
+Response: { success: true, message: "Classroom updated" }
+```
+
+---
+
+## Key Learnings
+
+### What Works Well
+✅ Priority-based assignment (fixed first)  
+✅ Global conflict tracking  
+✅ Flexible editing after assignment  
+✅ Auto-clear classroom on slot move  
+✅ Real-time conflict detection  
+
+### Design Decisions
+- **Why clear classroom on move?** → Prevents conflicts and frees up room
+- **Why allow editing after Step 5?** → Admins need flexibility for adjustments
+- **Why separate Step 5 from Step 4?** → Easier to rerun just classroom assignment
+- **Why modal for room change?** → Clear context, focused action, prevents errors
+
+### Future Enhancements
+- Bulk room reassignment
+- Room capacity validation
+- Proximity-based suggestions
+- Conflict preview before change & Assignment
 
 ## Overview
 This document defines rules for classroom allocation, capacity management, and conflict prevention.

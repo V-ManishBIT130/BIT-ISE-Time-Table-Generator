@@ -714,7 +714,8 @@ async function tryScheduleSessions(sessions, subject, teacher, timetable, constr
         teacher_id: teacher ? teacher._id : null,
         teacher_name: teacher ? teacher.name : '[Other Dept]',
         teacher_shortform: teacher ? (teacher.teacher_shortform || teacher.name) : '[Other Dept]',
-        is_fixed_slot: false
+        is_fixed_slot: false,
+        is_project: subject.is_project === true  // For easy frontend detection (skip classrooms)
       }
       
       scheduledSlots.push(newSlot)
@@ -1189,13 +1190,56 @@ export async function scheduleTheory(semType, academicYear) {
     console.log(`   ✅ Database says: ${newInDB}`)
     console.log(`   ${totalTheorySlotsScheduled === newInDB ? '✅✅ MATCH!' : '❌❌ MISMATCH!'}\n`)
     
+    // Aggregate summary data from all timetables
+    let aggregatedSummary = {
+      total_subjects_found: 0,
+      subjects_in_fixed_slots: 0,
+      subjects_to_schedule_step4: 0,
+      regular_ise_found: 0,
+      other_dept_found: 0,
+      projects_found: 0,
+      regular_ise_scheduled: 0,
+      regular_ise_failed: 0,
+      other_dept_scheduled: 0,
+      other_dept_failed: 0,
+      projects_scheduled: 0,
+      projects_failed: 0,
+      total_scheduled: 0
+    }
+    
+    for (const tt of finalVerify) {
+      const summary = tt.generation_metadata?.theory_scheduling_summary
+      if (summary) {
+        aggregatedSummary.total_subjects_found += summary.total_subjects_found || 0
+        aggregatedSummary.subjects_in_fixed_slots += summary.subjects_in_fixed_slots || 0
+        aggregatedSummary.subjects_to_schedule_step4 += summary.subjects_to_schedule_step4 || 0
+        aggregatedSummary.regular_ise_found += summary.regular_ise_found || 0
+        aggregatedSummary.other_dept_found += summary.other_dept_found || 0
+        aggregatedSummary.projects_found += summary.projects_found || 0
+        aggregatedSummary.regular_ise_scheduled += summary.regular_ise_scheduled || 0
+        aggregatedSummary.regular_ise_failed += summary.regular_ise_failed || 0
+        aggregatedSummary.other_dept_scheduled += summary.other_dept_scheduled || 0
+        aggregatedSummary.other_dept_failed += summary.other_dept_failed || 0
+        aggregatedSummary.projects_scheduled += summary.projects_scheduled || 0
+        aggregatedSummary.projects_failed += summary.projects_failed || 0
+        aggregatedSummary.total_scheduled += summary.total_scheduled || 0
+      }
+    }
+    
+    // Calculate overall success rate
+    const overallSuccessRate = aggregatedSummary.subjects_to_schedule_step4 > 0
+      ? (aggregatedSummary.total_scheduled / aggregatedSummary.subjects_to_schedule_step4) * 100
+      : 0
+    
     return {
       success: true,
       message: `Step 4 complete: ${totalTheorySlotsScheduled} theory slots scheduled across ${reloadedTimetables.length} sections`,
       data: {
         sections_processed: reloadedTimetables.length,
         theory_slots_scheduled: totalTheorySlotsScheduled,
-        average_per_section: Math.round(totalTheorySlotsScheduled / reloadedTimetables.length)
+        average_per_section: Math.round(totalTheorySlotsScheduled / reloadedTimetables.length),
+        ...aggregatedSummary,
+        success_rate: overallSuccessRate
       }
     }
     

@@ -1,26 +1,283 @@
 # 🧠 Algorithm Strategy & Implementation
 
 ## Overview
-This document describes the scheduling algorithms, their strategies, and implementation approaches used in timetable generation.
+This document describes the 7-step scheduling algorithm, optimization strategies, and key learnings from implementation.
 
 ---
 
-## 1. Overall Generation Strategy
+## 1. The 7-Step Process
 
-### 7-Step Process
-1. **Step 1:** Load sections and initialize timetables
-2. **Step 2:** Block fixed time slots (OEC/PEC)
-3. **Step 3:** Schedule lab sessions
-4. **Step 4:** Schedule theory classes
-5. **Step 5:** Assign teachers to labs
-6. **Step 6:** Assign classrooms to theory slots
-7. **Step 7:** Validate and finalize
+### Correct Step Order
+1. **Step 1:** Load Sections - Initialize empty timetables for all sections
+2. **Step 2:** Block Fixed Slots - Reserve OEC/PEC time slots
+3. **Step 3:** Schedule Labs - Assign lab sessions with batch rotation
+4. **Step 4:** Schedule Theory + Breaks - Place theory classes with load balancing
+5. **Step 5:** Assign Classrooms - Allocate theory classrooms (fixed → regular → skip projects)
+6. **Step 6:** Assign Lab Teachers - Assign 2 teachers per lab (fallback to 1)
+7. **Step 7:** Validate & Finalize - Check constraints and mark complete
 
 ### Why This Order?
-- Fixed slots first (no flexibility)
-- Labs next (strict constraints)
-- Theory after (most flexible)
-- Resource assignment deferred (easier conflict resolution)
+**Constraint hierarchy (most restrictive → most flexible):**
+- **Fixed slots** → No flexibility (must be honored)
+- **Labs** → Strict constraints (2-hour blocks, batch rotation, room availability)
+- **Theory** → Moderate flexibility (1-hour slots, can be spread across days)
+- **Classrooms** → Resource allocation (depends on scheduled slots)
+- **Teachers** → Resource allocation (depends on scheduled slots)
+- **Validation** → Final check (all constraints satisfied)
+
+### Key Principle: Defer Resource Assignment
+- Steps 1-4 focus on **WHEN** (time scheduling)
+- Steps 5-6 focus on **WHERE/WHO** (resource assignment)
+- This separation makes conflict resolution easier and reruns faster
+
+---
+
+## 2. Step 1: Load Sections
+
+### Purpose
+Initialize the scheduling process by creating empty timetable documents.
+
+### Process
+1. Query `ise_sections` collection for target semester type (odd/even)
+2. Delete any existing timetables for that sem_type + academic_year
+3. Create fresh timetable document for each section
+4. Initialize empty arrays: `lab_slots`, `theory_slots`
+5. Set metadata: `current_step: 1`, `steps_completed: ['load_sections']`
+
+### Why First?
+- Provides clean slate
+- Prevents leftover data from previous runs
+- Establishes section context for all subsequent steps
+
+---
+
+## 3. Step 2: Block Fixed Slots (OEC/PEC)
+
+### Purpose
+Reserve specific time slots for Open Elective Courses (OEC) and Professional Elective Courses (PEC) before other scheduling begins.
+
+### Input Required
+Admin defines fixed slots with:
+- Subject name
+- Day of week
+- Start time and end time
+- Applicable sections (e.g., all Sem 7 sections)
+
+### Process
+1. For each predefined fixed slot:
+   - Find matching timetables (by semester)
+   - Add slot to `theory_slots` array
+   - Set flags: `is_fixed_slot: true`, `is_elective: true`
+   - Mark time as unavailable for other scheduling
+2. Update metadata: `current_step: 2`
+
+### Why Before Labs?
+- OEC/PEC have zero flexibility (external dependencies)
+- Must be honored by all subsequent steps
+- Labs and theory must work around these slots
+
+---
+
+## 4. Step 3: Schedule Labs
+
+### Strategy
+**Dynamic room assignment with global conflict tracking**
+
+### Key Innovation: Batch Rotation Formula
+```
+labIndex = (round + batchNum - 1) % totalLabs
+```
+This ensures every batch rotates through all labs fairly across weeks.
+
+### Global Room Tracker
+- Maintains map of occupied rooms: `roomId_day_startTime_endTime`
+- Prevents double-booking across ALL sections
+- Cleared at start of each Step 3 run
+
+### Process Flow
+1. Clear global room tracker
+2. Sort sections for fair distribution (interleave by semester)
+3. For each section:
+   - Get shuffled list of day-time combinations
+   - For each time slot:
+     - **Validate slot**:
+       - Within working hours (08:00-17:00)
+       - Doesn't overlap breaks
+       - No theory conflicts
+       - Not consecutive to another lab
+       - Daily lab limit not exceeded
+     - **Try scheduling all 3 batches**:
+       - Calculate which lab each batch does (rotation)
+       - Find compatible free lab room for each batch
+       - Check global room availability
+       - If ALL 3 succeed → Commit to database
+       - If ANY fail → Try next slot
+4. Save all lab slots
+5. Update metadata: `current_step: 3`
+
+### Constraints Enforced
+✅ 2-hour continuous blocks  
+✅ Batch rotation (every batch does every lab)  
+✅ No consecutive labs for same section  
+✅ Global room conflicts (inter-section)  
+✅ Daily lab limits (max 1-2 per day)  
+✅ No overlap with fixed slots or breaks
+
+---
+
+## 5. Step 4: Schedule Theory + Breaks
+
+### Strategy
+**Divide-and-rule with load balancing**
+
+### Divide-and-Rule Approach
+Instead of filling Monday → Friday sequentially:
+1. **Divide** subjects into 5 groups (one per day)
+2. **Distribute** evenly to balance daily load
+3. **Schedule** each day's group across available time slots
+
+### Load Balancing Logic
+```
+Target subjects per day = Total subjects / 5 days
+```
+Prevents heavy days and light days.
+
+### Process Flow
+1. Get subjects for section (excluding labs, OEC, PEC)
+2. **Divide subjects** into 5 day-groups
+3. For each day:
+   - Get available time slots (exclude labs, fixed, breaks)
+   - Schedule day's subjects into slots
+   - Add default breaks (11:00-11:30, 13:30-14:00)
+4. Save theory slots and breaks
+5. Update metadata: `current_step: 4`
+
+### Break Management
+- **Default breaks**: Always at 11:00 and 13:30
+- **Auto-skip**: If no classes before break, skip it
+- **Customizable**: Admins can add/remove breaks in editor
+
+### Constraints Enforced
+✅ 1-hour theory slots  
+✅ No teacher conflicts (same teacher, same time)  
+✅ No overlap with labs or fixed slots  
+✅ Even distribution across days  
+✅ Breaks inserted automatically
+
+---
+
+## 6. Step 5: Assign Classrooms
+
+### Strategy
+**Priority-based assignment with global tracking**
+
+### Priority Order
+1. **Fixed slots** (OEC/PEC) - Must get rooms first
+2. **Regular theory** - Normal classes
+3. **Projects** - Skipped (no classroom needed)
+
+### Global Classroom Tracker
+- Tracks which rooms are used when across ALL sections
+- Key format: `roomId_day_startTime`
+- Prevents classroom double-booking
+
+### Process Flow
+1. Fetch all theory classrooms from database
+2. Build global classroom schedule
+3. For each timetable:
+   - **Phase 1**: Assign rooms to fixed slots
+   - **Phase 2**: Assign rooms to regular theory slots
+   - **Phase 3**: Skip project slots
+4. Track results: assigned, unassigned, success rate
+5. Update metadata: `current_step: 5`
+
+### Results
+- Fixed slots assigned: X/Y
+- Regular slots assigned: X/Y
+- Unassigned slots: Z (if rooms ran out)
+- Success rate: (Assigned / Total) * 100%
+
+---
+
+## 7. Step 6: Assign Lab Teachers
+
+### Strategy
+**2 teachers per lab, fallback to 1**
+
+### Process Flow
+1. For each timetable's lab slots:
+   - Get lab code (e.g., "DDCO-LAB")
+   - Query teachers who handle that lab (from `labs_handled` field)
+   - **Try assigning 2 teachers**:
+     - Check both teachers are free at that time
+     - If yes → Assign both
+     - If only 1 free → Assign 1
+     - If none free → Leave unassigned
+2. Track results: 2-teacher slots, 1-teacher slots, no-teacher slots
+3. Update metadata: `current_step: 6`
+
+### Results
+- Slots with 2 teachers: X
+- Slots with 1 teacher: Y
+- Slots with no teachers: Z
+- Success rate: ((X + Y) / Total) * 100%
+
+---
+
+## 8. Step 7: Validate & Finalize
+
+### Purpose
+Final constraint check and completion marking.
+
+### Validations
+1. **No teacher conflicts** - Same teacher, same time
+2. **No room conflicts** - Same room, same time
+3. **All breaks present** - Default breaks exist
+4. **Day length reasonable** - Not too long (< 8 hours)
+5. **Lab constraints met** - Batch rotation, no consecutive
+
+### Process
+1. Run all constraint checks
+2. Generate validation report
+3. If pass → Mark metadata: `current_step: 7`, `is_complete: true`
+4. If fail → Return errors for admin review
+
+---
+
+## Key Learnings
+
+### What Works Well
+✅ **Constraint hierarchy** - Most restrictive first (fixed → labs → theory)  
+✅ **Deferred resource assignment** - Schedule time first, assign resources later  
+✅ **Global conflict tracking** - Prevents double-booking across sections  
+✅ **Divide-and-rule** - Even distribution avoids heavy/light days  
+✅ **Batch rotation formula** - Guarantees fairness mathematically
+
+### Design Decisions Explained
+
+**Q: Why separate classroom assignment (Step 5) from theory scheduling (Step 4)?**  
+A: Easier to rerun just classroom assignment if rooms change, without rescheduling theory.
+
+**Q: Why assign teachers last (Step 6)?**  
+A: Teachers are flexible resources. Schedule first, then find available teachers.
+
+**Q: Why validate at the end (Step 7)?**  
+A: Steps 1-6 build the schedule. Step 7 confirms it's valid before marking complete.
+
+**Q: Why clear and regenerate instead of incremental updates?**  
+A: Cleaner state management, avoids partial/corrupted data, easier debugging.
+
+### Performance Optimizations
+- **In-memory trackers** (not database queries) for conflict checking
+- **Shuffle time slots** to avoid bias toward early slots
+- **Interleave sections** to distribute resources fairly
+- **Batch database updates** to reduce I/O
+
+### Future Enhancements
+- Parallel section scheduling (currently sequential)
+- Machine learning for optimal slot selection
+- Constraint relaxation if no solution found
+- Multi-day lab sessions support
 
 ---
 
