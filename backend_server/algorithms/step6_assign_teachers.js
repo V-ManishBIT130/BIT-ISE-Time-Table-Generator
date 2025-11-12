@@ -27,7 +27,19 @@ const teacherWorkload = new Map()
  * Helper: Check if two time ranges overlap
  */
 function timesOverlap(start1, end1, start2, end2) {
-  return (start1 < end2 && end1 > start2)
+  // Convert "HH:MM" to minutes since midnight for accurate comparison
+  const toMinutes = (time) => {
+    const [hours, minutes] = time.split(':').map(Number)
+    return hours * 60 + minutes
+  }
+  
+  const s1 = toMinutes(start1)
+  const e1 = toMinutes(end1)
+  const s2 = toMinutes(start2)
+  const e2 = toMinutes(end2)
+  
+  // Two ranges overlap if: start1 < end2 AND start2 < end1
+  return (s1 < e2 && s2 < e1)
 }
 
 /**

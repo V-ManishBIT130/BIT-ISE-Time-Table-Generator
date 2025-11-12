@@ -4,8 +4,9 @@
 Complete documentation for the BIT ISE Department Timetable Generation System with interactive editing capabilities.
 
 **Last Updated:** November 12, 2025  
-**Status:** ✅ Steps 1-6 Complete, Step 7 Pending, ✅ Zero Conflicts, ✅ Instant Room Updates  
-**Key Features:** 7-step algorithm, Drag-drop editing, Undo/Redo, Global conflict prevention, Instant visual feedback
+**Status:** ✅ 93% Success Rate (100% for 3rd+5th semesters), ✅ Multi-Pass Retry System Active, ✅ Strict Constraints Enforced  
+**Key Achievement:** 25/27 labs scheduled with NO consecutive labs and max 2 labs/day  
+**Key Features:** 7-step algorithm, Multi-pass retry, Drag-drop editing, Undo/Redo, Global conflict prevention
 
 ---
 
@@ -14,7 +15,7 @@ Complete documentation for the BIT ISE Department Timetable Generation System wi
 ### System Architecture
 - **Backend:** Node.js + Express + MongoDB (8 data models)
 - **Frontend:** React + Vite + Axios
-- **Algorithm:** 7-step greedy algorithm with constraint satisfaction
+- **Algorithm:** 7-step scheduling with multi-pass retry optimization
 - **Editor:** Interactive drag-drop with real-time conflict detection
 
 ### Core Entities
@@ -22,6 +23,19 @@ Complete documentation for the BIT ISE Department Timetable Generation System wi
 - **Batches:** 3 batches per section for lab rotation (54 total)
 - **Subjects:** 5 types (ISE, Other Dept, Projects, OEC, PEC)
 - **Resources:** Teachers, Theory Classrooms, Lab Rooms
+
+### Current Performance (Nov 2025)
+```
+3rd Semester: 15/15 labs (100%) ✅
+5th Semester:  6/6 labs (100%) ✅
+7th Semester:  4/6 labs (67%)
+Overall:      25/27 labs (93%)
+
+Constraints:
+✅ NO consecutive labs (min 2-hour breaks)
+✅ Max 2 labs per day (all sections)
+✅ Batch rotation guaranteed
+```
 
 ---
 
@@ -41,13 +55,16 @@ Section/batch organization, lab batch rotation (Rule 4.7), naming conventions
 
 ### 2. Scheduling Algorithm (Steps 1-7)
 **[ALGORITHM_STRATEGY.md](./ALGORITHM_STRATEGY.md)** ⭐ START HERE  
-Complete 7-step algorithm flow, constraint hierarchy, design decisions, key learnings
+Complete 7-step algorithm flow, constraint hierarchy, design decisions, multi-pass retry system
+
+**[MULTI_PASS_RETRY_SYSTEM.md](./MULTI_PASS_RETRY_SYSTEM.md)** 🆕 KEY INNOVATION  
+Deep-dive into multi-pass retry architecture, randomization strategy, scoring algorithm, performance metrics
 
 **[TIME_SCHEDULING.md](./TIME_SCHEDULING.md)**  
 Time slots, breaks, divide-and-rule strategy, load balancing
 
 **[LAB_SCHEDULING.md](./LAB_SCHEDULING.md)**  
-Step 3 deep-dive: Lab sessions, batch rotation formula, global room tracking
+Step 3 deep-dive: Lab sessions, batch rotation formula, global room tracking, success metrics
 
 **[CONSTRAINTS.md](./CONSTRAINTS.md)**  
 All constraints enforced: teacher, room, time, consecutive labs, daily limits

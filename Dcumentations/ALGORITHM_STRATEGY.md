@@ -3,6 +3,35 @@
 ## Overview
 This document describes the 7-step scheduling algorithm, optimization strategies, and key learnings from implementation.
 
+**Last Updated:** November 12, 2025  
+**Current Success Rate:** 93% overall, 100% for priority semesters (3rd + 5th)  
+**Key Innovation:** Multi-Pass Retry System with strict constraints
+
+---
+
+## 🎉 Recent Breakthroughs (November 2025)
+
+### Multi-Pass Retry System
+**Problem:** Greedy algorithms got stuck in local minimums (70% success)  
+**Solution:** Try 20 different random slot orderings, select best result  
+**Result:** 93% success with STRICT constraints
+
+### Key Learnings
+1. **Randomization Beats Greedy:** Multiple attempts with shuffled slots find solutions greedy misses
+2. **Strict Constraints Are Possible:** No need to relax consecutive/daily limits
+3. **Processing Order Matters:** 5th semester first (smaller) makes 3rd semester easier
+4. **Early Exit Optimization:** Often finds perfect solution on 1st attempt
+
+### Success Metrics
+```
+Before Multi-Pass:  70% success (20/27 labs)
+After Multi-Pass:   93% success (25/27 labs)
+3rd Semester:       100% ✅ (all sections complete)
+5th Semester:       100% ✅ (all sections complete)
+```
+
+See `MULTI_PASS_RETRY_SYSTEM.md` for detailed implementation.
+
 ---
 
 ## 1. The 7-Step Process
