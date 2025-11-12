@@ -51,6 +51,154 @@ router.get('/', async (req, res) => {
 })
 
 /**
+ * GET /api/timetables/teacher-schedule/:teacherId
+ * Get complete schedule for a specific teacher across ALL sections
+ * Shows all theory classes and lab sessions assigned to this teacher
+ */
+router.get('/teacher-schedule/:teacherId', async (req, res) => {
+  try {
+    const { teacherId } = req.params
+    const { sem_type, academic_year } = req.query
+    
+    console.log('📅 Fetching teacher schedule for:', teacherId)
+    
+    if (!teacherId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Teacher ID is required'
+      })
+    }
+    
+    // Build filter
+    const filter = {}
+    if (sem_type) filter.sem_type = sem_type
+    if (academic_year) filter.academic_year = academic_year
+    
+    // Fetch all timetables
+    const timetables = await Timetable.find(filter)
+      .populate('section_id', 'section_name sem sem_type')
+      .lean()
+    
+    console.log(`📊 Found ${timetables.length} timetables for filter:`, filter)
+    
+    // Collect all slots for this teacher
+    const teacherSchedule = {
+      theory_classes: [],
+      lab_sessions: []
+    }
+    
+    for (const timetable of timetables) {
+      // Check theory slots
+      for (const slot of timetable.theory_slots || []) {
+        if (slot.teacher_id && slot.teacher_id.toString() === teacherId) {
+          teacherSchedule.theory_classes.push({
+            timetable_id: timetable._id,
+            section_name: timetable.section_name,
+            sem: timetable.sem,
+            day: slot.day,
+            start_time: slot.start_time,
+            end_time: slot.end_time,
+            duration_hours: slot.duration_hours || 1,
+            subject_name: slot.subject_name,
+            subject_shortform: slot.subject_shortform,
+            classroom_name: slot.classroom_name || 'Not Assigned',
+            is_fixed_slot: slot.is_fixed_slot || false
+          })
+        }
+      }
+      
+      // Check lab slots
+      for (const labSlot of timetable.lab_slots || []) {
+        for (const batch of labSlot.batches || []) {
+          // Check if teacher1 or teacher2 matches
+          const isTeacher1 = batch.teacher1_id && batch.teacher1_id.toString() === teacherId
+          const isTeacher2 = batch.teacher2_id && batch.teacher2_id.toString() === teacherId
+          
+          if (isTeacher1 || isTeacher2) {
+            // Find if we already added this lab slot
+            const existingSlot = teacherSchedule.lab_sessions.find(
+              ls => ls.timetable_id.toString() === timetable._id.toString() &&
+                    ls.day === labSlot.day &&
+                    ls.start_time === labSlot.start_time
+            )
+            
+            if (existingSlot) {
+              // Add this batch to existing slot
+              existingSlot.batches.push({
+                batch_name: batch.batch_name,
+                lab_name: batch.lab_name,
+                lab_shortform: batch.lab_shortform,
+                lab_room_name: batch.lab_room_name || 'Not Assigned',
+                role: isTeacher1 ? 'Teacher 1' : 'Teacher 2'
+              })
+            } else {
+              // Create new lab session entry
+              teacherSchedule.lab_sessions.push({
+                timetable_id: timetable._id,
+                section_name: timetable.section_name,
+                sem: timetable.sem,
+                day: labSlot.day,
+                start_time: labSlot.start_time,
+                end_time: labSlot.end_time,
+                duration_hours: labSlot.duration_hours || 2,
+                batches: [{
+                  batch_name: batch.batch_name,
+                  lab_name: batch.lab_name,
+                  lab_shortform: batch.lab_shortform,
+                  lab_room_name: batch.lab_room_name || 'Not Assigned',
+                  role: isTeacher1 ? 'Teacher 1' : 'Teacher 2'
+                }]
+              })
+            }
+          }
+        }
+      }
+    }
+    
+    // Sort by day and time
+    const dayOrder = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5 }
+    
+    const sortByDayTime = (a, b) => {
+      if (dayOrder[a.day] !== dayOrder[b.day]) {
+        return dayOrder[a.day] - dayOrder[b.day]
+      }
+      return a.start_time.localeCompare(b.start_time)
+    }
+    
+    teacherSchedule.theory_classes.sort(sortByDayTime)
+    teacherSchedule.lab_sessions.sort(sortByDayTime)
+    
+    console.log(`✅ Found ${teacherSchedule.theory_classes.length} theory classes and ${teacherSchedule.lab_sessions.length} lab sessions`)
+    
+    // Calculate statistics
+    const stats = {
+      total_theory_classes: teacherSchedule.theory_classes.length,
+      total_lab_sessions: teacherSchedule.lab_sessions.length,
+      total_sessions: teacherSchedule.theory_classes.length + teacherSchedule.lab_sessions.length,
+      theory_hours: teacherSchedule.theory_classes.reduce((sum, cls) => sum + (cls.duration_hours || 1), 0),
+      lab_hours: teacherSchedule.lab_sessions.reduce((sum, lab) => sum + (lab.duration_hours || 2), 0),
+      total_hours: 0
+    }
+    stats.total_hours = stats.theory_hours + stats.lab_hours
+    
+    res.json({
+      success: true,
+      teacher_id: teacherId,
+      schedule: teacherSchedule,
+      statistics: stats
+    })
+    
+  } catch (error) {
+    console.error('Error fetching teacher schedule:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch teacher schedule',
+      error: error.message
+    })
+  }
+})
+
+/**
  * GET /api/timetables/check-teacher-conflict
  * Check if a teacher has a conflict at a specific day/time across ALL sections
  * IMPORTANT: This route MUST come BEFORE /:section_id route to avoid path conflicts

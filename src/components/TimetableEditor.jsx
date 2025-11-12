@@ -339,7 +339,12 @@ function TimetableEditor() {
 
       const allAssignments = assignmentsResponse.data.data
       
-      // Get all subject IDs that appear in theory_slots OR lab_sessions
+      console.log(`🔍 Checking unscheduled subjects for ${tt.section_name}:`)
+      console.log(`   Total assignments: ${allAssignments.length}`)
+      console.log(`   Theory slots: ${tt.theory_slots?.length || 0}`)
+      console.log(`   Lab slots: ${tt.lab_slots?.length || 0}`)
+      
+      // Get all subject IDs that appear in theory_slots OR lab_slots
       const scheduledSubjectIds = new Set()
       
       // Add theory slots (safely)
@@ -351,11 +356,16 @@ function TimetableEditor() {
         })
       }
       
-      // Add lab sessions (safely check if exists)
-      if (tt.lab_sessions && Array.isArray(tt.lab_sessions)) {
-        tt.lab_sessions.forEach(session => {
-          if (session.subject_id) {
-            scheduledSubjectIds.add(session.subject_id._id?.toString() || session.subject_id.toString())
+      // Add lab slots (safely check if exists)
+      if (tt.lab_slots && Array.isArray(tt.lab_slots)) {
+        tt.lab_slots.forEach(slot => {
+          // Lab slots can have multiple batches, each with their own subject
+          if (slot.batches && Array.isArray(slot.batches)) {
+            slot.batches.forEach(batch => {
+              if (batch.subject_id) {
+                scheduledSubjectIds.add(batch.subject_id._id?.toString() || batch.subject_id.toString())
+              }
+            })
           }
         })
       }
@@ -373,6 +383,17 @@ function TimetableEditor() {
         
         return isTheorySubject && !scheduledSubjectIds.has(subjectId)
       })
+
+      console.log(`   Scheduled subject IDs: ${Array.from(scheduledSubjectIds).join(', ')}`)
+      console.log(`   Unscheduled subjects found: ${unscheduled.length}`)
+      if (unscheduled.length > 0) {
+        console.log(`   Unscheduled details:`, unscheduled.map(a => ({
+          subject_name: a.subject_id?.subject_name,
+          subject_code: a.subject_id?.subject_code,
+          subject_type: a.subject_id?.subject_type,
+          subject_id: a.subject_id?._id?.toString()
+        })))
+      }
 
       setUnscheduledSubjects(unscheduled)
       console.log(`📋 Found ${unscheduled.length} unscheduled theory subjects for ${tt.section_name}`)
@@ -814,36 +835,59 @@ function TimetableEditor() {
     }
 
     // Check 3: Time slot conflict (section already has class - theory, lab, OR break)
+    // IMPROVED: Check for TIME OVERLAP, not just exact start time match
     const slotBusyTheory = timetable.theory_slots.some(s =>
       s._id !== slot._id &&
       s.day === newDay &&
-      s.start_time === newStartTime
+      (s.start_time < newEndTime && s.end_time > newStartTime) // Overlap check
     )
     
     const slotBusyLab = (timetable.lab_slots || []).some(s =>
       s.day === newDay &&
-      s.start_time === newStartTime
+      (s.start_time < newEndTime && s.end_time > newStartTime) // Overlap check
     )
     
     // Check for ACTIVE breaks only (exclude removed markers)
     const slotBusyBreak = (timetable.breaks || []).some(b =>
       b.day === newDay &&
-      b.start_time === newStartTime &&
+      b.start_time < newEndTime &&
+      b.end_time > newStartTime &&
       !b.isRemoved  // ← CRITICAL: Ignore removed breaks!
     )
 
     console.log('   ⏰ [SLOT CHECK] Time slot occupied?', {
       theory: slotBusyTheory,
       lab: slotBusyLab,
-      break: slotBusyBreak
+      break: slotBusyBreak,
+      checkingRange: `${newStartTime} - ${newEndTime}`
     })
 
     if (slotBusyTheory || slotBusyLab || slotBusyBreak) {
       let conflictType = slotBusyBreak ? 'Break' : slotBusyLab ? 'Lab' : 'Class'
-      console.log('   ❌ [SLOT CONFLICT] Time occupied by:', conflictType)
+      
+      // Find the conflicting slot(s) for better error message
+      let conflictingItems = []
+      if (slotBusyTheory) {
+        conflictingItems = timetable.theory_slots.filter(s =>
+          s._id !== slot._id &&
+          s.day === newDay &&
+          (s.start_time < newEndTime && s.end_time > newStartTime)
+        )
+      } else if (slotBusyLab) {
+        conflictingItems = (timetable.lab_slots || []).filter(s =>
+          s.day === newDay &&
+          (s.start_time < newEndTime && s.end_time > newStartTime)
+        )
+      }
+      
+      const conflictDetails = conflictingItems.length > 0
+        ? ` - Conflicts with: ${conflictingItems.map(s => `${s.subject_shortform || s.subject_name} (${convertTo12Hour(s.start_time)}-${convertTo12Hour(s.end_time)})`).join(', ')}`
+        : ''
+      
+      console.log('   ❌ [SLOT CONFLICT] Time overlaps with:', conflictType, conflictDetails)
       conflicts.push({
         type: 'slot',
-        message: `❌ Time Slot Conflict: ${newDay} ${convertTo12Hour(newStartTime)} is already occupied by a ${conflictType}`
+        message: `❌ Time Slot Conflict: ${newDay} ${convertTo12Hour(newStartTime)}-${convertTo12Hour(newEndTime)} overlaps with existing ${conflictType}${conflictDetails}`
       })
     }
 
@@ -1315,14 +1359,15 @@ function TimetableEditor() {
         breaks_count: (timetable.breaks || []).length
       })
       
-      // Check if any slot occupies the next 30-minute time
+      // Check if any ACTUAL CLASS (not breaks) occupies the next 30-minute time
+      // IMPORTANT: Breaks can be overridden, so we only check theory and lab slots
       const allSlots = [
         ...(timetable.theory_slots || []),
-        ...(timetable.lab_slots || []),
-        ...(timetable.breaks || [])
+        ...(timetable.lab_slots || [])
+        // DON'T include breaks - they can be overridden
       ]
       
-      console.log(`   Checking ${allSlots.length} total slots for conflicts on ${currentSlot.day}`)
+      console.log(`   Checking ${allSlots.length} total slots (excluding breaks) for conflicts on ${currentSlot.day}`)
       
       const nextSlotEnd = addHours(nextSlotTime, 0.5)
       console.log(`   Next slot time range: ${nextSlotTime} - ${nextSlotEnd}`)
@@ -1335,7 +1380,7 @@ function TimetableEditor() {
         const overlaps = (s.start_time < nextSlotEnd && s.end_time > nextSlotTime)
         
         if (overlaps) {
-          console.log(`   🚫 Conflict found: ${s.subject_shortform || s.subject_name} at ${s.start_time}-${s.end_time}`)
+          console.log(`   🚫 Conflict found: ${s.subject_shortform || s.subject_name || 'Lab'} at ${s.start_time}-${s.end_time}`)
         }
         
         return overlaps
@@ -1345,8 +1390,15 @@ function TimetableEditor() {
       
       if (nextSlotOccupied) {
         console.error('🚫 [BLOCKED] Next 30-minute slot is occupied - cannot assign 1-hour class')
-        console.error('   Conflicting slots:', conflictingSlots.map(s => `${s.subject_shortform || s.subject_name} (${s.start_time}-${s.end_time})`).join(', '))
-        alert(`🚫 Cannot assign classroom!\n\nThis is a 1-hour class, but the next 30-minute slot (${convertTo12Hour(nextSlotTime)}) is already occupied.\n\nConflicting class(es): ${conflictingSlots.map(s => s.subject_shortform || s.subject_name).join(', ')}\n\nYou cannot place a 1-hour class here. Please move this class to a time slot where BOTH 30-minute periods are free.`)
+        console.error('   Conflicting slots:', conflictingSlots.map(s => `${s.subject_shortform || s.subject_name || 'Lab Session'} (${s.start_time}-${s.end_time})`).join(', '))
+        
+        // Better error message showing what type of conflict
+        const conflictTypes = conflictingSlots.map(s => {
+          if (s.batches) return `Lab Session (${s.batches.length} batches)`
+          return s.subject_shortform || s.subject_name || 'Unknown'
+        }).join(', ')
+        
+        alert(`🚫 Cannot assign classroom!\n\nThis is a 1-hour class, but the next 30-minute slot (${convertTo12Hour(nextSlotTime)}) is already occupied.\n\nConflicting class(es): ${conflictTypes}\n\nYou cannot place a 1-hour class here. Please move this class to a time slot where BOTH 30-minute periods are free.`)
         return // Do not open modal
       }
       
