@@ -74,6 +74,8 @@ const TimetableSchema = new mongoose.Schema(
       },
       theory_scheduling_summary: {
         total_subjects_found: Number,
+        subjects_in_fixed_slots: Number,
+        subjects_to_schedule_step4: Number,
         regular_ise_found: Number,
         other_dept_found: Number,
         projects_found: Number,

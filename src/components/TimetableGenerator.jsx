@@ -87,13 +87,13 @@ function TimetableGenerator() {
           console.log('🔍 [STEP 3 STATUS] Scheduled labs:', totalLabsScheduled)
           
           // Try to get expected count from metadata
+          let sectionsWithMetadata = 0
           response.data.data.forEach(tt => {
             if (tt.generation_metadata?.step3_summary) {
               const expected = parseFloat(tt.generation_metadata.step3_summary.lab_sessions_expected || 0)
               totalLabsExpected += expected
-              console.log(`   Section ${tt.section_name}: ${tt.lab_slots?.length || 0}/${expected} labs`)
-            } else {
-              console.log(`   ⚠️ Section ${tt.section_name}: No step3_summary in metadata`)
+              sectionsWithMetadata++
+              console.log(`   ✅ Section ${tt.section_name}: ${tt.lab_slots?.length || 0}/${expected} labs`)
             }
           })
           
@@ -101,7 +101,8 @@ function TimetableGenerator() {
           
           // If no expected count in metadata, use scheduled count as expected (assumes 100% success)
           if (totalLabsExpected === 0) {
-            console.log('⚠️ [STEP 3 STATUS] No expected count found, defaulting to scheduled count')
+            console.log('ℹ️ [STEP 3 STATUS] No step3_summary metadata found (timetables may have been created before this feature)')
+            console.log('ℹ️ [STEP 3 STATUS] Re-run Step 3 to populate metadata, or using scheduled count as fallback')
             totalLabsExpected = totalLabsScheduled
           }
           
@@ -359,6 +360,7 @@ function TimetableGenerator() {
           const slotsScheduled = data.theory_slots_scheduled || 0
           const totalFound = data.total_subjects_found || 0
           const totalToSchedule = data.subjects_to_schedule_step4 || 0
+          const totalScheduled = data.total_scheduled || 0
           const fixedSlots = data.subjects_in_fixed_slots || 0
           const successRate = data.success_rate || 0
           
@@ -368,7 +370,8 @@ function TimetableGenerator() {
           alertMessage += `   Total Subjects Found: ${totalFound}\n`
           alertMessage += `   Already in Fixed Slots: ${fixedSlots}\n`
           alertMessage += `   Subjects to Schedule: ${totalToSchedule}\n`
-          alertMessage += `   Slots Scheduled: ${slotsScheduled}/${totalToSchedule}\n`
+          alertMessage += `   Subjects Scheduled: ${totalScheduled}/${totalToSchedule}\n`
+          alertMessage += `   Theory Slots Created: ${slotsScheduled}\n`
           alertMessage += `   Success Rate: ${successRate.toFixed(2)}%\n\n`
           
           // Category breakdown if available
@@ -379,9 +382,9 @@ function TimetableGenerator() {
             alertMessage += `   Projects: ${data.projects_scheduled || 0}/${data.projects_found || 0}\n\n`
           }
           
-          if (slotsScheduled < totalToSchedule) {
+          if (totalScheduled < totalToSchedule) {
             alertMessage += `⚠️ NOTICE:\n`
-            alertMessage += `   ${totalToSchedule - slotsScheduled} subject(s) could not be scheduled\n`
+            alertMessage += `   ${totalToSchedule - totalScheduled} subject(s) could not be scheduled\n`
             alertMessage += `   Check the detailed report in Timetable Viewer\n\n`
           }
           

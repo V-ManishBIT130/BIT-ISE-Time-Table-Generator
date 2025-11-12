@@ -24,6 +24,13 @@ import Classroom from '../models/dept_class_model.js'
  * Helper: Build global room usage tracker
  * Key format: "day-startTime-roomNo"
  * Value: { sectionName, subjectShortform, slotType }
+ * 
+ * CRITICAL FIX (Nov 2025):
+ * For ANY duration slot, we now track ALL 30-minute segments separately
+ * to prevent double-booking rooms across split time slots.
+ * Examples:
+ *   - 1-hour slot (2 segments): 10:00 + 10:30
+ *   - 1.5-hour slot (3 segments): 09:30 + 10:00 + 10:30
  */
 function buildRoomUsageTracker(timetables) {
   const tracker = new Map()
@@ -33,12 +40,30 @@ function buildRoomUsageTracker(timetables) {
       // Skip if no classroom assigned yet
       if (!slot.classroom_name) continue
       
-      const key = `${slot.day}-${slot.start_time}-${slot.classroom_name}`
-      tracker.set(key, {
-        sectionName: tt.section_name,
-        subjectShortform: slot.subject_shortform,
-        slotType: slot.is_fixed_slot ? 'FIXED' : 'REGULAR'
-      })
+      const duration = slot.duration_hours || 1
+      const [startHours, startMinutes] = slot.start_time.split(':').map(Number)
+      const startTotalMinutes = startHours * 60 + startMinutes
+      
+      // Calculate number of 30-minute segments
+      const numSegments = Math.ceil(duration * 2) // 1hr=2, 1.5hr=3, 2hr=4, etc.
+      
+      // Track ALL 30-minute segments
+      for (let i = 0; i < numSegments; i++) {
+        const segmentMinutes = startTotalMinutes + (i * 30)
+        const segmentHours = Math.floor(segmentMinutes / 60)
+        const segmentMins = segmentMinutes % 60
+        const segmentTime = `${String(segmentHours).padStart(2, '0')}:${String(segmentMins).padStart(2, '0')}`
+        
+        const key = `${slot.day}-${segmentTime}-${slot.classroom_name}`
+        tracker.set(key, {
+          sectionName: tt.section_name,
+          subjectShortform: slot.subject_shortform,
+          slotType: slot.is_fixed_slot ? 'FIXED' : 'REGULAR',
+          duration: slot.duration_hours,
+          segmentIndex: i,
+          totalSegments: numSegments
+        })
+      }
     }
   }
   
@@ -47,14 +72,42 @@ function buildRoomUsageTracker(timetables) {
 
 /**
  * Helper: Find first available classroom for a time slot
+ * 
+ * CRITICAL FIX (Nov 2025):
+ * For ANY duration slot, checks ALL 30-minute segments to ensure
+ * the room is available for the entire duration.
+ * Examples:
+ *   - 1-hour slot: checks 10:00 AND 10:30
+ *   - 1.5-hour slot: checks 09:30 AND 10:00 AND 10:30
  */
-function findAvailableRoom(day, startTime, classrooms, roomUsageTracker) {
+function findAvailableRoom(day, startTime, duration, classrooms, roomUsageTracker) {
+  const [startHours, startMinutes] = startTime.split(':').map(Number)
+  const startTotalMinutes = startHours * 60 + startMinutes
+  
+  // Calculate number of 30-minute segments
+  const numSegments = Math.ceil(duration * 2) // 1hr=2, 1.5hr=3, 2hr=4, etc.
+  
   for (const room of classrooms) {
-    const key = `${day}-${startTime}-${room.room_no}`
+    let roomAvailable = true
     
-    // Check if room is already occupied at this time
-    if (!roomUsageTracker.has(key)) {
-      return room  // Found available room!
+    // Check ALL 30-minute segments for this room
+    for (let i = 0; i < numSegments; i++) {
+      const segmentMinutes = startTotalMinutes + (i * 30)
+      const segmentHours = Math.floor(segmentMinutes / 60)
+      const segmentMins = segmentMinutes % 60
+      const segmentTime = `${String(segmentHours).padStart(2, '0')}:${String(segmentMins).padStart(2, '0')}`
+      
+      const key = `${day}-${segmentTime}-${room.room_no}`
+      
+      if (roomUsageTracker.has(key)) {
+        roomAvailable = false
+        break // Room occupied in at least one segment
+      }
+    }
+    
+    if (roomAvailable) {
+      // Room is available for the entire duration!
+      return room
     }
   }
   
@@ -130,10 +183,11 @@ export async function assignClassrooms(semType, academicYear) {
       )
       
       for (const slot of fixedSlots) {
-        // Find available room
+        // Find available room (pass duration for proper availability check)
         const room = findAvailableRoom(
           slot.day,
           slot.start_time,
+          slot.duration_hours || 1,
           classrooms,
           roomUsageTracker
         )
@@ -143,13 +197,27 @@ export async function assignClassrooms(semType, academicYear) {
           slot.classroom_id = room._id
           slot.classroom_name = room.room_no
           
-          // Mark room as used
-          const key = `${slot.day}-${slot.start_time}-${room.room_no}`
-          roomUsageTracker.set(key, {
-            sectionName: tt.section_name,
-            subjectShortform: slot.subject_shortform,
-            slotType: 'FIXED'
-          })
+          // Mark room as used - track ALL 30-minute segments
+          const duration = slot.duration_hours || 1
+          const [startHours, startMinutes] = slot.start_time.split(':').map(Number)
+          const startTotalMinutes = startHours * 60 + startMinutes
+          const numSegments = Math.ceil(duration * 2)
+          
+          for (let i = 0; i < numSegments; i++) {
+            const segmentMinutes = startTotalMinutes + (i * 30)
+            const segmentHours = Math.floor(segmentMinutes / 60)
+            const segmentMins = segmentMinutes % 60
+            const segmentTime = `${String(segmentHours).padStart(2, '0')}:${String(segmentMins).padStart(2, '0')}`
+            
+            const key = `${slot.day}-${segmentTime}-${room.room_no}`
+            roomUsageTracker.set(key, {
+              sectionName: tt.section_name,
+              subjectShortform: slot.subject_shortform,
+              slotType: 'FIXED',
+              segmentIndex: i,
+              totalSegments: numSegments
+            })
+          }
           
           fixedSlotsAssigned++
           console.log(`   ✅ [FIXED] ${tt.section_name} - ${slot.subject_shortform} (${slot.day} ${slot.start_time}): ${room.room_no}`)
@@ -182,10 +250,11 @@ export async function assignClassrooms(semType, academicYear) {
           continue
         }
         
-        // Find available room
+        // Find available room (pass duration for proper availability check)
         const room = findAvailableRoom(
           slot.day,
           slot.start_time,
+          slot.duration_hours || 1,
           classrooms,
           roomUsageTracker
         )
@@ -195,13 +264,27 @@ export async function assignClassrooms(semType, academicYear) {
           slot.classroom_id = room._id
           slot.classroom_name = room.room_no
           
-          // Mark room as used
-          const key = `${slot.day}-${slot.start_time}-${room.room_no}`
-          roomUsageTracker.set(key, {
-            sectionName: tt.section_name,
-            subjectShortform: slot.subject_shortform,
-            slotType: 'REGULAR'
-          })
+          // Mark room as used - track ALL 30-minute segments
+          const duration = slot.duration_hours || 1
+          const [startHours, startMinutes] = slot.start_time.split(':').map(Number)
+          const startTotalMinutes = startHours * 60 + startMinutes
+          const numSegments = Math.ceil(duration * 2)
+          
+          for (let i = 0; i < numSegments; i++) {
+            const segmentMinutes = startTotalMinutes + (i * 30)
+            const segmentHours = Math.floor(segmentMinutes / 60)
+            const segmentMins = segmentMinutes % 60
+            const segmentTime = `${String(segmentHours).padStart(2, '0')}:${String(segmentMins).padStart(2, '0')}`
+            
+            const key = `${slot.day}-${segmentTime}-${room.room_no}`
+            roomUsageTracker.set(key, {
+              sectionName: tt.section_name,
+              subjectShortform: slot.subject_shortform,
+              slotType: 'REGULAR',
+              segmentIndex: i,
+              totalSegments: numSegments
+            })
+          }
           
           regularSlotsAssigned++
           console.log(`   ✅ [REGULAR] ${tt.section_name} - ${slot.subject_shortform} (${slot.day} ${slot.start_time}): ${room.room_no}`)

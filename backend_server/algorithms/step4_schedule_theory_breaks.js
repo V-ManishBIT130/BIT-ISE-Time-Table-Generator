@@ -323,10 +323,23 @@ function timeToMinutes(timeStr) {
  * NOTE: Day length constraint:
  *  - If day starts at 8:00 AM → must end by 4:00 PM (16:00)
  *  - If day starts after 8:00 AM → can end by 5:00 PM (17:00)
+ * 
+ * CRITICAL FIX (Nov 2025):
+ * Ensures we check against ALL existing theory slots (including fixed slots from Step 2)
+ * to prevent overlapping with 1.5-hour fixed slots (OEC/PEC/DL-PEC)
  */
 function getAvailableTimeSlots(day, timetable, currentSubjectId = null) {
   const labSlots = timetable.lab_slots || []
   const theorySlots = timetable.theory_slots || []
+  
+  // CRITICAL DEBUG: Log what we're checking against
+  const fixedSlotsOnDay = theorySlots.filter(s => s.is_fixed_slot === true && s.day === day)
+  if (fixedSlotsOnDay.length > 0) {
+    console.log(`            🔒 DEBUG: Checking against ${fixedSlotsOnDay.length} fixed slots on ${day}:`)
+    fixedSlotsOnDay.forEach(s => {
+      console.log(`               - ${s.subject_shortform}: ${s.start_time}-${s.end_time} (${s.duration_hours}h)`)
+    })
+  }
   
   // Check if this day starts at 8:00 AM
   const hasEarlyStartToday = hasEarlyStart(timetable, day)
@@ -362,8 +375,19 @@ function getAvailableTimeSlots(day, timetable, currentSubjectId = null) {
     // Not during labs
     if (hasLabConflict(labSlots, day, slot.start, slot.end)) return false
     
-    // Not already scheduled theory
-    if (hasTheoryConflict(theorySlots, day, slot.start, slot.end)) return false
+    // CRITICAL: Check against ALL theory slots (including fixed slots)
+    // This prevents scheduling 10:00-11:00 when there's a fixed slot 09:30-11:00
+    const hasConflict = hasTheoryConflict(theorySlots, day, slot.start, slot.end)
+    if (hasConflict) {
+      // DEBUG: Log why this slot was rejected
+      const conflictingSlot = theorySlots.find(s => 
+        s.day === day && timesOverlap(slot.start, slot.end, s.start_time, s.end_time)
+      )
+      if (conflictingSlot && conflictingSlot.is_fixed_slot) {
+        console.log(`            ⛔ ${slot.start}-${slot.end} BLOCKED: Conflicts with fixed slot ${conflictingSlot.subject_shortform} (${conflictingSlot.start_time}-${conflictingSlot.end_time})`)
+      }
+      return false
+    }
     
     return true
   })
@@ -974,6 +998,49 @@ export async function scheduleTheory(semType, academicYear) {
       
       if (totalToSchedule === 0) {
         console.log(`      ℹ️  All subjects already scheduled in fixed slots - nothing to do in Step 4\n`)
+        
+        // Still save summary data even when nothing to schedule
+        const summaryData = {
+          total_subjects_found: allAssignments.length,
+          subjects_in_fixed_slots: totalSkipped,
+          subjects_to_schedule_step4: 0,
+          regular_ise_found: 0,
+          other_dept_found: 0,
+          projects_found: 0,
+          regular_ise_scheduled: 0,
+          regular_ise_failed: 0,
+          other_dept_scheduled: 0,
+          other_dept_failed: 0,
+          projects_scheduled: 0,
+          projects_failed: 0,
+          total_scheduled: 0,
+          success_rate: 100 // 100% because all are already in fixed slots
+        }
+        
+        console.log(`\n      📝 DEBUG: Saving summary for ${sectionName}:`)
+        console.log(`         - total_subjects_found: ${summaryData.total_subjects_found}`)
+        console.log(`         - subjects_in_fixed_slots: ${summaryData.subjects_in_fixed_slots}`)
+        console.log(`         - subjects_to_schedule_step4: ${summaryData.subjects_to_schedule_step4}`)
+        console.log(`         - success_rate: ${summaryData.success_rate}%\n`)
+        
+        await Timetable.updateOne(
+          { _id: tt._id },
+          {
+            $set: {
+              'generation_metadata.current_step': 4,
+              'generation_metadata.theory_scheduling_summary': summaryData,
+              'generation_metadata.steps_completed': [
+                'load_sections',
+                'block_fixed_slots',
+                'schedule_labs',
+                'schedule_theory'
+              ]
+            }
+          }
+        )
+        
+        console.log(`      ✅ Summary saved for ${sectionName}\n`)
+        
         continue
       }
       
@@ -1113,7 +1180,14 @@ export async function scheduleTheory(semType, academicYear) {
         success_rate: successRate
       }
       
-      console.log(`\n      💾 Saving to database with theory_scheduling_summary:`)
+      console.log(`\n      � DEBUG: Summary data for ${sectionName}:`)
+      console.log(`         - allAssignments.length: ${allAssignments.length}`)
+      console.log(`         - totalSkipped: ${totalSkipped}`)
+      console.log(`         - totalToSchedule: ${totalToSchedule}`)
+      console.log(`         - totalScheduled: ${totalScheduled}`)
+      console.log(`         - successRate: ${successRate}`)
+      
+      console.log(`\n      �💾 Saving to database with theory_scheduling_summary:`)
       console.log(`         ${JSON.stringify(summaryData, null, 2)}`)
       
       // Save updated timetable with theory scheduling summary
@@ -1143,6 +1217,9 @@ export async function scheduleTheory(semType, academicYear) {
       if (verifyTimetable.generation_metadata?.theory_scheduling_summary) {
         console.log(`      ✅✅ VERIFICATION SUCCESS: theory_scheduling_summary EXISTS in database!`)
         console.log(`         Success rate in DB: ${verifyTimetable.generation_metadata.theory_scheduling_summary.success_rate}%`)
+        console.log(`         🔍 VERIFY subjects_in_fixed_slots: ${verifyTimetable.generation_metadata.theory_scheduling_summary.subjects_in_fixed_slots}`)
+        console.log(`         🔍 VERIFY subjects_to_schedule_step4: ${verifyTimetable.generation_metadata.theory_scheduling_summary.subjects_to_schedule_step4}`)
+        console.log(`         🔍 VERIFY total_scheduled: ${verifyTimetable.generation_metadata.theory_scheduling_summary.total_scheduled}`)
       } else {
         console.log(`      ❌❌ VERIFICATION FAILED: theory_scheduling_summary NOT FOUND in database!`)
         console.log(`         This means the schema doesn't support this field.`)
@@ -1191,6 +1268,8 @@ export async function scheduleTheory(semType, academicYear) {
     console.log(`   ${totalTheorySlotsScheduled === newInDB ? '✅✅ MATCH!' : '❌❌ MISMATCH!'}\n`)
     
     // Aggregate summary data from all timetables
+    console.log(`\n   📊 AGGREGATING SUMMARY DATA FROM ALL TIMETABLES:\n`)
+    
     let aggregatedSummary = {
       total_subjects_found: 0,
       subjects_in_fixed_slots: 0,
@@ -1209,7 +1288,16 @@ export async function scheduleTheory(semType, academicYear) {
     
     for (const tt of finalVerify) {
       const summary = tt.generation_metadata?.theory_scheduling_summary
+      
+      console.log(`   - ${tt.section_name}:`)
+      
       if (summary) {
+        console.log(`      ✅ Has theory_scheduling_summary`)
+        console.log(`         total_subjects_found: ${summary.total_subjects_found || 0}`)
+        console.log(`         subjects_in_fixed_slots: ${summary.subjects_in_fixed_slots || 0}`)
+        console.log(`         subjects_to_schedule_step4: ${summary.subjects_to_schedule_step4 || 0}`)
+        console.log(`         total_scheduled: ${summary.total_scheduled || 0}`)
+        
         aggregatedSummary.total_subjects_found += summary.total_subjects_found || 0
         aggregatedSummary.subjects_in_fixed_slots += summary.subjects_in_fixed_slots || 0
         aggregatedSummary.subjects_to_schedule_step4 += summary.subjects_to_schedule_step4 || 0
@@ -1223,8 +1311,16 @@ export async function scheduleTheory(semType, academicYear) {
         aggregatedSummary.projects_scheduled += summary.projects_scheduled || 0
         aggregatedSummary.projects_failed += summary.projects_failed || 0
         aggregatedSummary.total_scheduled += summary.total_scheduled || 0
+      } else {
+        console.log(`      ❌ NO theory_scheduling_summary found in generation_metadata`)
       }
     }
+    
+    console.log(`\n   📊 AGGREGATED TOTALS:`)
+    console.log(`      - total_subjects_found: ${aggregatedSummary.total_subjects_found}`)
+    console.log(`      - subjects_in_fixed_slots: ${aggregatedSummary.subjects_in_fixed_slots}`)
+    console.log(`      - subjects_to_schedule_step4: ${aggregatedSummary.subjects_to_schedule_step4}`)
+    console.log(`      - total_scheduled: ${aggregatedSummary.total_scheduled}\n`)
     
     // Calculate overall success rate
     const overallSuccessRate = aggregatedSummary.subjects_to_schedule_step4 > 0

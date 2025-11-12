@@ -63,12 +63,13 @@ router.get('/', async (req, res) => {
  */
 router.get('/check-teacher-conflict', async (req, res) => {
   try {
-    const { teacher_id, day, start_time, exclude_timetable_id, exclude_slot_id } = req.query
+    const { teacher_id, day, start_time, end_time, exclude_timetable_id, exclude_slot_id } = req.query
     
     console.log('🔍 [BACKEND] Checking teacher conflict:', {
       teacher_id,
       day,
       start_time,
+      end_time,
       exclude_timetable_id
     })
     
@@ -79,57 +80,90 @@ router.get('/check-teacher-conflict', async (req, res) => {
       })
     }
     
+    // Helper: Check if two time ranges overlap
+    const timesOverlap = (start1, end1, start2, end2) => {
+      const toMinutes = (time) => {
+        const [h, m] = time.split(':').map(Number)
+        return h * 60 + m
+      }
+      
+      const s1 = toMinutes(start1)
+      const e1 = toMinutes(end1)
+      const s2 = toMinutes(start2)
+      const e2 = toMinutes(end2)
+      
+      return s1 < e2 && s2 < e1
+    }
+    
+    // If no end_time provided, assume 1 hour duration
+    const checkEndTime = end_time || (() => {
+      const [h, m] = start_time.split(':').map(Number)
+      const totalMinutes = h * 60 + m + 60
+      const newH = Math.floor(totalMinutes / 60)
+      const newM = totalMinutes % 60
+      return `${newH.toString().padStart(2, '0')}:${newM.toString().padStart(2, '0')}`
+    })()
+    
+    console.log(`   📏 Checking time range: ${start_time} - ${checkEndTime}`)
+    
     // Find all timetables (excluding current one)
     const timetables = await Timetable.find({
       _id: { $ne: exclude_timetable_id }
     }).populate('section_id', 'section_name sem')
     
-    // Check theory slots
+    // Check theory slots for TIME OVERLAP
     for (const tt of timetables) {
-      const conflictSlot = tt.theory_slots?.find(slot => 
-        slot.teacher_id?.toString() === teacher_id &&
-        slot.day === day &&
-        slot.start_time === start_time &&
-        slot._id?.toString() !== exclude_slot_id
-      )
-      
-      if (conflictSlot) {
-        console.log('   ❌ [BACKEND] Conflict found in theory slots!')
-        return res.json({
-          success: true,
-          hasConflict: true,
-          conflict: {
-            section: tt.section_name || tt.section_id?.section_name,
-            subject: conflictSlot.subject_name || conflictSlot.subject_shortform,
-            day: day,
-            time: start_time,
-            type: 'theory'
+      if (tt.theory_slots && Array.isArray(tt.theory_slots)) {
+        for (const slot of tt.theory_slots) {
+          if (slot.teacher_id?.toString() === teacher_id &&
+              slot.day === day &&
+              slot._id?.toString() !== exclude_slot_id) {
+            // Check if times overlap
+            if (timesOverlap(start_time, checkEndTime, slot.start_time, slot.end_time)) {
+              console.log('   ❌ [BACKEND] Time overlap conflict found in theory slots!', {
+                conflictTime: `${slot.start_time}-${slot.end_time}`,
+                requestedTime: `${start_time}-${checkEndTime}`
+              })
+              return res.json({
+                success: true,
+                hasConflict: true,
+                conflict: {
+                  section: tt.section_name || tt.section_id?.section_name,
+                  subject: slot.subject_name || slot.subject_shortform,
+                  day: day,
+                  time: `${slot.start_time}-${slot.end_time}`,
+                  type: 'theory'
+                }
+              })
+            }
           }
-        })
+        }
       }
     }
     
-    // Check lab slots
+    // Check lab slots for TIME OVERLAP
     for (const tt of timetables) {
-      const conflictSlot = tt.lab_slots?.find(slot => 
-        slot.teacher_id?.toString() === teacher_id &&
-        slot.day === day &&
-        slot.start_time === start_time
-      )
-      
-      if (conflictSlot) {
-        console.log('   ❌ [BACKEND] Conflict found in lab slots!')
-        return res.json({
-          success: true,
-          hasConflict: true,
-          conflict: {
-            section: tt.section_name || tt.section_id?.section_name,
-            subject: conflictSlot.subject_name || conflictSlot.subject_shortform || 'Lab Session',
-            day: day,
-            time: start_time,
-            type: 'lab'
+      if (tt.lab_slots && Array.isArray(tt.lab_slots)) {
+        for (const slot of tt.lab_slots) {
+          if (slot.teacher_id?.toString() === teacher_id &&
+              slot.day === day) {
+            // Check if times overlap
+            if (timesOverlap(start_time, checkEndTime, slot.start_time, slot.end_time)) {
+              console.log('   ❌ [BACKEND] Time overlap conflict found in lab slots!')
+              return res.json({
+                success: true,
+                hasConflict: true,
+                conflict: {
+                  section: tt.section_name || tt.section_id?.section_name,
+                  subject: slot.subject_name || slot.subject_shortform || 'Lab Session',
+                  day: day,
+                  time: `${slot.start_time}-${slot.end_time}`,
+                  type: 'lab'
+                }
+              })
+            }
           }
-        })
+        }
       }
     }
     
@@ -156,22 +190,28 @@ router.get('/check-teacher-conflict', async (req, res) => {
  * Query params:
  * - day: Monday, Tuesday, etc.
  * - start_time: 10:00 (24-hour format)
+ * - end_time: 11:00 (24-hour format) - REQUIRED for proper overlap detection
  * - sem_type: odd/even
  * - academic_year: 2024-2025
  * - exclude_timetable_id: (optional) Exclude current timetable's slots
  */
 router.get('/available-rooms', async (req, res) => {
   try {
-    const { day, start_time, sem_type, academic_year, exclude_timetable_id } = req.query
+    const { day, start_time, end_time, sem_type, academic_year, exclude_timetable_id } = req.query
     
-    if (!day || !start_time || !sem_type || !academic_year) {
+    if (!day || !start_time || !end_time || !sem_type || !academic_year) {
       return res.status(400).json({
         success: false,
-        message: 'day, start_time, sem_type, and academic_year are required'
+        message: 'day, start_time, end_time, sem_type, and academic_year are required'
       })
     }
     
-    console.log('🔍 [AVAILABLE ROOMS] Query:', { day, start_time, sem_type, academic_year })
+    console.log('🔍 [AVAILABLE ROOMS] Query:', { day, start_time, end_time, sem_type, academic_year })
+    
+    // Helper: Check if two time ranges overlap
+    const timesOverlap = (start1, end1, start2, end2) => {
+      return (start1 < end2 && end1 > start2)
+    }
     
     // Import Classroom model
     const Classroom = (await import('../models/dept_class_model.js')).default
@@ -189,14 +229,19 @@ router.get('/available-rooms', async (req, res) => {
     const timetables = await Timetable.find(filter).lean()
     console.log(`   📚 Checking ${timetables.length} timetables`)
     
-    // Build set of occupied rooms at this day/time
+    // Build set of occupied rooms at this day/time range
     const occupiedRooms = new Set()
+    
+    console.log(`   📏 Checking for overlaps with time range: ${start_time} - ${end_time}`)
     
     for (const tt of timetables) {
       for (const slot of tt.theory_slots || []) {
-        if (slot.day === day && slot.start_time === start_time && slot.classroom_name) {
-          occupiedRooms.add(slot.classroom_name)
-          console.log(`   ❌ Room ${slot.classroom_name} occupied by ${tt.section_name} (${slot.subject_shortform})`)
+        if (slot.day === day && slot.classroom_name) {
+          // Check if this slot overlaps with the requested time range
+          if (timesOverlap(start_time, end_time, slot.start_time, slot.end_time)) {
+            occupiedRooms.add(slot.classroom_name)
+            console.log(`   ❌ Room ${slot.classroom_name} occupied by ${tt.section_name} (${slot.subject_shortform}) at ${slot.start_time}-${slot.end_time}`)
+          }
         }
       }
     }
@@ -595,36 +640,71 @@ router.patch('/:timetableId/theory-slot/:slotId/classroom', async (req, res) => 
       room: classroom_name
     })
     
-    // Check if the room is available at this day/time (conflict detection)
-    const conflictingTimetables = await Timetable.find({
+    // Calculate end time for the slot we're checking
+    const slotDuration = slot.duration_hours || 1
+    const [startH, startM] = checkStartTime.split(':').map(Number)
+    const startMinutes = startH * 60 + startM
+    const endMinutes = startMinutes + (slotDuration * 60)
+    const endH = Math.floor(endMinutes / 60)
+    const endM = endMinutes % 60
+    const checkEndTime = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`
+    
+    console.log(`   📏 Checking time range: ${checkStartTime} - ${checkEndTime}`)
+    
+    // Helper: Check if two time ranges overlap
+    const timesOverlap = (start1, end1, start2, end2) => {
+      const toMinutes = (time) => {
+        const [h, m] = time.split(':').map(Number)
+        return h * 60 + m
+      }
+      
+      const s1 = toMinutes(start1)
+      const e1 = toMinutes(end1)
+      const s2 = toMinutes(start2)
+      const e2 = toMinutes(end2)
+      
+      // Two ranges overlap if: start1 < end2 AND start2 < end1
+      return s1 < e2 && s2 < e1
+    }
+    
+    // Check if the room is available (no time overlap with any existing class)
+    const allTimetables = await Timetable.find({
       _id: { $ne: timetableId },
       sem_type: timetable.sem_type,
-      academic_year: timetable.academic_year,
-      'theory_slots': {
-        $elemMatch: {
-          day: checkDay,
-          start_time: checkStartTime,
-          classroom_name: classroom_name
-        }
-      }
+      academic_year: timetable.academic_year
     }).lean()
     
-    if (conflictingTimetables.length > 0) {
-      const conflict = conflictingTimetables[0]
-      const conflictSlot = conflict.theory_slots.find(s => 
-        s.day === checkDay && 
-        s.start_time === checkStartTime && 
-        s.classroom_name === classroom_name
-      )
-      
-      console.log('   ❌ Conflict detected:', { 
-        section: conflict.section_name, 
-        subject: conflictSlot?.subject_shortform 
+    let conflictFound = null
+    let conflictSlot = null
+    
+    for (const tt of allTimetables) {
+      if (tt.theory_slots && Array.isArray(tt.theory_slots)) {
+        for (const existingSlot of tt.theory_slots) {
+          // Check if same day and same classroom
+          if (existingSlot.day === checkDay && existingSlot.classroom_name === classroom_name) {
+            // Check if times overlap
+            if (timesOverlap(checkStartTime, checkEndTime, existingSlot.start_time, existingSlot.end_time)) {
+              conflictFound = tt
+              conflictSlot = existingSlot
+              break
+            }
+          }
+        }
+      }
+      if (conflictFound) break
+    }
+    
+    if (conflictFound) {
+      console.log('   ❌ Time overlap conflict detected:', { 
+        section: conflictFound.section_name, 
+        subject: conflictSlot?.subject_shortform,
+        conflictTime: `${conflictSlot.start_time}-${conflictSlot.end_time}`,
+        requestedTime: `${checkStartTime}-${checkEndTime}`
       })
       
       return res.status(409).json({
         success: false,
-        message: `Classroom ${classroom_name} is already occupied by ${conflict.section_name} (${conflictSlot?.subject_shortform}) at ${checkDay} ${checkStartTime}`
+        message: `Classroom ${classroom_name} is occupied by ${conflictFound.section_name} (${conflictSlot?.subject_shortform}) at ${checkDay} ${conflictSlot.start_time}-${conflictSlot.end_time}, which overlaps with your requested time ${checkStartTime}-${checkEndTime}`
       })
     }
     

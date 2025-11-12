@@ -987,3 +987,218 @@
   border-color: #cbd5e0;
 }
 
+/* ====================================
+   NEW FEATURES: Unscheduled Subjects & Available Classrooms
+   ==================================== */
+
+/* Feature Buttons */
+.editor-features {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-feature {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  border: 2px solid #6366f1;
+  color: white;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.btn-feature:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  border-color: #4f46e5;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.btn-feature.active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: #10b981;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+/* Unscheduled Subjects Panel */
+.unscheduled-panel {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.panel-header h3 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 1.3rem;
+}
+
+.btn-close-panel {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.btn-close-panel:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+.unscheduled-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.unscheduled-item {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #fbbf24;
+  border-radius: 8px;
+  padding: 15px;
+  transition: all 0.2s;
+}
+
+.unscheduled-item:hover {
+  transform: translateX(5px);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+.subject-info {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.subject-name {
+  font-weight: bold;
+  color: #78350f;
+  font-size: 1.1rem;
+}
+
+.subject-code {
+  color: #92400e;
+  font-size: 0.9rem;
+}
+
+.assignment-info {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: #78350f;
+}
+
+.teacher-name,
+.hours-info {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.instructions {
+  font-size: 0.85rem;
+  color: #92400e;
+  font-style: italic;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #fbbf24;
+}
+
+.panel-footer {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 2px solid #e5e7eb;
+}
+
+.panel-footer p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+/* Available Classrooms in Empty Slots */
+.available-rooms-display {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.rooms-label {
+  font-weight: 600;
+  color: #10b981;
+}
+
+.rooms-list {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.room-badge {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.room-more {
+  background: #6b7280;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.no-rooms {
+  color: #ef4444;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.loading-rooms {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
