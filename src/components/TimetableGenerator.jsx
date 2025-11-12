@@ -844,19 +844,6 @@ function TimetableGenerator() {
           )}
         </div>
       )}
-
-      <div className="info-section">
-        <h3>ℹ️ Generation Steps</h3>
-        <ol>
-          <li><strong>Step 1:</strong> Load all sections for semester type</li>
-          <li><strong>Step 2:</strong> Block fixed slots (OEC/PEC for Semester 7)</li>
-          <li><strong>Step 3:</strong> Schedule labs using batch rotation</li>
-          <li><strong>Step 4:</strong> Schedule theory subjects with breaks (11:00-11:30 AM, 1:30-2:00 PM)</li>
-          <li><strong>Step 5:</strong> Assign classrooms to theory slots (fixed first, then regular)</li>
-          <li><strong>Step 6:</strong> Assign teachers to labs dynamically</li>
-          <li><strong>Step 7:</strong> Validate constraints and finalize</li>
-        </ol>
-      </div>
     </div>
   )
 }

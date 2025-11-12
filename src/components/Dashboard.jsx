@@ -104,6 +104,10 @@ function Dashboard() {
               <span className="nav-icon">✏️</span>
               {sidebarOpen && <span>Edit TT</span>}
             </NavLink>
+            <NavLink to="/dashboard/teacher-view" className="nav-link">
+              <span className="nav-icon">👨‍🏫</span>
+              {sidebarOpen && <span>Teacher View</span>}
+            </NavLink>
           </div>
         </nav>
 
