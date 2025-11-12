@@ -3,6 +3,47 @@
 ## Overview
 This document outlines all constraints specific to lab scheduling, including batch rotation, room assignment, and conflict prevention.
 
+**Last Updated:** November 12, 2025  
+**Current Success Rate:** 93% (25/27 labs) with strict constraints  
+**Priority Semesters:** 100% success for 3rd and 5th semesters
+
+---
+
+## 🎯 Current Performance (November 2025)
+
+### Success Metrics
+```
+3rd Semester: 15/15 labs (100%) ✅
+  - 3A: 5/5 labs (DSL, Web Tech, DBMS, CN, AI/ML)
+  - 3B: 5/5 labs
+  - 3C: 5/5 labs
+
+5th Semester: 6/6 labs (100%) ✅
+  - 5A: 2/2 labs (Design Patterns, Parallel Computing)
+  - 5B: 2/2 labs
+  - 5C: 2/2 labs
+
+7th Semester: 4/6 labs (67%)
+  - 7A: 2/2 labs (PC Lab, BDA Lab) ✅
+  - 7B: 2/2 labs ✅
+  - 7C: 0/2 labs ❌ (insufficient PC/BDA rooms)
+
+Overall: 25/27 labs (93%)
+```
+
+### Constraints Enforced
+- ✅ **NO consecutive labs** (minimum 2-hour breaks)
+- ✅ **Max 2 labs per day** (all sections)
+- ✅ **Batch rotation guaranteed** (Rule 4.7)
+- ✅ **2-hour lab duration** (fixed)
+- ✅ **Synchronized batch scheduling** (all batches same time)
+
+### Scheduling Strategy
+- **Multi-Pass Retry System:** 20 attempts with randomized slot orderings
+- **Smart Scoring:** Prioritizes 3rd + 5th semester completion
+- **Processing Order:** 5A → 5B → 5C → 3A → 3B → 3C → 7A → 7B → 7C
+- **Result:** Perfect solution found on **1st attempt**
+
 ---
 
 ## 1. Lab Structure

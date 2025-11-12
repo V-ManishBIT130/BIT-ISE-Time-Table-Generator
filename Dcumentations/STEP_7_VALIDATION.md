@@ -3,6 +3,12 @@
 ## Overview
 Step 7 is the **final validation phase** that verifies all scheduling constraints have been met and marks timetables as complete. This is a **read-only validation step** - it does not modify the schedule, only validates it.
 
+**🚨 CRITICAL UPDATE (Nov 12, 2025):**
+- Now uses **30-minute segment validation** (matches Step 5 multi-segment tracking)
+- Validates **ALL time segments**, not just start times
+- Added **lab room conflict validation** (was missing!)
+- Detects **overlapping time ranges** accurately
+
 ---
 
 ## Purpose
@@ -23,18 +29,51 @@ Step 7 is the **final validation phase** that verifies all scheduling constraint
 - Lab teacher1 assignments across all sections
 - Lab teacher2 assignments across all sections
 
-**Detection Method**:
+**Detection Method** (Updated Nov 12, 2025):
 ```javascript
-Key format: "teacherId_day_startTime"
+// OLD APPROACH (BUGGY):
+Key format: "teacherId_day_startTime"  // ❌ Only checks start time!
 If duplicate key found → CONFLICT
+
+// NEW APPROACH (CORRECT):
+1. Calculate numSegments = Math.ceil(duration / 30)  // 1h = 2, 1.5h = 3
+2. For each 30-minute segment:
+     Generate key: "teacherId_day_segmentTime"
+     Check if key exists in schedule Map
+     If exists → CONFLICT with overlapping time range
+3. Store segment with full time range for detailed reporting
+```
+
+**Why Multi-Segment Validation?**
+```
+Example (Old Bug):
+  Dr. Smith: DSA at Monday 09:00-10:00 (1h)
+  Dr. Smith: DBMS at Monday 09:30-10:30 (1h)
+  
+  Old Key 1: "Smith_Monday_09:00"
+  Old Key 2: "Smith_Monday_09:30"
+  
+  Old Result: ✅ NO CONFLICT (different keys!)
+  Reality: ❌ CONFLICT! (09:30-10:30 overlaps with 09:00-10:00)
+
+Example (New Fix):
+  Dr. Smith: DSA at Monday 09:00-10:00
+    Segment 1: "Smith_Monday_09:00"
+    Segment 2: "Smith_Monday_09:30"
+  
+  Dr. Smith: DBMS at Monday 09:30-10:30
+    Segment 1: "Smith_Monday_09:30" ← COLLISION!
+    
+  New Result: ❌ CONFLICT DETECTED at segment 09:30 ✓
 ```
 
 **Output**:
 ```
 Teacher: Dr. Smith
 Day: Monday
-Time: 10:00
-Sections: 3A, 3B (conflict!)
+Time 1: 09:00-10:00 (Section 3A: DSA)
+Time 2: 09:30-10:30 (Section 5A: DBMS)
+Conflict at segment: 09:30
 ```
 
 ---
@@ -47,23 +86,81 @@ Sections: 3A, 3B (conflict!)
 - Fixed slots (OEC/PEC) classroom assignments
 - Regular theory slots classroom assignments
 
-**Detection Method**:
+**Detection Method** (Updated Nov 12, 2025):
 ```javascript
-Key format: "classroomId_day_startTime"
+// OLD APPROACH (BUGGY):
+Key format: "classroomId_day_startTime"  // ❌ Only checks start time!
 If duplicate key found → CONFLICT
+
+// NEW APPROACH (CORRECT):
+1. Calculate numSegments = Math.ceil(duration / 30)
+2. For each 30-minute segment:
+     Generate key: "classroomId_day_segmentTime"
+     Check for conflicts in that specific segment
+3. Report conflict with full time ranges
+```
+
+**Why This Matters:**
+```
+Example (1.5-hour slot):
+  Section 3A: OEC at Monday 08:00-09:30 in Room 604
+    Segment 1: "604_Monday_08:00"
+    Segment 2: "604_Monday_08:30"
+    Segment 3: "604_Monday_09:00"
+  
+  Section 5A: DBMS at Monday 08:30-09:30 in Room 604
+    Segment 1: "604_Monday_08:30" ← COLLISION!
+    Segment 2: "604_Monday_09:00" ← COLLISION!
+    
+  Conflict detected at segment 08:30 and 09:00 ✓
 ```
 
 **Output**:
 ```
-Classroom: ISE-303
-Day: Tuesday
-Time: 14:00
-Sections: 5A, 5B (conflict!)
+Classroom: ISE-604
+Day: Monday
+Time 1: 08:00-09:30 (Section 3A: OEC)
+Time 2: 08:30-09:30 (Section 5A: DBMS)
+Conflict at segment: 08:30
 ```
 
 ---
 
-### 3. **Consecutive Labs Validation** 🧪
+### 3. **Lab Room Conflict Validation** 🧪 [NEW - Nov 12, 2025]
+**Check**: No lab room is assigned to multiple batches at the same time
+
+**Validates**:
+- Lab room assignments across all sections
+- Lab room assignments across all batches
+- Overlapping time ranges for lab sessions
+
+**Detection Method**:
+```javascript
+1. For each lab slot's batch with lab_room_id:
+     Calculate numSegments = Math.ceil(duration / 30)
+2. For each 30-minute segment:
+     Generate key: "labRoomId_day_segmentTime"
+     Check for conflicts in that specific segment
+3. Report conflict with full details (section, batch, lab name)
+```
+
+**Why This Was Missing:**
+- Old Step 7 only validated theory classrooms
+- Lab rooms could be double-booked without detection
+- Step 5 assigns lab rooms but Step 7 never validated them
+
+**Output**:
+```
+Lab Room: CNL
+Day: Wednesday
+Time 1: 10:00-13:00 (Section 3A, Batch 1: CN Lab)
+Time 2: 11:00-14:00 (Section 3B, Batch 2: CN Lab)
+Conflict at segment: 11:00
+```
+
+---
+
+### 4. **Consecutive Labs Validation** 🧪
 **Check**: No section has back-to-back lab sessions (prevents student fatigue)
 
 **Validates**:
@@ -88,7 +185,7 @@ Issue: Students have no break between labs
 
 ---
 
-### 4. **Hours Per Week Validation** ⏰
+### 5. **Hours Per Week Validation** ⏰
 **Check**: Each subject receives the required hours per week
 
 **Current Status**: Basic implementation (calculation only)
@@ -117,6 +214,7 @@ Status: ⚠️ UNDER-SCHEDULED
   issues: {
     teacher_conflicts: 0,
     classroom_conflicts: 0,
+    lab_room_conflicts: 0,  // NEW
     consecutive_labs: 0
   }
 }
@@ -136,6 +234,7 @@ Status: ⚠️ UNDER-SCHEDULED
   issues: {
     teacher_conflicts: 2,
     classroom_conflicts: 1,
+    lab_room_conflicts: 1,  // NEW
     consecutive_labs: 0
   }
 }
@@ -146,6 +245,24 @@ Status: ⚠️ UNDER-SCHEDULED
 - Status: `WARNINGS`
 - Admin must review and fix issues
 - Re-run Step 7 after fixes
+
+---
+
+## Validation Order (Updated Nov 12, 2025)
+
+```
+Step 7 Validation Sequence:
+  1️⃣  Teacher Conflicts (multi-segment)
+  2️⃣  Classroom Conflicts (multi-segment)
+  3️⃣  Lab Room Conflicts (multi-segment) [NEW]
+  4️⃣  Consecutive Labs
+  5️⃣  Hours Per Week (basic)
+```
+
+**Why This Order?**
+- Most critical conflicts first (teachers, rooms)
+- Lab room validation added (was missing!)
+- Schedule quality checks last (consecutive, hours)
 
 ---
 

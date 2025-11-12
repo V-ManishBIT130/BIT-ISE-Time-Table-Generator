@@ -18,6 +18,52 @@
 import Timetable from '../models/timetable_model.js'
 
 /**
+ * Helper: Convert time to minutes since midnight
+ */
+function toMinutes(time) {
+  const [hours, minutes] = time.split(':').map(Number)
+  return hours * 60 + minutes
+}
+
+/**
+ * Helper: Check if two time ranges overlap
+ */
+function timesOverlap(start1, end1, start2, end2) {
+  const s1 = toMinutes(start1)
+  const e1 = toMinutes(end1)
+  const s2 = toMinutes(start2)
+  const e2 = toMinutes(end2)
+  
+  // Two ranges overlap if: start1 < end2 AND start2 < end1
+  return (s1 < e2 && s2 < e1)
+}
+
+/**
+ * Helper: Generate all 30-minute segment keys for a time slot
+ */
+function generateSegmentKeys(day, startTime, endTime, resourceId) {
+  const segments = []
+  const start = toMinutes(startTime)
+  const end = toMinutes(endTime)
+  const duration = end - start
+  const numSegments = Math.ceil(duration / 30)
+  
+  for (let i = 0; i < numSegments; i++) {
+    const segmentStart = start + (i * 30)
+    const segmentHours = Math.floor(segmentStart / 60)
+    const segmentMins = segmentStart % 60
+    const segmentTime = `${String(segmentHours).padStart(2, '0')}:${String(segmentMins).padStart(2, '0')}`
+    
+    segments.push({
+      key: `${resourceId}_${day}_${segmentTime}`,
+      time: segmentTime
+    })
+  }
+  
+  return segments
+}
+
+/**
  * Helper: Check for teacher conflicts across all sections
  */
 function validateTeacherConflicts(timetables) {
@@ -28,20 +74,45 @@ function validateTeacherConflicts(timetables) {
     // Check theory slots
     for (const slot of (tt.theory_slots || [])) {
       if (slot.teacher_id) {
-        const key = `${slot.teacher_id}_${slot.day}_${slot.start_time}`
-        if (teacherSchedule.has(key)) {
-          const existing = teacherSchedule.get(key)
-          conflicts.push({
-            teacher: slot.teacher_name,
-            day: slot.day,
-            time: slot.start_time,
-            sections: [existing.section, tt.section_name]
-          })
-        } else {
-          teacherSchedule.set(key, {
-            section: tt.section_name,
-            subject: slot.subject_name
-          })
+        const teacherId = slot.teacher_id.toString()
+        
+        // Generate all 30-minute segment keys for this slot
+        const segments = generateSegmentKeys(
+          slot.day,
+          slot.start_time,
+          slot.end_time,
+          teacherId
+        )
+        
+        // Check each segment for conflicts
+        for (const segment of segments) {
+          if (teacherSchedule.has(segment.key)) {
+            const existing = teacherSchedule.get(segment.key)
+            
+            // Only report conflict once per slot (not per segment)
+            const conflictId = `${teacherId}_${slot.day}_${slot.start_time}_${existing.startTime}`
+            if (!conflicts.find(c => c.id === conflictId)) {
+              conflicts.push({
+                id: conflictId,
+                teacher: slot.teacher_name,
+                day: slot.day,
+                time1: `${slot.start_time}-${slot.end_time}`,
+                time2: `${existing.startTime}-${existing.endTime}`,
+                section1: tt.section_name,
+                section2: existing.section,
+                subject1: slot.subject_name,
+                subject2: existing.subject,
+                segment: segment.time
+              })
+            }
+          } else {
+            teacherSchedule.set(segment.key, {
+              section: tt.section_name,
+              subject: slot.subject_name,
+              startTime: slot.start_time,
+              endTime: slot.end_time
+            })
+          }
         }
       }
     }
@@ -49,41 +120,85 @@ function validateTeacherConflicts(timetables) {
     // Check lab slots
     for (const labSlot of (tt.lab_slots || [])) {
       for (const batch of (labSlot.batches || [])) {
-        // Teacher 1
+        // Check Teacher 1
         if (batch.teacher1_id) {
-          const key = `${batch.teacher1_id}_${labSlot.day}_${labSlot.start_time}`
-          if (teacherSchedule.has(key)) {
-            const existing = teacherSchedule.get(key)
-            conflicts.push({
-              teacher: batch.teacher1_name,
-              day: labSlot.day,
-              time: labSlot.start_time,
-              sections: [existing.section, tt.section_name]
-            })
-          } else {
-            teacherSchedule.set(key, {
-              section: tt.section_name,
-              lab: batch.lab_name
-            })
+          const teacherId = batch.teacher1_id.toString()
+          
+          const segments = generateSegmentKeys(
+            labSlot.day,
+            labSlot.start_time,
+            labSlot.end_time,
+            teacherId
+          )
+          
+          for (const segment of segments) {
+            if (teacherSchedule.has(segment.key)) {
+              const existing = teacherSchedule.get(segment.key)
+              
+              const conflictId = `${teacherId}_${labSlot.day}_${labSlot.start_time}_${existing.startTime}`
+              if (!conflicts.find(c => c.id === conflictId)) {
+                conflicts.push({
+                  id: conflictId,
+                  teacher: batch.teacher1_name,
+                  day: labSlot.day,
+                  time1: `${labSlot.start_time}-${labSlot.end_time}`,
+                  time2: `${existing.startTime}-${existing.endTime}`,
+                  section1: `${tt.section_name} (${batch.batch_name})`,
+                  section2: existing.section,
+                  subject1: batch.lab_name,
+                  subject2: existing.subject,
+                  segment: segment.time
+                })
+              }
+            } else {
+              teacherSchedule.set(segment.key, {
+                section: `${tt.section_name} (${batch.batch_name})`,
+                subject: batch.lab_name,
+                startTime: labSlot.start_time,
+                endTime: labSlot.end_time
+              })
+            }
           }
         }
         
-        // Teacher 2
+        // Check Teacher 2
         if (batch.teacher2_id) {
-          const key = `${batch.teacher2_id}_${labSlot.day}_${labSlot.start_time}`
-          if (teacherSchedule.has(key)) {
-            const existing = teacherSchedule.get(key)
-            conflicts.push({
-              teacher: batch.teacher2_name,
-              day: labSlot.day,
-              time: labSlot.start_time,
-              sections: [existing.section, tt.section_name]
-            })
-          } else {
-            teacherSchedule.set(key, {
-              section: tt.section_name,
-              lab: batch.lab_name
-            })
+          const teacherId = batch.teacher2_id.toString()
+          
+          const segments = generateSegmentKeys(
+            labSlot.day,
+            labSlot.start_time,
+            labSlot.end_time,
+            teacherId
+          )
+          
+          for (const segment of segments) {
+            if (teacherSchedule.has(segment.key)) {
+              const existing = teacherSchedule.get(segment.key)
+              
+              const conflictId = `${teacherId}_${labSlot.day}_${labSlot.start_time}_${existing.startTime}`
+              if (!conflicts.find(c => c.id === conflictId)) {
+                conflicts.push({
+                  id: conflictId,
+                  teacher: batch.teacher2_name,
+                  day: labSlot.day,
+                  time1: `${labSlot.start_time}-${labSlot.end_time}`,
+                  time2: `${existing.startTime}-${existing.endTime}`,
+                  section1: `${tt.section_name} (${batch.batch_name})`,
+                  section2: existing.section,
+                  subject1: batch.lab_name,
+                  subject2: existing.subject,
+                  segment: segment.time
+                })
+              }
+            } else {
+              teacherSchedule.set(segment.key, {
+                section: `${tt.section_name} (${batch.batch_name})`,
+                subject: batch.lab_name,
+                startTime: labSlot.start_time,
+                endTime: labSlot.end_time
+              })
+            }
           }
         }
       }
@@ -103,20 +218,104 @@ function validateClassroomConflicts(timetables) {
   for (const tt of timetables) {
     for (const slot of (tt.theory_slots || [])) {
       if (slot.classroom_id) {
-        const key = `${slot.classroom_id}_${slot.day}_${slot.start_time}`
-        if (classroomSchedule.has(key)) {
-          const existing = classroomSchedule.get(key)
-          conflicts.push({
-            classroom: slot.classroom_name,
-            day: slot.day,
-            time: slot.start_time,
-            sections: [existing.section, tt.section_name]
-          })
-        } else {
-          classroomSchedule.set(key, {
-            section: tt.section_name,
-            subject: slot.subject_name
-          })
+        const classroomId = slot.classroom_id.toString()
+        
+        // Generate all 30-minute segment keys for this slot
+        const segments = generateSegmentKeys(
+          slot.day,
+          slot.start_time,
+          slot.end_time,
+          classroomId
+        )
+        
+        // Check each segment for conflicts
+        for (const segment of segments) {
+          if (classroomSchedule.has(segment.key)) {
+            const existing = classroomSchedule.get(segment.key)
+            
+            // Only report conflict once per slot (not per segment)
+            const conflictId = `${classroomId}_${slot.day}_${slot.start_time}_${existing.startTime}`
+            if (!conflicts.find(c => c.id === conflictId)) {
+              conflicts.push({
+                id: conflictId,
+                classroom: slot.classroom_name,
+                day: slot.day,
+                time1: `${slot.start_time}-${slot.end_time}`,
+                time2: `${existing.startTime}-${existing.endTime}`,
+                section1: tt.section_name,
+                section2: existing.section,
+                subject1: slot.subject_name,
+                subject2: existing.subject,
+                segment: segment.time
+              })
+            }
+          } else {
+            classroomSchedule.set(segment.key, {
+              section: tt.section_name,
+              subject: slot.subject_name,
+              startTime: slot.start_time,
+              endTime: slot.end_time
+            })
+          }
+        }
+      }
+    }
+  }
+  
+  return conflicts
+}
+
+/**
+ * Helper: Check for lab room conflicts across all sections
+ */
+function validateLabRoomConflicts(timetables) {
+  const labRoomSchedule = new Map()
+  const conflicts = []
+  
+  for (const tt of timetables) {
+    for (const labSlot of (tt.lab_slots || [])) {
+      for (const batch of (labSlot.batches || [])) {
+        if (batch.lab_room_id) {
+          const labRoomId = batch.lab_room_id.toString()
+          
+          // Generate all 30-minute segment keys for this lab session
+          const segments = generateSegmentKeys(
+            labSlot.day,
+            labSlot.start_time,
+            labSlot.end_time,
+            labRoomId
+          )
+          
+          // Check each segment for conflicts
+          for (const segment of segments) {
+            if (labRoomSchedule.has(segment.key)) {
+              const existing = labRoomSchedule.get(segment.key)
+              
+              // Only report conflict once per slot (not per segment)
+              const conflictId = `${labRoomId}_${labSlot.day}_${labSlot.start_time}_${existing.startTime}`
+              if (!conflicts.find(c => c.id === conflictId)) {
+                conflicts.push({
+                  id: conflictId,
+                  labRoom: batch.lab_room_name,
+                  day: labSlot.day,
+                  time1: `${labSlot.start_time}-${labSlot.end_time}`,
+                  time2: `${existing.startTime}-${existing.endTime}`,
+                  section1: `${tt.section_name} (${batch.batch_name})`,
+                  section2: existing.section,
+                  lab1: batch.lab_name,
+                  lab2: existing.lab,
+                  segment: segment.time
+                })
+              }
+            } else {
+              labRoomSchedule.set(segment.key, {
+                section: `${tt.section_name} (${batch.batch_name})`,
+                lab: batch.lab_name,
+                startTime: labSlot.start_time,
+                endTime: labSlot.end_time
+              })
+            }
+          }
         }
       }
     }
@@ -217,12 +416,13 @@ export async function validateAndFinalize(semType, academicYear) {
     console.log(`   🔍 Running validation checks...\n`)
     
     // Run validations
-    console.log(`   1️⃣  Checking teacher conflicts...`)
+    console.log(`\n   1️⃣  Checking teacher conflicts...`)
     const teacherConflicts = validateTeacherConflicts(timetables)
     if (teacherConflicts.length > 0) {
       console.log(`      ⚠️  Found ${teacherConflicts.length} teacher conflicts`)
       teacherConflicts.forEach(c => {
-        console.log(`         - ${c.teacher} at ${c.day} ${c.time}: ${c.sections.join(', ')}`)
+        console.log(`         - ${c.teacher} at ${c.day} ${c.time1} (${c.section1}: ${c.subject1}) overlaps with ${c.time2} (${c.section2}: ${c.subject2})`)
+        console.log(`           Conflict at segment: ${c.segment}`)
       })
     } else {
       console.log(`      ✅ No teacher conflicts`)
@@ -233,13 +433,26 @@ export async function validateAndFinalize(semType, academicYear) {
     if (classroomConflicts.length > 0) {
       console.log(`      ⚠️  Found ${classroomConflicts.length} classroom conflicts`)
       classroomConflicts.forEach(c => {
-        console.log(`         - ${c.classroom} at ${c.day} ${c.time}: ${c.sections.join(', ')}`)
+        console.log(`         - ${c.classroom} at ${c.day} ${c.time1} (${c.section1}: ${c.subject1}) overlaps with ${c.time2} (${c.section2}: ${c.subject2})`)
+        console.log(`           Conflict at segment: ${c.segment}`)
       })
     } else {
       console.log(`      ✅ No classroom conflicts`)
     }
     
-    console.log(`\n   3️⃣  Checking consecutive labs...`)
+    console.log(`\n   3️⃣  Checking lab room conflicts...`)
+    const labRoomConflicts = validateLabRoomConflicts(timetables)
+    if (labRoomConflicts.length > 0) {
+      console.log(`      ⚠️  Found ${labRoomConflicts.length} lab room conflicts`)
+      labRoomConflicts.forEach(c => {
+        console.log(`         - ${c.labRoom} at ${c.day} ${c.time1} (${c.section1}: ${c.lab1}) overlaps with ${c.time2} (${c.section2}: ${c.lab2})`)
+        console.log(`           Conflict at segment: ${c.segment}`)
+      })
+    } else {
+      console.log(`      ✅ No lab room conflicts`)
+    }
+    
+    console.log(`\n   4️⃣  Checking consecutive labs...`)
     const consecutiveLabViolations = validateConsecutiveLabs(timetables)
     if (consecutiveLabViolations.length > 0) {
       console.log(`      ⚠️  Found ${consecutiveLabViolations.length} consecutive lab violations`)
@@ -250,11 +463,11 @@ export async function validateAndFinalize(semType, academicYear) {
       console.log(`      ✅ No consecutive labs`)
     }
     
-    console.log(`\n   4️⃣  Checking hours per week...`)
+    console.log(`\n   5️⃣  Checking hours per week...`)
     const hoursIssues = validateHoursPerWeek(timetables)
     console.log(`      ℹ️  Hours validation (basic check)`)
     
-    const totalIssues = teacherConflicts.length + classroomConflicts.length + consecutiveLabViolations.length + hoursIssues.length
+    const totalIssues = teacherConflicts.length + classroomConflicts.length + labRoomConflicts.length + consecutiveLabViolations.length + hoursIssues.length
     const validationStatus = totalIssues === 0 ? 'passed' : 'warnings'
     
     // Update metadata - mark as complete
@@ -299,6 +512,7 @@ export async function validateAndFinalize(semType, academicYear) {
         issues: {
           teacher_conflicts: teacherConflicts.length,
           classroom_conflicts: classroomConflicts.length,
+          lab_room_conflicts: labRoomConflicts.length,
           consecutive_labs: consecutiveLabViolations.length
         },
         timetables: finalTimetables
