@@ -108,6 +108,10 @@ function Dashboard() {
               <span className="nav-icon">👨‍🏫</span>
               {sidebarOpen && <span>Teacher View</span>}
             </NavLink>
+            <NavLink to="/dashboard/labs-view" className="nav-link">
+              <span className="nav-icon">🧪</span>
+              {sidebarOpen && <span>Lab's View</span>}
+            </NavLink>
           </div>
         </nav>
 

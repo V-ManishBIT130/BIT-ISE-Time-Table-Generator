@@ -1,32 +1,64 @@
-use('sample_cwh'); //our sample database
-//CRUD Operations
-//db.movies.deleteOne({"name": "Kabaali"})
+use('timetable'); // Lab conflict verification
 
-//db.createCollection("courses")
+// Check for lab room conflicts
+const timetables = db.timetables.find({}).toArray();
+const labRoomMap = new Map();
+let conflicts = [];
 
-// db.courses.insertOne({
-//   "name": "Web Dev", 
-//   "price": 100, 
-// })
+timetables.forEach(tt => {
+  ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(day => {
+    if (tt[day]) {
+      tt[day].forEach(slot => {
+        if (slot.subjectName && slot.subjectName.includes('LAB')) {
+          const key = `${day}_${slot.classroom}_${slot.startTime}`;
+          
+          if (!labRoomMap.has(key)) {
+            labRoomMap.set(key, []);
+          }
+          
+          labRoomMap.get(key).push({
+            section: tt.sectionName,
+            subject: slot.subjectName,
+            time: `${slot.startTime} - ${slot.endTime}`,
+            classroom: slot.classroom,
+            day: day
+          });
+        }
+      });
+    }
+  });
+});
 
-// db.courses.insertOne({
-//   "name": "AI", 
-//   "price": 120
-// })
+// Find conflicts
+labRoomMap.forEach((sessions, key) => {
+  if (sessions.length > 1) {
+    const [day, room, startTime] = key.split('_');
+    conflicts.push({
+      day,
+      room,
+      startTime,
+      sessions
+    });
+  }
+});
 
-// db.courses.insertOne({
-//   "name": "Cloud",
-//   price: 100
-// })
+console.log('='.repeat(70));
+console.log('LAB ROOM CONFLICT VERIFICATION');
+console.log('='.repeat(70));
+console.log(`Total timetables: ${timetables.length}`);
+console.log(`Conflicts found: ${conflicts.length}\n`);
 
-//db.courses.deleteOne({"name": "Web dev"})
-//console.log(db.movies.find())
-
-//updating
-db.courses.updateOne(
-  {"name": "Cloud"}, 
-  {$set: {"price": 220}}
-)
+if (conflicts.length > 0) {
+  conflicts.forEach((c, idx) => {
+    console.log(`CONFLICT ${idx + 1}: ${c.room} on ${c.day} at ${c.startTime}`);
+    c.sessions.forEach(s => {
+      console.log(`  - ${s.section}: ${s.subject} (${s.time})`);
+    });
+    console.log('');
+  });
+} else {
+  console.log('✅ NO LAB ROOM CONFLICTS DETECTED!');
+}
 
 db.courses.updateOne(
   {"name": "Cloud"}, 

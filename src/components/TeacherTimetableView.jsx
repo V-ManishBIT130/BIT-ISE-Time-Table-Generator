@@ -26,8 +26,22 @@ function TeacherTimetableView() {
   const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
   const TIME_SLOTS = [
     '08:00', '09:00', '10:00', '11:00', '12:00',
-    '13:00', '14:00', '15:00', '16:00', '17:00'
+    '13:00', '14:00', '15:00', '16:00'
   ]
+
+  // Helper: Format time slot with end time (1-hour blocks)
+  const formatTimeSlot = (startTime24) => {
+    const [hours, minutes] = startTime24.split(':').map(Number)
+    const endHours = hours + 1
+    
+    const formatHour = (h) => {
+      const period = h >= 12 ? 'PM' : 'AM'
+      const h12 = h % 12 || 12
+      return `${h12}:00 ${period}`
+    }
+    
+    return `${formatHour(hours)} - ${formatHour(endHours)}`
+  }
 
   // Fetch all teachers
   useEffect(() => {
@@ -286,7 +300,7 @@ function TeacherTimetableView() {
               <div className="corner-cell">Day / Time</div>
               {TIME_SLOTS.map(time => (
                 <div key={time} className="time-header-cell">
-                  {formatTime(time)}
+                  {formatTimeSlot(time)}
                 </div>
               ))}
             </div>

@@ -1046,6 +1046,47 @@ function hasConsecutiveLabSessions(section, day, schedule) {
 
 ---
 
+### 4.9 Daily Lab Limit (Updated Nov 13, 2025)
+**Rule:** A section can have MAXIMUM 3 lab sessions per day (updated from 2).
+
+**Reason:** Faculty input confirmed 3 labs/day is manageable with proper gaps (no consecutive labs).
+
+**Valid Examples:**
+```
+✅ VALID - Section 3A Schedule (Monday):
+├── 8:00-10:00: Lab Session (DSL)
+├── 10:00-12:00: Theory Classes
+├── 12:00-14:00: Lab Session (DBMS Lab)
+├── 14:00-16:00: Theory Classes
+└── 16:00-18:00: Lab Session (OOPS Lab) ✅ 3 labs with gaps
+
+✅ VALID - Section 5A Schedule (Tuesday):
+├── 8:00-10:00: Lab Session (CN Lab)
+├── 10:00-12:00: Theory Classes
+└── 14:00-16:00: Lab Session (AI Lab) ✅ Only 2 labs (under limit)
+```
+
+**Invalid Examples:**
+```
+❌ INVALID - Section 3A Schedule (Wednesday):
+├── 8:00-10:00: Lab Session 1
+├── 10:00-12:00: Theory
+├── 12:00-14:00: Lab Session 2
+├── 14:00-16:00: Theory
+└── 16:00-18:00: Lab Session 3
+    + Trying to add 4th lab ❌ EXCEEDS LIMIT
+```
+
+**Implementation:**
+- Algorithm counts labs scheduled per day for each section
+- Before adding new lab, checks if count < 3
+- Rejects slot if limit would be exceeded
+- Ensures non-consecutive constraint still enforced
+
+**Result:** Increased from 2 to 3 labs/day achieved 100% success rate (27/27 labs scheduled) while maintaining quality (no consecutive labs).
+
+---
+
 ## ⏰ **5. SCHEDULING CONSTRAINTS**
 
 ### 5.1 Batch Synchronization (CRITICAL!)

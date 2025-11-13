@@ -824,24 +824,6 @@ function TimetableGenerator() {
               👁️ View Generated Timetables
             </button>
           </div>
-
-          {result.timetables && result.timetables.length > 0 && (
-            <div className="generated-sections">
-              <h4>Generated Sections:</h4>
-              <div className="sections-list">
-                {result.timetables.map((tt) => (
-                  <div key={tt._id} className="section-item">
-                    <span className="section-badge">
-                      Sem {tt.sem} - {tt.section_name}
-                    </span>
-                    <span className="section-details">
-                      Theory: {tt.theory_slots?.length || 0} | Labs: {tt.lab_slots?.length || 0}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
