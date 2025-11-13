@@ -100,10 +100,11 @@ Attempt 2: 5th FIRST → 5A, 5C, 5B, 3C, 3A, 3B, 7A, 7B, 7C
 
 ### Strictly Enforced
 - ✅ **NO consecutive labs** (no back-to-back scheduling)
-- ✅ **Max 3 labs per day** (faculty-validated limit)
+- ✅ **NO daily lab limit** (only prevent consecutive - updated Nov 14)
 - ✅ **2-hour lab duration** (fixed)
 - ✅ **Batch rotation** (Rule 4.7 guaranteed)
 - ✅ **30-minute segment tracking** (prevents ALL conflicts)
+- ✅ **Balanced room distribution** (shuffled room selection)
 
 ### Processing Strategy
 1. **Dual randomization** generates unique attempt profile

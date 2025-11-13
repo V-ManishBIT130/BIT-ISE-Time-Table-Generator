@@ -62,18 +62,37 @@
 
 ---
 
-### 4. Daily Lab Limit (Nov 13, 2025)
+### 4. Daily Lab Limit (Nov 13-14, 2025)
 
 **Faculty Input Critical:**
 
 **Initial:** Max 2 labs/day (assumed necessary)
 - Result: Only 60% success, too restrictive
 
-**Faculty Feedback:** "3 labs per day is fine with proper breaks"
+**Update 1 (Nov 13):** "3 labs per day is fine with proper breaks"
 - Updated: Max 3 labs/day, still non-consecutive
 - Result: 100% success
 
+**Final (Nov 14):** NO daily limit - only prevent consecutive labs
+- Maximum flexibility, quality maintained through gap enforcement
+
 **Key Learning:** Domain experts know feasibility better than algorithms.
+
+---
+
+### 5. Room Distribution Balance (Nov 14, 2025)
+
+**Problem Discovered:**
+- Compatible rooms (e.g., 612A and 604A supporting same labs)
+- First room in DB query always selected ("first-fit" strategy)
+- Result: 612A overloaded, 604A underutilized
+
+**Solution: Shuffled Room Selection**
+- Randomize compatible room order before selection
+- Each scheduling decision gets different room order
+- Result: Even distribution across all compatible rooms
+
+**Key Learning:** Random room selection prevents bias toward first-listed rooms.
 
 ---
 

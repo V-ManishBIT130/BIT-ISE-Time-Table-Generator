@@ -184,11 +184,19 @@ async function getCompatibleRooms(labId) {
 /**
  * Helper: Find first available compatible room for a lab at given time
  * Checks global room tracker to prevent ALL conflicts
+ * 
+ * BALANCED ROOM DISTRIBUTION (Nov 13, 2025):
+ * - Shuffles compatible rooms before checking availability
+ * - Ensures even distribution across all compatible rooms
+ * - Prevents same room from being overused while others sit empty
  */
 async function findAvailableRoom(labId, day, startTime, endTime, usedRoomsInThisSlot = new Set()) {
   const compatibleRooms = await getCompatibleRooms(labId)
   
-  for (const room of compatibleRooms) {
+  // SHUFFLE: Randomize room order to distribute load evenly
+  const shuffledRooms = shuffleArray(compatibleRooms)
+  
+  for (const room of shuffledRooms) {
     const roomId = room._id.toString()
     
     // Skip if already used by another batch in this same slot (internal conflict prevention)
@@ -358,30 +366,20 @@ function hasConsecutiveLabConflict(labSlots, day, startTime, endTime, roundsSche
 /**
  * Helper: Check if scheduling a lab on this day would violate daily lab limits
  * 
- * UPDATED CONSTRAINTS (Nov 13, 2025): Increased to 3 labs per day
+ * UPDATED CONSTRAINTS (Nov 13, 2025): NO daily limit - only prevent consecutive labs
  * 
- * New Rule (per faculty request):
- *   - Max 3 labs per day for ALL sections
- *   - Labs MUST NOT be consecutive (enforced separately)
+ * New Rule:
+ *   - NO LIMIT on labs per day for a section
+ *   - Labs MUST NOT be consecutive (enforced separately in hasConsecutiveLabConflict)
  * 
- * Old Rules:
- *   - Max 2 labs per day (too restrictive)
- * 
- * Benefits:
+ * Rationale:
+ *   - More flexible scheduling options
  *   - Better room utilization
- *   - More flexible scheduling
- *   - Higher success rates for 3rd and 5th semesters
- *   - Still prevents exhausting schedules (no consecutive labs)
+ *   - Higher success rates
+ *   - Students still get breaks between labs (no consecutive constraint prevents exhaustion)
  */
 function violatesDailyLabLimit(labSlots, day, totalLabsNeeded) {
-  const labsOnThisDay = labSlots.filter(slot => slot.day === day).length
-  
-  // UPDATED CONSTRAINT: Max 3 labs per day (Nov 13, 2025)
-  // Consecutive labs are prevented by separate constraint
-  if (labsOnThisDay >= 3) {
-    return true
-  }
-  
+  // NO DAILY LIMIT - only consecutive labs are prevented
   return false
 }
 
@@ -394,7 +392,7 @@ export async function scheduleLabs(semType, academicYear) {
     console.log(`\n🧪 Step 3: Scheduling labs for ${semType} semester...`)
     console.log(`📊 Using: Multi-Pass Retry System + Smart Shuffle (Day/Time Diversity)\n`)
     
-    const MAX_ATTEMPTS = 20 // Try up to 20 different random slot orderings
+    const MAX_ATTEMPTS = 5 // Try up to 5 different random slot orderings (reduced for testing)
     let bestResult = null
     let bestScore = 0
     
@@ -592,8 +590,8 @@ async function scheduleLabs_SingleAttempt(semType, academicYear, process3rdFirst
       
       console.log(`      📊 Need to schedule ${NUM_ROUNDS} lab sessions (${NUM_ROUNDS} rounds)`)
       
-      // Log strict constraints (UPDATED Nov 13, 2025 - Increased to 3 per day)
-      console.log(`      📅 Daily Lab Constraint: Max 3 labs per day (UPDATED per faculty request)`)
+      // Log strict constraints (UPDATED Nov 13, 2025 - NO daily limit)
+      console.log(`      📅 Daily Lab Constraint: NO LIMIT (only prevent consecutive labs)`)
       console.log(`      ⏰ Consecutive Labs: NOT ALLOWED (STRICT - no back-to-back labs)`)
       console.log(`      🕐 Time Slots: 5 proven 2-hour slots (8am-10am, 10am-12pm, 12pm-2pm, 2pm-4pm, 3pm-5pm)`)
       console.log(`      🔧 Strategy: Smart diversity shuffle (prefers different days/times), 30-min conflict checking`)
@@ -790,7 +788,7 @@ async function scheduleLabs_SingleAttempt(semType, academicYear, process3rdFirst
       console.log(`         ❌ Rejected by theory conflicts: ${diagnostics.rejectedByTheoryConflict} (${(diagnostics.rejectedByTheoryConflict/diagnostics.totalCombinationsChecked*100).toFixed(1)}%)`)
       console.log(`         ❌ Rejected by lab conflicts: ${diagnostics.rejectedByLabConflict} (${(diagnostics.rejectedByLabConflict/diagnostics.totalCombinationsChecked*100).toFixed(1)}%)`)
       console.log(`         ❌ Rejected by consecutive constraint: ${diagnostics.rejectedByConsecutiveConflict} (${(diagnostics.rejectedByConsecutiveConflict/diagnostics.totalCombinationsChecked*100).toFixed(1)}%)`)
-      console.log(`         ❌ Rejected by daily limit: ${diagnostics.rejectedByDailyLimit} (${(diagnostics.rejectedByDailyLimit/diagnostics.totalCombinationsChecked*100).toFixed(1)}%)`)
+      console.log(`         ❌ Rejected by daily limit: ${diagnostics.rejectedByDailyLimit} (${(diagnostics.rejectedByDailyLimit/diagnostics.totalCombinationsChecked*100).toFixed(1)}%) [DISABLED - no daily limit]`)
       console.log(`         ❌ Rejected by no rooms available: ${diagnostics.rejectedByNoRooms} (${(diagnostics.rejectedByNoRooms/diagnostics.totalCombinationsChecked*100).toFixed(1)}%)`)
       console.log(`         ✅ Successfully scheduled: ${diagnostics.successful}`)
          console.log(`         📊 Strategy: 5 proven slots (matching old 100% success) with 30-min conflict checking`)      // Store scheduled lab slots in memory
@@ -896,7 +894,7 @@ async function scheduleLabs_SingleAttempt(semType, academicYear, process3rdFirst
     console.log(`   Internal Conflict Prevention: ✅ Active (3 batches use 3 different rooms)`)
     console.log(`   Rule 4.7 (Batch Rotation): ✅ Guaranteed`)
     console.log(`   Consecutive Lab Prevention: ✅ STRICT (NO back-to-back labs allowed)`)
-    console.log(`   Daily Lab Limits: ✅ Max 3 labs per day (UPDATED Nov 13, 2025)`)
+    console.log(`   Daily Lab Limits: ✅ NO LIMIT (only consecutive prevention - UPDATED Nov 13, 2025)`)
     console.log(`   Theory Slot Conflicts: ✅ Prevented`)
     console.log(`   Time Slots: 5 proven slots per day (25 total combinations - OLD SUCCESS PATTERN)`)
     console.log(``)

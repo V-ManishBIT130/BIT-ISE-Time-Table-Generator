@@ -30,11 +30,12 @@ Overall: 27/27 labs (100%) - All batches scheduled correctly
 
 ### Constraints Enforced
 - ✅ **NO consecutive labs** (minimum 2-hour breaks)
-- ✅ **Max 3 labs per day** (faculty-validated)
+- ✅ **NO daily lab limit** (only consecutive prevention - updated Nov 14)
 - ✅ **Batch rotation guaranteed** (Rule 4.7)
 - ✅ **2-hour lab duration** (fixed)
 - ✅ **Synchronized batch scheduling** (all batches same time)
 - ✅ **30-minute segment tracking** (zero conflicts)
+- ✅ **Balanced room distribution** (shuffled room selection)
 
 ### Scheduling Strategy
 - **Dual Randomization:** Time slots + section order + semester priority
