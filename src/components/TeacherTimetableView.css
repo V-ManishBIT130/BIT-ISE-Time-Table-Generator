@@ -239,7 +239,7 @@
 
 .grid-header {
   display: grid;
-  grid-template-columns: 140px repeat(10, minmax(180px, 1fr));
+  grid-template-columns: 140px repeat(9, minmax(180px, 1fr));
   border-bottom: 3px solid #667eea;
   background: #f8f9fa;
 }
@@ -273,7 +273,7 @@
 
 .day-row {
   display: grid;
-  grid-template-columns: 140px repeat(10, minmax(180px, 1fr));
+  grid-template-columns: 140px repeat(9, minmax(180px, 1fr));
   border-bottom: 2px solid #e0e0e0;
   min-height: 140px;
 }
@@ -296,7 +296,7 @@
 
 .time-slots-container {
   display: grid;
-  grid-template-columns: repeat(10, minmax(180px, 1fr));
+  grid-template-columns: repeat(9, minmax(180px, 1fr));
   grid-column: 2 / -1;
   position: relative;
   background: repeating-linear-gradient(
@@ -304,7 +304,7 @@
     #f9f9f9,
     #f9f9f9 1px,
     white 1px,
-    white calc(100% / 10)
+    white calc(100% / 9)
   );
 }
 
@@ -319,9 +319,9 @@
   background: repeating-linear-gradient(
     90deg,
     transparent,
-    transparent calc((100% / 10) - 1px),
-    #e0e0e0 calc((100% / 10) - 1px),
-    #e0e0e0 calc(100% / 10)
+    transparent calc((100% / 9) - 1px),
+    #e0e0e0 calc((100% / 9) - 1px),
+    #e0e0e0 calc(100% / 9)
   );
   pointer-events: none;
   z-index: 1;
@@ -562,11 +562,11 @@
 @media (max-width: 1400px) {
   .grid-header,
   .day-row {
-    grid-template-columns: 120px repeat(10, minmax(150px, 1fr));
+    grid-template-columns: 120px repeat(9, minmax(150px, 1fr));
   }
   
   .time-slots-container {
-    grid-template-columns: repeat(10, minmax(150px, 1fr));
+    grid-template-columns: repeat(9, minmax(150px, 1fr));
   }
   
   .schedule-item {

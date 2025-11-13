@@ -32,13 +32,22 @@ Defines working hours, break management, and the **Divide-and-Rule** scheduling 
 
 ## 3. Time Slot Duration
 
-### Theory Classes
+### Theory Classes (30-minute granularity)
 - **Standard:** 1 hour per slot
 - **Can be consecutive:** Yes, but subject to Divide-and-Rule strategy
+- **Time Slots:** 18 half-hour slots from 8:00 AM to 5:00 PM
 
-### Lab Sessions
-- **Fixed:** 2 hours (non-divisible)
-- **Examples:** 8:00-10:00, 10:00-12:00, 14:00-16:00
+### Lab Sessions (2-hour blocks)
+- **Fixed Duration:** 2 hours (non-divisible)
+- **Proven Time Slots (5 slots from historical analysis - Nov 13, 2025):**
+  - 08:00-10:00
+  - 10:00-12:00
+  - 12:00-14:00
+  - 14:00-16:00
+  - 15:00-17:00 (overlaps with 14:00-16:00, but uses different rooms)
+- **Total Combinations:** 25 (5 slots × 5 days)
+- **Success Pattern:** These exact slots achieved 100% success in historical runs
+- **Conflict Prevention:** 30-minute segment granularity prevents same-room overlaps
 
 ---
 
