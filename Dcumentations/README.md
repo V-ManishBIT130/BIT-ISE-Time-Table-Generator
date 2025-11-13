@@ -3,9 +3,9 @@
 ## Overview
 Complete documentation for the BIT ISE Department Timetable Generation System with intelligent scheduling and interactive editing.
 
-**Last Updated:** November 13, 2025  
+**Last Updated:** November 14, 2025  
 **Status:** ✅ 100% Success Rate (All semesters), ✅ Dual Randomization Active, ✅ Zero Conflicts  
-**Achievement:** 27/27 labs scheduled with strict constraints (no consecutive, max 3/day)  
+**Achievement:** 27/27 labs scheduled with strict constraints (no consecutive, unlimited per day)  
 **Algorithm:** Multi-pass retry with dual randomization (10,800 unique combinations)
 
 ---
@@ -22,10 +22,11 @@ Lab Scheduling Success:
 
 Constraints Enforced:
   ✅ NO consecutive labs (strict 2-hour gaps)
-  ✅ Max 3 labs per day (faculty-validated)
+  ✅ NO daily lab limit (only consecutive prevention)
   ✅ Batch rotation guaranteed (Rule 4.7)
   ✅ 30-minute segment conflict tracking
   ✅ 5 proven time slots (historical analysis)
+  ✅ Balanced room distribution (shuffled selection)
 
 Algorithm Innovation:
   ✅ Dual randomization (time + order + priority)

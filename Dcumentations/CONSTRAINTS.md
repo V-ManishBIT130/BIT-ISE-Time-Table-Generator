@@ -1046,10 +1046,10 @@ function hasConsecutiveLabSessions(section, day, schedule) {
 
 ---
 
-### 4.9 Daily Lab Limit (Updated Nov 13, 2025)
-**Rule:** A section can have MAXIMUM 3 lab sessions per day (updated from 2).
+### 4.9 Daily Lab Limit (Updated Nov 14, 2025)
+**Rule:** NO LIMIT on labs per day - only consecutive labs are prevented.
 
-**Reason:** Faculty input confirmed 3 labs/day is manageable with proper gaps (no consecutive labs).
+**Reason:** Maximum scheduling flexibility while preventing exhaustion through non-consecutive constraint.
 
 **Valid Examples:**
 ```
@@ -1058,32 +1058,32 @@ function hasConsecutiveLabSessions(section, day, schedule) {
 ├── 10:00-12:00: Theory Classes
 ├── 12:00-14:00: Lab Session (DBMS Lab)
 ├── 14:00-16:00: Theory Classes
-└── 16:00-18:00: Lab Session (OOPS Lab) ✅ 3 labs with gaps
+└── 16:00-18:00: Lab Session (OOPS Lab) ✅ 3+ labs allowed with gaps
 
 ✅ VALID - Section 5A Schedule (Tuesday):
 ├── 8:00-10:00: Lab Session (CN Lab)
-├── 10:00-12:00: Theory Classes
-└── 14:00-16:00: Lab Session (AI Lab) ✅ Only 2 labs (under limit)
+├── 12:00-14:00: Lab Session (AI Lab)
+└── 16:00-18:00: Lab Session (SE Lab) ✅ Multiple labs with proper gaps
 ```
 
 **Invalid Examples:**
 ```
 ❌ INVALID - Section 3A Schedule (Wednesday):
 ├── 8:00-10:00: Lab Session 1
-├── 10:00-12:00: Theory
-├── 12:00-14:00: Lab Session 2
-├── 14:00-16:00: Theory
-└── 16:00-18:00: Lab Session 3
-    + Trying to add 4th lab ❌ EXCEEDS LIMIT
+└── 10:00-12:00: Lab Session 2 ❌ CONSECUTIVE (not allowed)
+
+❌ INVALID - Section 5B Schedule (Thursday):
+├── 12:00-14:00: Lab Session 1
+└── 14:00-16:00: Lab Session 2 ❌ CONSECUTIVE (not allowed)
 ```
 
 **Implementation:**
-- Algorithm counts labs scheduled per day for each section
-- Before adding new lab, checks if count < 3
-- Rejects slot if limit would be exceeded
-- Ensures non-consecutive constraint still enforced
+- Algorithm checks ONLY for consecutive labs (back-to-back)
+- NO daily count limit enforced
+- Maximum scheduling flexibility
+- Students protected by mandatory gaps between labs
 
-**Result:** Increased from 2 to 3 labs/day achieved 100% success rate (27/27 labs scheduled) while maintaining quality (no consecutive labs).
+**Result:** Removed daily limit while maintaining quality through strict non-consecutive enforcement.
 
 ---
 
