@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
+import DepartmentHeader from './DepartmentHeader'
 import './Subjects.css'
 
 /**
@@ -155,7 +156,7 @@ function Subjects() {
     try {
       // Auto-determine semester type based on semester number
       const semesterType = parseInt(formData.subject_sem) % 2 === 0 ? 'even' : 'odd'
-      
+
       // Determine if teacher assignment is needed
       // No teacher needed if:
       // 1. It's a project (Major/Mini Project)
@@ -165,10 +166,10 @@ function Subjects() {
       // - Regular ISE subjects
       // - Professional Elective (ISE teacher with fixed schedule)
       const needsTeacher = !formData.is_project && !formData.is_non_ise_subject && !formData.is_open_elective
-      
+
       // Auto-set has_fixed_schedule flag
       const hasFixedSchedule = formData.is_open_elective || formData.is_professional_elective
-      
+
       const dataToSubmit = {
         ...formData,
         subject_sem_type: semesterType,
@@ -209,14 +210,14 @@ function Subjects() {
 
   return (
     <div className="subjects-page">
+      <DepartmentHeader
+        title="Subjects Management"
+        subtitle="Manage theory subjects for ISE department"
+      />
+
       <div className="page-header">
-        <div>
-          <h1>Subjects Management</h1>
-          <p>Manage theory subjects for ISE department</p>
-        </div>
-        <button className="btn btn-primary" onClick={openAddModal}>
-          + Add Subject
-        </button>
+        <div></div>
+
       </div>
 
       {/* Filters */}
@@ -247,6 +248,10 @@ function Subjects() {
           <button className="btn btn-secondary" onClick={clearFilters}>
             Clear Filters
           </button>
+          
+          <button className="btn btn-primary" onClick={openAddModal}>
+            + Add Subject
+          </button>
         </div>
 
         <div className="filter-info">
@@ -276,7 +281,7 @@ function Subjects() {
             {filteredSubjects.length === 0 ? (
               <tr>
                 <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
-                  {subjects.length === 0 
+                  {subjects.length === 0
                     ? 'No subjects added yet. Click "Add Subject" to get started.'
                     : 'No subjects match the selected filters.'}
                 </td>
@@ -309,15 +314,15 @@ function Subjects() {
                   </td>
                   <td>
                     <div className="action-buttons">
-                      <button 
-                        className="btn-icon btn-edit" 
+                      <button
+                        className="btn-icon btn-edit"
                         onClick={() => openEditModal(subject)}
                         title="Edit"
                       >
                         ✏️
                       </button>
-                      <button 
-                        className="btn-icon btn-delete" 
+                      <button
+                        className="btn-icon btn-delete"
                         onClick={() => handleDelete(subject._id)}
                         title="Delete"
                       >
@@ -414,8 +419,8 @@ function Subjects() {
                       checked={!formData.is_non_ise_subject && !formData.is_project && !formData.is_open_elective && !formData.is_professional_elective}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setFormData({ 
-                            ...formData, 
+                          setFormData({
+                            ...formData,
                             is_non_ise_subject: false,
                             is_project: false,
                             is_open_elective: false,
@@ -445,8 +450,8 @@ function Subjects() {
                       checked={formData.is_non_ise_subject}
                       onChange={(e) => {
                         const checked = e.target.checked
-                        setFormData({ 
-                          ...formData, 
+                        setFormData({
+                          ...formData,
                           is_non_ise_subject: checked,
                           is_project: checked ? false : formData.is_project,
                           is_open_elective: checked ? false : formData.is_open_elective,
@@ -475,8 +480,8 @@ function Subjects() {
                       checked={formData.is_project}
                       onChange={(e) => {
                         const checked = e.target.checked
-                        setFormData({ 
-                          ...formData, 
+                        setFormData({
+                          ...formData,
                           is_project: checked,
                           is_non_ise_subject: checked ? false : formData.is_non_ise_subject,
                           is_open_elective: checked ? false : formData.is_open_elective,
@@ -505,8 +510,8 @@ function Subjects() {
                       checked={formData.is_open_elective}
                       onChange={(e) => {
                         const checked = e.target.checked
-                        setFormData({ 
-                          ...formData, 
+                        setFormData({
+                          ...formData,
                           is_open_elective: checked,
                           is_non_ise_subject: checked ? false : formData.is_non_ise_subject,
                           is_project: checked ? false : formData.is_project,
@@ -536,8 +541,8 @@ function Subjects() {
                       checked={formData.is_professional_elective}
                       onChange={(e) => {
                         const checked = e.target.checked
-                        setFormData({ 
-                          ...formData, 
+                        setFormData({
+                          ...formData,
                           is_professional_elective: checked,
                           is_non_ise_subject: checked ? false : formData.is_non_ise_subject,
                           is_project: checked ? false : formData.is_project,
@@ -577,9 +582,9 @@ function Subjects() {
                   <small className="form-hint">
                     {formData.is_open_elective || formData.is_professional_elective
                       ? 'Auto-calculated from fixed time slots'
-                      : formData.is_project 
-                      ? 'Projects: 4 hrs (Mini) or 12 hrs (Major)' 
-                      : 'Regular subjects: 3-4 hours typical'}
+                      : formData.is_project
+                        ? 'Projects: 4 hrs (Mini) or 12 hrs (Major)'
+                        : 'Regular subjects: 3-4 hours typical'}
                   </small>
                 </div>
                 <div className="form-group">
@@ -597,9 +602,9 @@ function Subjects() {
                   <small className="form-hint">
                     {formData.is_open_elective || formData.is_professional_elective
                       ? 'Auto-determined from fixed slots'
-                      : formData.is_project 
-                      ? 'Projects can have higher daily hours (up to 12)' 
-                      : 'Usually 1 hour (prevents back-to-back)'}
+                      : formData.is_project
+                        ? 'Projects can have higher daily hours (up to 12)'
+                        : 'Usually 1 hour (prevents back-to-back)'}
                   </small>
                 </div>
               </div>
@@ -609,9 +614,9 @@ function Subjects() {
                 <div className="fixed-schedule-section">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <label style={{ margin: 0, fontWeight: '600' }}>Fixed Time Slots</label>
-                    <button 
-                      type="button" 
-                      className="btn btn-secondary" 
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
                       onClick={addFixedScheduleSlot}
                       style={{ padding: '6px 12px', fontSize: '12px' }}
                     >

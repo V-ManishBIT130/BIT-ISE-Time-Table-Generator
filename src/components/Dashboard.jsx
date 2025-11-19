@@ -32,7 +32,7 @@ function Dashboard() {
       <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
           <h2>BIT ISE TT</h2>
-          <button className="toggle-btn" onClick={toggleSidebar}>
+          <button className="sidebar-btn" onClick={toggleSidebar}>
             {sidebarOpen ? '◀' : '▶'}
           </button>
         </div>
@@ -53,8 +53,8 @@ function Dashboard() {
           <div className="nav-section">
             <p className="nav-title">{sidebarOpen ? 'Phase 1: Master Data' : 'P1'}</p>
             <NavLink to="/dashboard" end className="nav-link">
-              <span className="nav-icon">📊</span>
-              {sidebarOpen && <span>Overview</span>}
+              <span className="nav-icon">🏠</span>
+              {sidebarOpen && <span>Home</span>}
             </NavLink>
             <NavLink to="/dashboard/teachers" className="nav-link">
               <span className="nav-icon">👨‍🏫</span>

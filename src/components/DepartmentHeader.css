@@ -1,0 +1,91 @@
+/* Department Header - Appears on all pages except home */
+
+.department-header {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  padding: 24px 40px;
+  margin: 0px -30px 15px -30px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.department-header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.department-header-content {
+  position: relative;
+  z-index: 1;
+}
+
+.department-header-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #e3f2fd;
+  margin: 8px 0 0 0;
+  letter-spacing: 0.3px;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  font-weight: 400;
+  color: #bbdefb;
+  margin: 4px 0 0 0;
+  letter-spacing: 0.2px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .department-header {
+    padding: 20px 24px;
+    margin: -30px -20px 20px -20px;
+  }
+
+  .department-header-title {
+    font-size: 18px;
+  }
+
+  .page-title {
+    font-size: 16px;
+  }
+
+  .page-subtitle {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .department-header {
+    padding: 16px 20px;
+    margin: -30px -20px 20px -20px;
+  }
+
+  .department-header-title {
+    font-size: 16px;
+  }
+
+  .page-title {
+    font-size: 15px;
+  }
+
+  .page-subtitle {
+    font-size: 12px;
+  }
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
+import DepartmentHeader from './DepartmentHeader'
 import './Classrooms.css'
 
 /**
@@ -104,11 +105,13 @@ function Classrooms() {
 
   return (
     <div className="classrooms-page">
+      <DepartmentHeader 
+        title="Classrooms Management" 
+        subtitle="Manage department theory classrooms for timetable scheduling"
+      />
+      
       <div className="page-header">
-        <div>
-          <h1>Classrooms Management</h1>
-          <p>Manage department theory classrooms for timetable scheduling</p>
-        </div>
+        <div></div>
         <button className="btn btn-primary" onClick={openAddModal}>
           + Add Classroom
         </button>
@@ -118,35 +121,7 @@ function Classrooms() {
         <div className="alert alert-danger">{error}</div>
       )}
 
-      <div className="stats-cards">
-        <div className="stat-card">
-          <div className="stat-icon">🏫</div>
-          <div className="stat-info">
-            <h3>{classrooms.length}</h3>
-            <p>Total Classrooms</p>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">💺</div>
-          <div className="stat-info">
-            <h3>
-              {classrooms.reduce((sum, c) => sum + (c.capacity || 0), 0)}
-            </h3>
-            <p>Total Capacity</p>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">📊</div>
-          <div className="stat-info">
-            <h3>
-              {classrooms.length > 0 
-                ? Math.round(classrooms.reduce((sum, c) => sum + (c.capacity || 0), 0) / classrooms.length)
-                : 0}
-            </h3>
-            <p>Avg Capacity</p>
-          </div>
-        </div>
-      </div>
+      
 
       <div className="table-container">
         <table>

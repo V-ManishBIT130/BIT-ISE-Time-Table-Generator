@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
+import DepartmentHeader from './DepartmentHeader'
 import './TimetableGenerator.css'
 
 function TimetableGenerator() {
@@ -499,9 +500,13 @@ function TimetableGenerator() {
 
   return (
     <div className="timetable-generator">
+      <DepartmentHeader 
+        title="Timetable Generator (Phase 3)" 
+        subtitle="Generate conflict-free timetables for all sections"
+      />
+      
       <div className="generator-header">
-        <h2>⚡ Timetable Generator (Phase 3)</h2>
-        <p>Generate conflict-free timetables for all sections</p>
+        {/* Removed redundant h2 */}
       </div>
 
       <div className="generator-controls">

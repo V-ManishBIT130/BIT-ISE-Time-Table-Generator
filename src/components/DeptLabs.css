@@ -29,7 +29,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 20px;
-  margin-bottom: 30px;
+  margin-bottom: 0px;
 }
 
 .stat-card {
@@ -70,6 +70,12 @@
   font-size: 14px;
   color: #666;
   margin: 0;
+}
+
+.primary-btn-div{
+  display: flex;
+  justify-content: right;
+  padding: 15px 0 15px 0;
 }
 
 /* Lab Room Number Styling */

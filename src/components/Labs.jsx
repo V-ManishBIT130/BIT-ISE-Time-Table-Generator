@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
+import DepartmentHeader from './DepartmentHeader'
 import './Labs.css'
 
 /**
@@ -149,11 +150,13 @@ function Labs() {
 
   return (
     <div className="labs-page">
+      <DepartmentHeader 
+        title="Labs Management" 
+        subtitle="Manage laboratory subjects (2-hour duration, 2 teachers required)"
+      />
+      
       <div className="page-header">
-        <div>
-          <h1>Labs Management</h1>
-          <p>Manage laboratory subjects (2-hour duration, 2 teachers required)</p>
-        </div>
+        <div></div>
         <button className="btn btn-primary" onClick={openAddModal}>
           + Add Lab
         </button>
