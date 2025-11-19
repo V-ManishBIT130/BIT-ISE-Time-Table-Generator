@@ -79,27 +79,44 @@ function DashboardHome() {
 
   return (
     <div className="dashboard-home">
-      <div className="page-header">
-        <h1>Dashboard Overview</h1>
-        <p>BIT ISE Time Table Generator - Current Status</p>
-      </div>
-
-      {/* Progress Phases */}
-      <div className="phases">
-        <div className={`phase-card ${phase1Complete ? 'complete' : 'pending'}`}>
-          <div className="phase-icon">📝</div>
-          <h3>Phase 1: Master Data</h3>
-          <p>{phase1Complete ? 'Complete ✓' : 'In Progress...'}</p>
+      {/* Official Institutional Header */}
+      <div className="institutional-header">
+        <div className="header-logo left-logo">
+          <img 
+            src="/src/assets/logos/bit-logo.png" 
+            alt="BIT Logo" 
+            className="institution-logo-img"
+            onError={(e) => {
+              // Fallback to text logo if image not found
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }}
+          />
+          <div className="logo-circle" style={{ display: 'none' }}>
+            <span className="logo-text">BIT</span>
+          </div>
         </div>
-        <div className={`phase-card ${phase2Complete ? 'complete' : 'pending'}`}>
-          <div className="phase-icon">🎯</div>
-          <h3>Phase 2: Pre-Assignment</h3>
-          <p>{phase2Complete ? 'Complete ✓' : 'Pending'}</p>
+        
+        <div className="institution-details">
+          <h1 className="institution-name">Bangalore Institute of Technology</h1>
+          <h2 className="department-name">Department of Information Science and Engineering</h2>
+          <h3 className="system-title">Timetable Manager and Scheduler</h3>
         </div>
-        <div className="phase-card pending">
-          <div className="phase-icon">⚡</div>
-          <h3>Phase 3: Generation</h3>
-          <p>Coming Soon</p>
+        
+        <div className="header-logo right-logo">
+          <img 
+            src="/src/assets/logos/devsoc-logo.png" 
+            alt="DevSoc Logo" 
+            className="institution-logo-img"
+            onError={(e) => {
+              // Fallback to text logo if image not found
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }}
+          />
+          <div className="logo-circle" style={{ display: 'none' }}>
+            <span className="logo-text">ISE</span>
+          </div>
         </div>
       </div>
 
@@ -164,30 +181,7 @@ function DashboardHome() {
             </div>
           </div>
         </div>
-        <div className="alert alert-info" style={{ marginTop: '1rem' }}>
-          <strong>ℹ️ Note:</strong> Lab room assignments are no longer needed in Phase 2. 
-          Phase 3 now dynamically assigns rooms during timetable generation.
-        </div>
       </div>
-
-      {/* Quick Actions */}
-      {!phase1Complete && (
-        <div className="alert alert-warning">
-          <strong>⚠️ Action Required:</strong> Complete Phase 1 by adding all master data before proceeding to Phase 2.
-        </div>
-      )}
-
-      {phase1Complete && !phase2Complete && (
-        <div className="alert alert-info">
-          <strong>ℹ️ Next Step:</strong> Phase 1 is complete! Proceed to Phase 2 to assign teachers to subjects and labs.
-        </div>
-      )}
-
-      {phase2Complete && (
-        <div className="alert alert-success">
-          <strong>✅ Ready:</strong> Phases 1 & 2 complete! You can now proceed to generate the timetable.
-        </div>
-      )}
     </div>
   )
 }

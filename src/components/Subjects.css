@@ -26,8 +26,8 @@
 
 /* Filters Card */
 .filters-card {
-  background: white;
-  border-radius: 12px;
+  background: rgb(0, 0, 0);
+  border-radius: 5px;
   padding: 20px;
   margin-bottom: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -67,6 +67,9 @@
   margin-top: 12px;
   color: #666;
   font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .badge-odd {

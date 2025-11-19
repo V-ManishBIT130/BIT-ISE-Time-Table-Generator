@@ -2,7 +2,7 @@
 
 .teachers-page {
   padding: 30px;
-  max-width: 1400px;
+  max-width: 1550px;
   margin: 0 auto;
 }
 
@@ -10,7 +10,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin: 0;
+  padding: 0;
 }
 
 .page-header h1 {
@@ -601,7 +602,7 @@ tbody td {
   .page-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 16px;
+    gap: 1px;
   }
 
   .form-row {

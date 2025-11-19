@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
+import DepartmentHeader from './DepartmentHeader'
 import './TeacherAssignments.css'
 
 /**
@@ -242,12 +243,14 @@ function TeacherAssignments() {
 
   return (
     <div className="teacher-assignments-page">
+      <DepartmentHeader 
+        title="Teacher-Subject Assignments (Phase 2)" 
+        subtitle="Assign teachers to theory subjects before scheduling"
+      />
+      
       {/* Header */}
       <div className="page-header">
-        <div>
-          <h1>👨‍🏫 Teacher-Subject Assignments (Phase 2)</h1>
-          <p>Assign teachers to theory subjects before scheduling</p>
-        </div>
+        <div></div>
         <button 
           className="btn btn-warning"
           onClick={handleValidateDatabase}
@@ -272,9 +275,6 @@ function TeacherAssignments() {
             >
               <div className="section-badge">
                 Semester {section.sem} - Section {section.section_name}
-              </div>
-              <div className="section-info">
-                {section.total_students} students
               </div>
             </button>
           ))}

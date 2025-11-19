@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { DndContext, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from '@dnd-kit/core'
 import { restrictToWindowEdges } from '@dnd-kit/modifiers'
 import axios from 'axios'
+import DepartmentHeader from './DepartmentHeader'
 import './TimetableEditor.css'
 
 /**
@@ -134,7 +135,7 @@ function EmptyCell({ day, time, addBreakMode, onSlotClick, showAvailableClassroo
               </div>
             </>
           ) : (
-            <div className="no-rooms">❌ None</div>
+            <div className="no-rooms">✗</div>
           )}
         </div>
       ) : (
@@ -203,7 +204,7 @@ function TimetableEditor() {
     '4:00 PM - 4:30 PM', '4:30 PM - 5:00 PM'
   ]
 
-  const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
   // Default break times (11:00-11:30 AM and 1:30-2:00 PM)
   const defaultBreakTimes = [
@@ -2052,8 +2053,13 @@ function TimetableEditor() {
 
   return (
     <div className="timetable-editor">
+      <DepartmentHeader 
+        title="Timetable Editor" 
+        subtitle="Drag and drop to reschedule theory slots with real-time conflict detection"
+      />
+      
       <div className="editor-header">
-        <h2>✏️ Timetable Editor</h2>
+        {/* Instructions */}
         {timetable && timetable.generation_metadata?.current_step >= 5 ? (
           <p>✏️ Drag theory slots to reschedule. <strong>Note:</strong> Moving a slot will clear its classroom assignment - you'll need to reassign a room.</p>
         ) : timetable && timetable.generation_metadata?.current_step === 4 ? (
@@ -2144,6 +2150,15 @@ function TimetableEditor() {
             >
               🏫 Show Available Rooms
             </button>
+            {timetable && timetable.generation_metadata?.current_step >= 5 && (
+              <button 
+                className={`btn-feature ${addBreakMode ? 'active' : ''}`}
+                onClick={() => setAddBreakMode(!addBreakMode)}
+                title="Add break slots to empty time slots"
+              >
+                {addBreakMode ? '✅ Break Mode Active' : '☕ Add Break'}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -2186,25 +2201,6 @@ function TimetableEditor() {
         </div>
       )}
 
-      {timetable && timetable.generation_metadata?.current_step >= 5 && (
-        <div className="add-break-instruction">
-          <button 
-            className={`btn-add-break-mode ${addBreakMode ? 'active' : ''}`}
-            onClick={() => setAddBreakMode(!addBreakMode)}
-          >
-            {addBreakMode ? '✅ Add Break Mode Active - Click any empty slot!' : '☕ Add Break'}
-          </button>
-          {addBreakMode && (
-            <button 
-              className="btn-cancel-mode"
-              onClick={() => setAddBreakMode(false)}
-            >
-              ✗ Cancel
-            </button>
-          )}
-        </div>
-      )}
-
       {timetable && (
         <DndContext
           sensors={sensors}
@@ -2218,11 +2214,16 @@ function TimetableEditor() {
               <thead>
                 <tr>
                   <th className="day-header">Day / Time</th>
-                  {timeSlots.map((time, idx) => (
-                    <th key={idx} className="time-header">
-                      {time}
-                    </th>
-                  ))}
+                  {timeSlots.map((time, idx) => {
+                    const [startTime, endTime] = time.split(' - ')
+                    return (
+                      <th key={idx} className="time-header">
+                        <div className="time-start">{startTime}</div>
+                        <div className="time-to">to</div>
+                        <div className="time-end">{endTime}</div>
+                      </th>
+                    )
+                  })}
                 </tr>
               </thead>
               <tbody>

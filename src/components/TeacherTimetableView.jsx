@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
+import DepartmentHeader from './DepartmentHeader'
 import './TeacherTimetableView.css'
 
 /**
@@ -180,9 +181,13 @@ function TeacherTimetableView() {
 
   return (
     <div className="teacher-timetable-view">
+      <DepartmentHeader 
+        title="Teacher's Timetable View" 
+        subtitle="View individual teacher schedules across all sections"
+      />
+      
       <div className="page-header">
-        <h1>👨‍🏫 Teacher's Timetable View</h1>
-        <p>View individual teacher schedules across all sections</p>
+        {/* Removed redundant h1 */}
       </div>
 
       {/* Controls */}
@@ -263,27 +268,27 @@ function TeacherTimetableView() {
           <h2>📊 Weekly Statistics for {getTeacherName()}</h2>
           <div className="stats-grid">
             <div className="stat-card theory">
-              <div className="stat-icon">📚</div>
+              <span className="stat-icon">📚</span>
               <div className="stat-content">
-                <div className="stat-value">{statistics.total_theory_classes}</div>
-                <div className="stat-label">Theory Classes</div>
-                <div className="stat-sublabel">{statistics.theory_hours} hours/week</div>
+                <span className="stat-value">{statistics.total_theory_classes}</span>
+                <span className="stat-label">Theory</span>
+                <span className="stat-sublabel">({statistics.theory_hours}h)</span>
               </div>
             </div>
             <div className="stat-card lab">
-              <div className="stat-icon">🧪</div>
+              <span className="stat-icon">🧪</span>
               <div className="stat-content">
-                <div className="stat-value">{statistics.total_lab_sessions}</div>
-                <div className="stat-label">Lab Sessions</div>
-                <div className="stat-sublabel">{statistics.lab_hours} hours/week</div>
+                <span className="stat-value">{statistics.total_lab_sessions}</span>
+                <span className="stat-label">Labs</span>
+                <span className="stat-sublabel">({statistics.lab_hours}h)</span>
               </div>
             </div>
             <div className="stat-card total">
-              <div className="stat-icon">⏱️</div>
+              <span className="stat-icon">⏱️</span>
               <div className="stat-content">
-                <div className="stat-value">{statistics.total_sessions}</div>
-                <div className="stat-label">Total Sessions</div>
-                <div className="stat-sublabel">{statistics.total_hours} hours/week</div>
+                <span className="stat-value">{statistics.total_sessions}</span>
+                <span className="stat-label">Total</span>
+                <span className="stat-sublabel">({statistics.total_hours}h)</span>
               </div>
             </div>
           </div>
@@ -293,7 +298,6 @@ function TeacherTimetableView() {
       {/* Schedule Display - Grid View */}
       {schedule && viewMode === 'grid' && (
         <div className="schedule-section">
-          <h2>📅 Weekly Schedule - {getTeacherName()}</h2>
           <div className="timetable-grid">
             {/* Header Row with Time Slots */}
             <div className="grid-header">
@@ -366,7 +370,6 @@ function TeacherTimetableView() {
       {/* List View */}
       {schedule && viewMode === 'list' && (
         <div className="schedule-section">
-          <h2>📋 Schedule List - {getTeacherName()}</h2>
           
           {/* Theory Classes */}
           {schedule.theory_classes.length > 0 && (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
+import DepartmentHeader from './DepartmentHeader'
 import './LabsView.css'
 
 /**
@@ -189,9 +190,13 @@ function LabsView() {
 
   return (
     <div className="labs-view">
+      <DepartmentHeader 
+        title="Lab's View" 
+        subtitle="Monitor lab room occupancy and batch schedules"
+      />
+      
       <div className="page-header">
-        <h1>🧪 Lab's View</h1>
-        <p>Monitor lab room occupancy and batch schedules</p>
+        {/* Removed redundant h1 */}
       </div>
 
       {/* Controls */}

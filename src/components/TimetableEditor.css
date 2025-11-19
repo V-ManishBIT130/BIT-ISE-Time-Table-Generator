@@ -3,38 +3,44 @@
    ==================================== */
 
 .timetable-editor {
-  padding: 20px;
+  padding: 10px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .editor-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 8px;
   color: white;
 }
 
 .editor-header h2 {
-  font-size: 2.5rem;
-  margin-bottom: 10px;
+  font-size: 1.5rem;
+  margin: 0 0 5px 0;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .editor-header p {
-  font-size: 1rem;
+  font-size: 0.85rem;
   opacity: 0.9;
+  margin: 0;
 }
 
 .editor-header .warning-message {
   background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
   color: #78350f;
-  padding: 15px 25px;
-  border-radius: 12px;
+  padding: 8px 15px;
+  border-radius: 8px;
   font-weight: 600;
-  margin: 15px auto;
+  margin: 5px auto;
   max-width: 800px;
-  box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4);
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
   border: 2px solid #fbbf24;
+  font-size: 0.85rem;
 }
 
 /* ====================================
@@ -43,15 +49,15 @@
 
 .editor-controls {
   display: flex;
-  gap: 20px;
+  gap: 12px;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  margin-bottom: 30px;
-  padding: 20px;
+  margin-bottom: 8px;
+  padding: 10px 15px;
   background: rgba(255, 255, 255, 0.95);
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .control-group {
@@ -265,25 +271,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 15px;
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 15px;
-  margin-bottom: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  gap: 10px;
 }
 
 .btn-add-break-mode {
-  padding: 15px 30px;
-  border: 3px solid #f59e0b;
-  border-radius: 12px;
-  font-weight: 700;
-  font-size: 1.1rem;
+  padding: 8px 16px;
+  border: 2px solid #f59e0b;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.3s ease;
   background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
   color: #78350f;
-  box-shadow: 0 5px 20px rgba(251, 191, 36, 0.3);
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
 }
 
 .btn-add-break-mode:hover {
@@ -299,13 +300,13 @@
 }
 
 .btn-cancel-mode {
-  padding: 12px 25px;
+  padding: 8px 16px;
   border: 2px solid #ef4444;
-  border-radius: 10px;
+  border-radius: 6px;
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: white;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.3s ease;
 }
@@ -329,11 +330,13 @@
    ==================================== */
 
 .editor-grid {
-  overflow-x: auto;
+  overflow: auto;
   background: white;
-  border-radius: 15px;
-  padding: 20px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  flex: 1;
+  max-height: calc(100vh - 200px);
 }
 
 .timetable-grid {
@@ -346,10 +349,10 @@
 .timetable-grid th {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 12px 8px;
+  padding: 4px 2px;
   text-align: center;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   position: sticky;
   top: 0;
@@ -366,15 +369,37 @@
 }
 
 .time-header {
-  min-width: 90px;
+  min-width: 45px;
+  max-width: 45px;
+  width: 45px;
+  font-size: 8px;
+  padding: 2px;
   writing-mode: horizontal-tb;
+  line-height: 1.1;
+}
+
+.time-header .time-start,
+.time-header .time-end {
+  font-weight: 600;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.time-header .time-to {
+  font-size: 7px;
+  font-weight: 400;
+  opacity: 0.7;
+  margin: 1px 0;
 }
 
 .day-label {
-  padding: 15px;
+  padding: 2px;
   text-align: center;
-  font-size: 1rem;
+  font-size: 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  min-width: 35px;
+  max-width: 35px;
+  width: 35px;
 }
 
 /* ====================================
@@ -382,10 +407,11 @@
    ==================================== */
 
 .drop-zone {
-  border: 2px dashed #cbd5e0;
+  border: 1px dashed #cbd5e0;
   background: #f7fafc;
-  min-height: 80px;
-  padding: 5px;
+  min-height: 60px;
+  height: 60px;
+  padding: 0;
   transition: all 0.3s ease;
   position: relative;
 }
@@ -433,20 +459,40 @@
 
 .slot-cell {
   border: 1px solid #e2e8f0;
-  padding: 10px;
-  vertical-align: top;
-  min-height: 80px;
+  padding: 0;
+  vertical-align: middle;
+  min-height: 60px;
+  height: 60px;
   transition: all 0.3s ease;
   position: relative;
 }
 
-/* Theory slots - Blue gradient */
+/* Theory slots - Blue gradient (Regular ISE subjects) */
 .theory-slot {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border: 2px solid #2196f3;
+  border-left: 4px solid #2196f3;
+  color: #1565c0;
   cursor: grab;
   user-select: none;
+  font-weight: 600;
 }
+
+/* Other Department Subjects - Purple */
+.theory-slot.theory-other-dept {
+  background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+  border-color: #9c27b0;
+  color: #6a1b9a;
+}
+
+/* Project Subjects - Green */
+.theory-slot.theory-project {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  border-color: #4caf50;
+  color: #2e7d32;
+}
+
+/* Fixed Slots (OEC/PEC) - Teal (handled separately below) */
 
 .theory-slot:active {
   cursor: grabbing;
@@ -458,51 +504,56 @@
   z-index: 5;
 }
 
-/* Fixed slots - Teal gradient (locked) */
+/* Fixed slots - Teal gradient (locked OEC/PEC) */
 .fixed-slot {
-  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
-  color: white;
+  background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%);
+  border: 2px solid #009688;
+  border-left: 4px solid #009688;
+  color: #00695c;
   cursor: not-allowed;
-  border: 3px solid #0f766e;
-  box-shadow: 0 0 15px rgba(20, 184, 166, 0.5);
+  box-shadow: 0 0 8px rgba(0, 150, 136, 0.3);
   position: relative;
+  font-weight: 600;
 }
 
 .fixed-slot::before {
   content: '🔒';
   position: absolute;
-  top: 5px;
-  right: 5px;
-  font-size: 1.2rem;
-  opacity: 0.8;
+  top: 1px;
+  right: 1px;
+  font-size: 8px;
+  opacity: 0.6;
 }
 
 /* Lab slots - Orange gradient (locked) */
 .lab-slot {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  color: white;
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border: 2px solid #ff9800;
+  border-left: 3px solid #ff9800;
+  color: #e65100;
   cursor: not-allowed;
-  border: 3px solid #c2410c;
-  box-shadow: 0 0 15px rgba(249, 115, 22, 0.5);
+  box-shadow: 0 0 8px rgba(255, 152, 0, 0.3);
   position: relative;
+  font-weight: 600;
 }
 
 .lab-slot::before {
   content: '🧪';
   position: absolute;
-  top: 5px;
-  right: 5px;
-  font-size: 1.2rem;
-  opacity: 0.8;
+  top: 1px;
+  right: 1px;
+  font-size: 8px;
+  opacity: 0.6;
 }
 
 /* Break slots - Yellow gradient (draggable) */
 .break-slot {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  color: #78350f;
+  background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+  border: 2px solid #fdcb6e;
+  color: #2d3436;
   cursor: grab;
-  border: 2px dashed #d97706;
   user-select: none;
+  font-weight: 700;
 }
 
 .break-slot:active {
@@ -522,9 +573,12 @@
 .slot-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 1px;
   height: 100%;
+  padding: 2px 3px;
   user-select: none;
+  justify-content: center;
+  align-items: center;
 }
 
 .slot-header {
@@ -536,7 +590,10 @@
 
 .slot-subject {
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 15px;
+  margin: 0;
+  padding: 0;
+  line-height: 1.2;
 }
 
 .drag-handle {
@@ -550,41 +607,45 @@
 }
 
 .fixed-badge, .lab-badge {
-  font-size: 0.75rem;
-  padding: 2px 6px;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
-  font-weight: 700;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  font-size: 6px;
+  padding: 1px 3px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+  font-weight: 600;
+  text-shadow: none;
+  line-height: 1;
 }
 
 .break-badge {
-  font-size: 0.85rem;
-  padding: 3px 8px;
-  background: rgba(255, 255, 255, 0.4);
-  border-radius: 6px;
-  font-weight: 700;
-  color: #78350f;
+  font-size: 7px;
+  padding: 1px 3px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .slot-details {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 0.85rem;
+  gap: 1px;
+  font-size: 10px;
   opacity: 1;
   font-weight: 600;
+  line-height: 1.2;
 }
 
 .slot-teacher {
-  font-weight: 700;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+  font-size: 15px;
+  margin: 0;
+  padding: 0;
+  text-shadow: none;
+  line-height: 1.2;
 }
 
 .slot-time {
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+  display: none;
 }
 
 /* ====================================
@@ -709,13 +770,14 @@
 
 /* Classroom badge in slot */
 .classroom-badge {
-  display: block;
-  margin-top: 5px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  display: inline-block;
+  margin: 2px 0;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
   text-align: center;
+  line-height: 1.2;
 }
 
 /* Make classroom badge clickable */
@@ -1194,7 +1256,7 @@
 .no-rooms {
   color: #ef4444;
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
 .loading-rooms {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
+import DepartmentHeader from './DepartmentHeader'
 import './Teachers.css'
 
 /**
@@ -161,11 +162,13 @@ function Teachers() {
 
   return (
     <div className="teachers-page">
+      <DepartmentHeader 
+        title="Teachers Management" 
+        subtitle="Manage department teachers and their eligible subjects/labs"
+      />
+      
       <div className="page-header">
-        <div>
-          <h1>Teachers Management</h1>
-          <p>Manage department teachers and their eligible subjects/labs</p>
-        </div>
+        <div></div>
         <button className="btn btn-primary" onClick={openAddModal}>
           + Add Teacher
         </button>

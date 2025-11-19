@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
+import DepartmentHeader from './DepartmentHeader'
 import './DeptLabs.css'
 
 /**
@@ -135,46 +136,19 @@ function DeptLabs() {
 
   return (
     <div className="dept-labs-page">
-      <div className="page-header">
-        <div>
-          <h1>Lab Rooms Management</h1>
-          <p>Manage department lab rooms and assign supported lab subjects</p>
-        </div>
-        <button className="btn btn-primary" onClick={openAddModal}>
-          + Add Lab Room
-        </button>
-      </div>
+      <DepartmentHeader
+        title="Lab Rooms Management"
+        subtitle="Manage department lab rooms and assign supported lab subjects"
+      />
 
       {error && !showModal && (
         <div className="alert alert-danger">{error}</div>
       )}
 
-      <div className="stats-cards">
-        <div className="stat-card">
-          <div className="stat-icon">🧪</div>
-          <div className="stat-info">
-            <h3>{deptLabs.length}</h3>
-            <p>Total Lab Rooms</p>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">💻</div>
-          <div className="stat-info">
-            <h3>
-              {deptLabs.reduce((sum, l) => sum + (l.capacity || 0), 0)}
-            </h3>
-            <p>Total Lab Capacity</p>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">📚</div>
-          <div className="stat-info">
-            <h3>
-              {deptLabs.reduce((sum, l) => sum + (l.lab_subjects_handled?.length || 0), 0)}
-            </h3>
-            <p>Total Assignments</p>
-          </div>
-        </div>
+      <div className="primary-btn-div">
+        <button className="btn btn-primary" onClick={openAddModal}>
+          + Add Lab Room
+        </button>
       </div>
 
       <div className="table-container">
@@ -224,15 +198,15 @@ function DeptLabs() {
                   </td>
                   <td>
                     <div className="action-buttons">
-                      <button 
-                        className="btn-icon btn-edit" 
+                      <button
+                        className="btn-icon btn-edit"
                         onClick={() => openEditModal(lab)}
                         title="Edit"
                       >
                         ✏️
                       </button>
-                      <button 
-                        className="btn-icon btn-delete" 
+                      <button
+                        className="btn-icon btn-delete"
                         onClick={() => handleDelete(lab._id)}
                         title="Delete"
                       >
@@ -300,13 +274,13 @@ function DeptLabs() {
                     (() => {
                       const labsBySem = groupBySemester(syllabusLabs)
                       const semesters = Object.keys(labsBySem).sort((a, b) => a - b)
-                      
+
                       return semesters.map(sem => {
                         const semLabs = labsBySem[sem]
-                        const selectedCount = semLabs.filter(l => 
+                        const selectedCount = semLabs.filter(l =>
                           formData.lab_subjects_handled.includes(l._id)
                         ).length
-                        
+
                         return (
                           <div key={sem} className="compact-semester-group">
                             <div className="compact-sem-header">
@@ -337,7 +311,7 @@ function DeptLabs() {
               </div>
 
               <div className="info-box">
-                <strong>ℹ️ Note:</strong> A lab room can support multiple syllabus labs. 
+                <strong>ℹ️ Note:</strong> A lab room can support multiple syllabus labs.
                 Select all labs that can be conducted in this room based on available equipment/software.
               </div>
 

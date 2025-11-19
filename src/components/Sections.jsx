@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
+import DepartmentHeader from './DepartmentHeader'
 import './Sections.css'
 
 /**
@@ -156,16 +157,11 @@ function Sections() {
 
   return (
     <div className="sections-page">
-      <div className="page-header">
-        <div>
-          <h1>Sections Management</h1>
-          <p>Manage ISE department sections and batches for semesters 3-8</p>
-        </div>
-        <button className="btn btn-primary" onClick={openAddModal}>
-          + Add Section
-        </button>
-      </div>
-
+      <DepartmentHeader 
+        title="Sections Management" 
+        subtitle="Manage ISE department sections and batches for semesters 3-8"
+      />
+      
       {/* Filters */}
       <div className="filters-card">
         <div className="filters-row">
@@ -193,6 +189,10 @@ function Sections() {
 
           <button className="btn btn-secondary" onClick={clearFilters}>
             Clear Filters
+          </button>
+          
+          <button className="btn btn-primary" onClick={openAddModal}>
+            + Add Section
           </button>
         </div>
 

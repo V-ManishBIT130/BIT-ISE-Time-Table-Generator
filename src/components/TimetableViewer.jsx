@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
+import DepartmentHeader from './DepartmentHeader'
 import './TimetableViewer.css'
 
 function TimetableViewer() {
@@ -22,6 +23,7 @@ function TimetableViewer() {
   ]
 
   const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+  const weekDaysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
 
   // Helper: Convert 24-hour to 12-hour format
   const convertTo12Hour = (time24) => {
@@ -444,26 +446,16 @@ function TimetableViewer() {
           colSpan={cell.span}
           title={`Lab Session\n${batchDetails.map(b => `${b.name}: ${b.lab} in ${b.room}\nTeachers: ${b.teacher1 || 'TBD'}${b.teacher2 ? ', ' + b.teacher2 : ''}`).join('\n')}\n${convertTo12Hour(slot.start_time)} - ${convertTo12Hour(slot.end_time)}`}
         >
-          <div className="cell-content">
-            <div className="lab-name">LAB SESSION</div>
-            <div className="batch-info">
-              {batchDetails.map((b, idx) => (
-                <div key={idx} className="batch-detail">
-                  <strong>{b.name}:</strong> {b.lab} in {b.room}
-                  {/* Show teachers for this batch */}
-                  {(b.teacher1 || b.teacher2) && (
-                    <div className="batch-teachers">
-                      {b.teacher1 && <span className="teacher-badge-small">{b.teacher1}</span>}
-                      {b.teacher2 && <span className="teacher-badge-small">{b.teacher2}</span>}
-                      {!b.teacher1 && !b.teacher2 && <span className="no-teacher-badge">No Teachers</span>}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div className="time-range">
-              {convertTo12Hour(slot.start_time)} - {convertTo12Hour(slot.end_time)}
-            </div>
+          <div className="lab-content-horizontal">
+            {batchDetails.map((b, idx) => (
+              <div key={idx} className="batch-compact">
+                <div className="batch-name-compact">{b.name}</div>
+                <div className="batch-lab-compact">{b.lab}</div>
+                <div className="batch-room-compact">{b.room}</div>
+                {b.teacher1 && <div className="batch-teacher-compact">{b.teacher1}</div>}
+                {b.teacher2 && <div className="batch-teacher-compact">{b.teacher2}</div>}
+              </div>
+            ))}
           </div>
         </td>
       )
@@ -474,54 +466,77 @@ function TimetableViewer() {
 
   return (
     <div className="timetable-viewer">
-      <div className="viewer-header">
-        <h2>📅 Timetable Viewer</h2>
-        <p>View generated timetables in grid format with 30-minute intervals</p>
-      </div>
+      <DepartmentHeader 
+        title="Timetable Viewer" 
+        subtitle="View generated timetables in grid format with 30-minute intervals"
+      />
+      
+      
 
       <div className="viewer-controls">
-        <div className="control-group">
-          <label>Semester Type:</label>
-          <div className="button-group">
-            <button
-              className={`toggle-btn ${semType === 'odd' ? 'active' : ''}`}
-              onClick={() => {
-                setSemType('odd')
-                setSelectedSection('')
-                setTimetable(null)
-              }}
+        <div className="controls-left">
+          <div className="control-group">
+            <label>Semester Type:</label>
+            <div className="button-group">
+              <button
+                className={`toggle-btn ${semType === 'odd' ? 'active' : ''}`}
+                onClick={() => {
+                  setSemType('odd')
+                  setSelectedSection('')
+                  setTimetable(null)
+                }}
+              >
+                {semType === 'odd' ? '✓ ' : ''}Odd Semester
+              </button>
+              <button
+                className={`toggle-btn ${semType === 'even' ? 'active' : ''}`}
+                onClick={() => {
+                  setSemType('even')
+                  setSelectedSection('')
+                  setTimetable(null)
+                }}
+              >
+                {semType === 'even' ? '✓ ' : ''}Even Semester
+              </button>
+            </div>
+          </div>
+
+          <div className="control-group">
+            <label htmlFor="section-select">Select Section:</label>
+            <select
+              id="section-select"
+              value={selectedSection}
+              onChange={handleSectionChange}
+              disabled={sections.length === 0}
             >
-              {semType === 'odd' ? '✓ ' : ''}Odd Semester
-            </button>
-            <button
-              className={`toggle-btn ${semType === 'even' ? 'active' : ''}`}
-              onClick={() => {
-                setSemType('even')
-                setSelectedSection('')
-                setTimetable(null)
-              }}
-            >
-              {semType === 'even' ? '✓ ' : ''}Even Semester
-            </button>
+              <option value="">-- Choose a section --</option>
+              {sections.map((section) => (
+                <option key={section._id} value={section._id}>
+                  Semester {section.sem} - {section.section_name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        <div className="control-group">
-          <label htmlFor="section-select">Select Section:</label>
-          <select
-            id="section-select"
-            value={selectedSection}
-            onChange={handleSectionChange}
-            disabled={sections.length === 0}
-          >
-            <option value="">-- Choose a section --</option>
-            {sections.map((section) => (
-              <option key={section._id} value={section._id}>
-                Semester {section.sem} - Section {section.section_name} ({section.num_batches} batches)
-              </option>
-            ))}
-          </select>
-        </div>
+        {timetable && timetable.generation_metadata?.theory_scheduling_summary && (
+          <div className="summary-inline">
+            <div className="summary-stats-inline">
+              <div className="stat-compact">
+                <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.total_subjects_found}</span>
+                <span className="stat-label">Subjects</span>
+              </div>
+              <div className="stat-compact success">
+                <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.success_rate}%</span>
+                <span className="stat-label">Success</span>
+              </div>
+              <div className="stat-compact">
+                <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.total_scheduled}/{timetable.generation_metadata.theory_scheduling_summary.total_subjects_found}</span>
+                <span className="stat-label">Scheduled</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {loading && <div className="loading">Loading timetable...</div>}
@@ -531,13 +546,8 @@ function TimetableViewer() {
         <div className="timetable-container">
           <div className="timetable-info">
             <h3>
-              Section {timetable.section_name} - Semester {timetable.sem} ({timetable.sem_type})
+              Section {timetable.section_name}
             </h3>
-            <div className="metadata">
-              <span>Academic Year: {timetable.academic_year}</span>
-              <span>Generated: {new Date(timetable.generation_metadata?.generated_at || timetable.generation_date).toLocaleString()}</span>
-              <span>Algorithm: {timetable.generation_metadata?.algorithm || 'N/A'}</span>
-            </div>
           </div>
 
           {/* Unassigned Labs Warning */}
@@ -601,12 +611,17 @@ function TimetableViewer() {
             <table className="timetable-grid">
               <thead>
                 <tr>
-                  <th className="day-header">Day / Time</th>
-                  {timeSlots.map((time, idx) => (
-                    <th key={idx} className="time-header">
-                      {time}
-                    </th>
-                  ))}
+                  <th className="day-header">D/T</th>
+                  {timeSlots.map((time, idx) => {
+                    const [startTime, endTime] = time.split(' - ')
+                    return (
+                      <th key={idx} className="time-header">
+                        <div className="time-start">{startTime}</div>
+                        <div className="time-to">to</div>
+                        <div className="time-end">{endTime}</div>
+                      </th>
+                    )
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -614,7 +629,7 @@ function TimetableViewer() {
                   const dayCells = buildDayGrid(day)
                   return (
                     <tr key={dayIndex}>
-                      <td className="day-label">{day}</td>
+                      <td className="day-label">{weekDaysShort[dayIndex]}</td>
                       {dayCells.map((cell, timeIndex) => renderCell(cell, dayIndex, timeIndex))}
                     </tr>
                   )
@@ -622,193 +637,6 @@ function TimetableViewer() {
               </tbody>
             </table>
           </div>
-
-          {timetable.generation_metadata?.teacher_assignment_summary && (
-            <div className="summary-stats">
-              <h4>📊 Lab Teacher Assignment Summary:</h4>
-              <div className="stats-grid">
-                <div className="stat-item">
-                  <span className="stat-label">Total Lab Sessions:</span>
-                  <span className="stat-value">{timetable.generation_metadata.teacher_assignment_summary.total_lab_sessions || 0}</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Sessions with 2 Teachers:</span>
-                  <span className="stat-value">{timetable.generation_metadata.teacher_assignment_summary.sessions_with_2_teachers || 0}</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Sessions with 1 Teacher:</span>
-                  <span className="stat-value">{timetable.generation_metadata.teacher_assignment_summary.sessions_with_1_teacher || 0}</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Sessions with 0 Teachers:</span>
-                  <span className="stat-value">{timetable.generation_metadata.teacher_assignment_summary.sessions_with_0_teachers || 0}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {timetable.generation_metadata?.theory_scheduling_summary ? (
-            <div className="summary-stats theory-summary-compact">
-              <div className="summary-header" onClick={() => setTheorySummaryExpanded(!theorySummaryExpanded)}>
-                <h4>📚 Theory Scheduling Summary</h4>
-                <span className="expand-icon">{theorySummaryExpanded ? '▼' : '▶'}</span>
-              </div>
-              
-              <div className={`summary-quick-view ${theorySummaryExpanded ? 'expanded' : ''}`}>
-                <div className="quick-stats">
-                  <span className="quick-stat">
-                    📊 {timetable.generation_metadata.theory_scheduling_summary.total_subjects_found} Subjects
-                  </span>
-                  <span className="quick-stat success">
-                    ✅ {timetable.generation_metadata.theory_scheduling_summary.success_rate}% Success
-                  </span>
-                  <span className="quick-stat">
-                    {timetable.generation_metadata.theory_scheduling_summary.total_scheduled}/{timetable.generation_metadata.theory_scheduling_summary.total_subjects_found} Scheduled
-                  </span>
-                </div>
-              </div>
-
-              {theorySummaryExpanded && (
-                <div className="theory-summary-expanded">
-                  <div className="theory-summary-grid">
-                    <div className="summary-section">
-                  <h5>📊 Subjects Found in Database</h5>
-                  <div className="stats-grid">
-                    <div className="stat-item">
-                      <span className="stat-label">Total Subjects:</span>
-                      <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.total_subjects_found || 0}</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Regular ISE:</span>
-                      <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.regular_ise_found || 0}</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Other Department:</span>
-                      <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.other_dept_found || 0}</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Projects:</span>
-                      <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.projects_found || 0}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="summary-section">
-                  <h5>✅ Successfully Scheduled</h5>
-                  <div className="stats-grid">
-                    <div className="stat-item">
-                      <span className="stat-label">Total Scheduled:</span>
-                      <span className="stat-value success">{timetable.generation_metadata.theory_scheduling_summary.total_scheduled || 0}</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Regular ISE:</span>
-                      <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.regular_ise_scheduled || 0}/{timetable.generation_metadata.theory_scheduling_summary.regular_ise_found || 0}</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Other Department:</span>
-                      <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.other_dept_scheduled || 0}/{timetable.generation_metadata.theory_scheduling_summary.other_dept_found || 0}</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Projects:</span>
-                      <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.projects_scheduled || 0}/{timetable.generation_metadata.theory_scheduling_summary.projects_found || 0}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="summary-section overall-success">
-                  <h5>🎯 Overall Success Rate</h5>
-                  <div className="success-rate-display">
-                    <div className="success-percentage">{timetable.generation_metadata.theory_scheduling_summary.success_rate || 0}%</div>
-                    <div className="success-label">
-                      {timetable.generation_metadata.theory_scheduling_summary.total_scheduled || 0} / {timetable.generation_metadata.theory_scheduling_summary.total_subjects_found || 0} subjects scheduled
-                    </div>
-                  </div>
-                  {(timetable.generation_metadata.theory_scheduling_summary.regular_ise_failed > 0 || 
-                    timetable.generation_metadata.theory_scheduling_summary.other_dept_failed > 0 || 
-                    timetable.generation_metadata.theory_scheduling_summary.projects_failed > 0) && (
-                    <div className="failed-subjects">
-                      <p>⚠️ Some subjects could not be fully scheduled:</p>
-                      <ul>
-                        {timetable.generation_metadata.theory_scheduling_summary.regular_ise_failed > 0 && (
-                          <li>Regular ISE: {timetable.generation_metadata.theory_scheduling_summary.regular_ise_failed} partial/failed</li>
-                        )}
-                        {timetable.generation_metadata.theory_scheduling_summary.other_dept_failed > 0 && (
-                          <li>Other Dept: {timetable.generation_metadata.theory_scheduling_summary.other_dept_failed} partial/failed</li>
-                        )}
-                        {timetable.generation_metadata.theory_scheduling_summary.projects_failed > 0 && (
-                          <li>Projects: {timetable.generation_metadata.theory_scheduling_summary.projects_failed} partial/failed</li>
-                        )}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="summary-stats">
-              <h4>📚 Theory Scheduling Summary:</h4>
-              <div className="no-summary-message">
-                <p>⚠️ No theory scheduling summary available for this timetable.</p>
-                <p>This timetable was generated before the summary feature was added.</p>
-                <p><strong>To see the detailed summary:</strong></p>
-                <ol>
-                  <li>Go to <strong>Timetable Generator</strong></li>
-                  <li>Click <strong>"▶️ Run Step 4"</strong> to regenerate theory classes</li>
-                  <li>Return here and re-select this section</li>
-                </ol>
-              </div>
-            </div>
-          )}
-
-          {/* Color Legend */}
-          <div className="color-legend">
-            <h4>📋 Legend</h4>
-            <div className="legend-items">
-              <div className="legend-item">
-                <div className="legend-box theory-regular-ise"></div>
-                <span>Regular ISE Subjects (Blue)</span>
-              </div>
-              <div className="legend-item">
-                <div className="legend-box theory-other-dept"></div>
-                <span>Other Department (Purple)</span>
-              </div>
-              <div className="legend-item">
-                <div className="legend-box theory-project"></div>
-                <span>Projects (Green)</span>
-              </div>
-              <div className="legend-item">
-                <div className="legend-box theory-fixed"></div>
-                <span>Fixed Slots - OEC/PEC (Teal)</span>
-              </div>
-              <div className="legend-item">
-                <div className="legend-box lab-legend"></div>
-                <span>Lab Sessions (Orange)</span>
-              </div>
-              <div className="legend-item">
-                <div className="legend-box break-legend"></div>
-                <span>Break Time (Yellow)</span>
-              </div>
-              <div className="legend-item">
-                <div className="legend-box empty-legend"></div>
-                <span>Empty Slots (White)</span>
-              </div>
-            </div>
-          </div>
-
-          {timetable.flagged_sessions && timetable.flagged_sessions.length > 0 && (
-            <div className="flagged-sessions">
-              <h4>⚠️ Flagged Sessions (Need Review):</h4>
-              <ul>
-                {timetable.flagged_sessions.map((flag, idx) => (
-                  <li key={idx}>
-                    <strong>{flag.session_type}</strong>: {flag.reason}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
       )}
 
