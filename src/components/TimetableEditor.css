@@ -345,14 +345,14 @@
   max-height: calc(100vh - 200px);
 }
 
-.timetable-grid {
+.editor-timetable-grid {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   min-width: 1800px;
 }
 
-.timetable-grid th {
+.editor-timetable-grid th {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   padding: 4px 2px;
@@ -772,7 +772,7 @@
   }
 }
 
-.timetable-grid {
+.editor-timetable-grid {
   animation: fadeIn 0.5s ease-out;
 }
 
@@ -1190,7 +1190,7 @@
   font-size: 1.1rem;
 }
 
-.subject-code {
+.editor-subject-code {
   color: #92400e;
   font-size: 0.9rem;
 }

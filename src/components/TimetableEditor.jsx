@@ -2183,7 +2183,7 @@ function TimetableEditor() {
               <div key={idx} className="unscheduled-item">
                 <div className="subject-info">
                   <span className="subject-name">{assignment.subject_id?.subject_name || 'Unknown'}</span>
-                  <span className="subject-code">({assignment.subject_id?.subject_shortform || 'N/A'})</span>
+                  <span className="editor-subject-code">({assignment.subject_id?.subject_shortform || 'N/A'})</span>
                 </div>
                 <div className="assignment-info">
                   <span className="teacher-name">👨‍🏫 {assignment.teacher_id?.name || 'No teacher'}</span>
@@ -2210,7 +2210,7 @@ function TimetableEditor() {
           modifiers={[restrictToWindowEdges]}
         >
           <div className="editor-grid">
-            <table className="timetable-grid">
+            <table className="editor-timetable-grid">
               <thead>
                 <tr>
                   <th className="day-header">Day / Time</th>
