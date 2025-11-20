@@ -30,18 +30,18 @@ function TeacherTimetableView() {
     '13:00', '14:00', '15:00', '16:00'
   ]
 
-  // Helper: Format time slot with end time (1-hour blocks)
+  // Helper: Format time slot with end time (1-hour blocks) - Compact format
   const formatTimeSlot = (startTime24) => {
-    const [hours, minutes] = startTime24.split(':').map(Number)
+    const [hours] = startTime24.split(':').map(Number)
     const endHours = hours + 1
     
     const formatHour = (h) => {
       const period = h >= 12 ? 'PM' : 'AM'
       const h12 = h % 12 || 12
-      return `${h12}:00 ${period}`
+      return `${h12}${period}`
     }
     
-    return `${formatHour(hours)} - ${formatHour(endHours)}`
+    return `${formatHour(hours)}-${formatHour(endHours)}`
   }
 
   // Fetch all teachers
@@ -237,20 +237,20 @@ function TeacherTimetableView() {
               className={`toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
               onClick={() => setViewMode('grid')}
             >
-              📅 Grid View
+              Grid View
             </button>
             <button
               className={`toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
               onClick={() => setViewMode('list')}
             >
-              📋 List View
+              List View
             </button>
           </div>
         )}
 
         {loading && (
           <div className="loading-indicator">
-            ⏳ Loading schedule...
+            Loading schedule...
           </div>
         )}
       </div>
@@ -258,40 +258,7 @@ function TeacherTimetableView() {
       {/* Error Message */}
       {error && (
         <div className="error-message">
-          ❌ {error}
-        </div>
-      )}
-
-      {/* Statistics */}
-      {statistics && (
-        <div className="statistics-section">
-          <h2>📊 Weekly Statistics for {getTeacherName()}</h2>
-          <div className="stats-grid">
-            <div className="stat-card theory">
-              <span className="stat-icon">📚</span>
-              <div className="stat-content">
-                <span className="stat-value">{statistics.total_theory_classes}</span>
-                <span className="stat-label">Theory</span>
-                <span className="stat-sublabel">({statistics.theory_hours}h)</span>
-              </div>
-            </div>
-            <div className="stat-card lab">
-              <span className="stat-icon">🧪</span>
-              <div className="stat-content">
-                <span className="stat-value">{statistics.total_lab_sessions}</span>
-                <span className="stat-label">Labs</span>
-                <span className="stat-sublabel">({statistics.lab_hours}h)</span>
-              </div>
-            </div>
-            <div className="stat-card total">
-              <span className="stat-icon">⏱️</span>
-              <div className="stat-content">
-                <span className="stat-value">{statistics.total_sessions}</span>
-                <span className="stat-label">Total</span>
-                <span className="stat-sublabel">({statistics.total_hours}h)</span>
-              </div>
-            </div>
-          </div>
+          {error}
         </div>
       )}
 
@@ -301,7 +268,7 @@ function TeacherTimetableView() {
           <div className="timetable-grid">
             {/* Header Row with Time Slots */}
             <div className="grid-header">
-              <div className="corner-cell">Day / Time</div>
+              <div className="corner-cell">Day/Time</div>
               {TIME_SLOTS.map(time => (
                 <div key={time} className="time-header-cell">
                   {formatTimeSlot(time)}
@@ -312,7 +279,7 @@ function TeacherTimetableView() {
             {/* Day Rows */}
             {DAYS.map(day => (
               <div key={day} className="day-row">
-                <div className="day-header-cell">{day}</div>
+                <div className="day-header-cell">{day.substring(0, 3)}</div>
                 <div className="time-slots-container">
                   {weeklyGrid[day].map((item, idx) => {
                     const startIdx = getTimeSlotIndex(item.start_time)
@@ -330,29 +297,27 @@ function TeacherTimetableView() {
                         {item.type === 'theory' ? (
                           <>
                             <div className="item-header">
-                              <span className="item-type-badge theory-badge">📚</span>
                               <span className="item-section">{item.section_name}</span>
                             </div>
                             <div className="item-subject">{item.subject_name}</div>
                             <div className="item-time">
-                              {formatTime(item.start_time)} - {formatTime(item.end_time)}
+                              {formatTime(item.start_time)}-{formatTime(item.end_time)}
                             </div>
-                            <div className="item-location">📍 {item.classroom_name}</div>
+                            <div className="item-location">{item.classroom_name}</div>
                           </>
                         ) : (
                           <>
                             <div className="item-header">
-                              <span className="item-type-badge lab-badge">🧪</span>
                               <span className="item-section">{item.section_name}</span>
                             </div>
                             <div className="item-time">
-                              {formatTime(item.start_time)} - {formatTime(item.end_time)}
+                              {formatTime(item.start_time)}-{formatTime(item.end_time)}
                             </div>
                             {item.batches.map((batch, bIdx) => (
                               <div key={bIdx} className="batch-info">
-                                <span className="batch-name">{batch.batch_name}:</span>{' '}
+                                <span className="batch-name">{batch.batch_name}:</span>
                                 <span className="lab-name">{batch.lab_shortform}</span>
-                                <span className="room-name"> @ {batch.lab_room_name}</span>
+                                <span className="room-name">@{batch.lab_room_name}</span>
                               </div>
                             ))}
                           </>
@@ -364,6 +329,24 @@ function TeacherTimetableView() {
               </div>
             ))}
           </div>
+
+          {/* Statistics Summary - Below Timetable */}
+          {statistics && (
+            <div className="statistics-summary">
+              <h3>Weekly Summary for {getTeacherName()}</h3>
+              <ul className="summary-list">
+                <li>
+                  <strong>Theory Classes:</strong> {statistics.total_theory_classes} sessions ({statistics.theory_hours} hours)
+                </li>
+                <li>
+                  <strong>Lab Sessions:</strong> {statistics.total_lab_sessions} sessions ({statistics.lab_hours} hours)
+                </li>
+                <li>
+                  <strong>Total Teaching Load:</strong> {statistics.total_sessions} sessions ({statistics.total_hours} hours/week)
+                </li>
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
@@ -374,7 +357,7 @@ function TeacherTimetableView() {
           {/* Theory Classes */}
           {schedule.theory_classes.length > 0 && (
             <div className="list-section">
-              <h3>📚 Theory Classes ({schedule.theory_classes.length})</h3>
+              <h3>Theory Classes ({schedule.theory_classes.length})</h3>
               <div className="list-container">
                 {schedule.theory_classes.map((cls, idx) => (
                   <div key={idx} className="list-item theory">
@@ -392,11 +375,11 @@ function TeacherTimetableView() {
                         <strong>Subject:</strong> {cls.subject_name}
                       </div>
                       <div className="list-row">
-                        <strong>Classroom:</strong> 📍 {cls.classroom_name}
+                        <strong>Classroom:</strong> {cls.classroom_name}
                       </div>
                       {cls.is_fixed_slot && (
                         <div className="list-row">
-                          <span className="fixed-badge">🔒 Fixed Slot</span>
+                          <span className="fixed-badge">Fixed Slot</span>
                         </div>
                       )}
                     </div>
@@ -409,7 +392,7 @@ function TeacherTimetableView() {
           {/* Lab Sessions */}
           {schedule.lab_sessions.length > 0 && (
             <div className="list-section">
-              <h3>🧪 Lab Sessions ({schedule.lab_sessions.length})</h3>
+              <h3>Lab Sessions ({schedule.lab_sessions.length})</h3>
               <div className="list-container">
                 {schedule.lab_sessions.map((lab, idx) => (
                   <div key={idx} className="list-item lab">
@@ -427,8 +410,8 @@ function TeacherTimetableView() {
                         {lab.batches.map((batch, bIdx) => (
                           <div key={bIdx} className="batch-item">
                             <strong>{batch.batch_name}:</strong> {batch.lab_name}
-                            <span className="batch-room"> @ {batch.lab_room_name}</span>
-                            <span className="batch-role"> ({batch.role})</span>
+                            <span className="batch-room">@ {batch.lab_room_name}</span>
+                            <span className="batch-role">({batch.role})</span>
                           </div>
                         ))}
                       </div>
@@ -441,7 +424,7 @@ function TeacherTimetableView() {
 
           {schedule.theory_classes.length === 0 && schedule.lab_sessions.length === 0 && (
             <div className="no-schedule">
-              <p>📭 No classes or labs assigned to this teacher for the selected semester.</p>
+              <p>No classes or labs assigned to this teacher for the selected semester.</p>
             </div>
           )}
         </div>
