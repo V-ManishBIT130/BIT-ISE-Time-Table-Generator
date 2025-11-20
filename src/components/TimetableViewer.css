@@ -345,7 +345,7 @@
   position: relative;
 }
 
-.timetable-grid {
+.viewer-timetable-grid {
   border-collapse: collapse;
   width: 100%;
   min-width: 1400px;
@@ -353,12 +353,12 @@
   font-size: 11px;
 }
 
-.timetable-grid * {
+.viewer-timetable-grid * {
   box-sizing: border-box;
 }
 
 
-.timetable-grid thead {
+.viewer-timetable-grid thead {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   position: sticky;
@@ -366,7 +366,7 @@
   z-index: 30;
 }
 
-.timetable-grid th {
+.viewer-timetable-grid th {
   padding: 4px 2px;
   text-align: center;
   font-weight: 600;
@@ -382,7 +382,7 @@
   text-overflow: ellipsis;
 }
 
-.timetable-grid td {
+.viewer-timetable-grid td {
   border: 1px solid #ddd;
   padding: 0;
   text-align: center;
@@ -407,12 +407,12 @@
 }
 
 .time-column {
-  /* Width inherited from .timetable-grid td (75px) */
+  /* Width inherited from .viewer-timetable-grid td (75px) */
   font-size: 10px;
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-.day-header {
+.viewer-day-header {
   font-size: 10px;
   height: 100%;
   width: 50px !important;
@@ -420,8 +420,8 @@
   max-width: 50px !important;
 }
 
-.time-header {
-  /* Width inherited from .timetable-grid th (75px) */
+.viewer-time-header {
+  /* Width inherited from .viewer-timetable-grid th (75px) */
   padding: 4px 2px;
   line-height: 1.1;
   overflow: hidden;
@@ -429,14 +429,14 @@
   white-space: nowrap;
 }
 
-.time-header .time-start,
-.time-header .time-end {
+.viewer-time-header .time-start,
+.viewer-time-header .time-end {
   font-weight: 600;
   font-size: 10px;
   white-space: nowrap;
 }
 
-.time-header .time-to {
+.viewer-time-header .time-to {
   font-size: 10px;
   font-weight: 700;
   opacity: 0.7;
@@ -467,7 +467,7 @@
   overflow: hidden;
 }
 
-.day-label {
+.viewer-day-label {
   font-weight: 700;
   color: #2c3e50;
   font-size: 10px;
@@ -505,13 +505,13 @@
   position: relative;
 }
 
-.empty-cell {
+.viewer-empty-cell {
   background: #fafafa;
   border: 1px solid #ddd;
   height: 70px;
 }
 
-.break-cell {
+.viewer-break-cell {
   background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
   border: 1px solid #fdcb6e;
   padding: 0;
@@ -570,7 +570,7 @@
   font-size: 9px;
 }
 
-.subject-code {
+.viewer-subject-code {
   font-weight: 700;
   font-size: 12px;
   color: #2c3e50;
@@ -583,14 +583,14 @@
   max-width: 100%;
 }
 
-.cell-content {
+.viewer-cell-content {
   display: flex;
   flex-direction: column;
   text-overflow: ellipsis;
   max-width: 100%;
 }
 
-.lab-name {
+.viewer-lab-name {
   font-weight: 700;
   font-size: 10px;
   color: #2c3e50;
@@ -599,7 +599,7 @@
   line-height: 1.1;
 }
 
-.batch-info {
+.viewer-batch-info {
   font-size: 8px;
   color: #555;
   display: flex;
@@ -608,7 +608,7 @@
   margin-top: 1px;
 }
 
-.batch-detail {
+.viewer-batch-detail {
   padding: 1px 3px;
   background: rgba(255, 255, 255, 0.6);
   border-radius: 2px;
@@ -616,19 +616,19 @@
   line-height: 1.2;
 }
 
-.batch-detail strong {
+.viewer-batch-detail strong {
   color: #2196f3;
   font-weight: 600;
   font-size: 8px;
 }
 
-.room-info {
+.viewer-room-info {
   font-size: 7px;
   color: #555;
   line-height: 1.1;
 }
 
-.classroom-badge {
+.viewer-classroom-badge {
   font-size: 9px;
   padding: 2px 4px;
   border-radius: 3px;
@@ -641,7 +641,7 @@
 }
 
 /* Theory Cell Colors - Different colors for different subject types */
-.theory-cell {
+.viewer-theory-cell {
   padding: 0;
   margin: 0;
   vertical-align: middle;
@@ -653,25 +653,25 @@
 }
 
 /* Ensure proper box-sizing for theory cells and all children */
-.theory-cell,
-.theory-cell * {
+.viewer-theory-cell,
+.viewer-theory-cell * {
   box-sizing: border-box !important;
 }
 
 /* Explicit width rules for theory cells based on colSpan */
-.theory-cell[colspan="2"] {
+.viewer-theory-cell[colspan="2"] {
   min-width: 150px;
   /* 2 × 75px */
   max-width: 150px;
 }
 
-.theory-cell[colspan="3"] {
+.viewer-theory-cell[colspan="3"] {
   min-width: 225px;
   /* 3 × 75px */
   max-width: 225px;
 }
 
-.theory-cell[colspan="4"] {
+.viewer-theory-cell[colspan="4"] {
   min-width: 300px;
   /* 4 × 75px */
   max-width: 300px;
@@ -722,7 +722,7 @@
 }
 
 /* Break Cell - Yellow */
-.break-cell {
+.viewer-break-cell {
   background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%);
   border: 1px solid #fbc02d;
   border-left: 2px solid #fbc02d;
@@ -732,7 +732,7 @@
   vertical-align: middle;
 }
 
-.break-cell .cell-content {
+.viewer-break-cell .viewer-cell-content {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -742,7 +742,7 @@
   padding: 0;
 }
 
-.break-icon {
+.viewer-break-icon {
   font-size: 20px;
   animation: steam 2s ease-in-out infinite;
 }
@@ -759,7 +759,7 @@
   }
 }
 
-.break-label {
+.viewer-break-label {
   font-size: 11px;
   font-weight: 700;
   color: #f57f17;
@@ -768,7 +768,7 @@
 }
 
 /* Lab Cell Colors */
-.lab-cell {
+.viewer-lab-cell {
   background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
   border: 1px solid #ff9800;
   border-left: 2px solid #ff9800;
@@ -779,13 +779,13 @@
   height: 70px;
 }
 
-.lab-cell:hover {
+.viewer-lab-cell:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(255, 152, 0, 0.3);
 }
 
 /* Horizontal compact lab layout */
-.lab-content-horizontal {
+.viewer-lab-content-horizontal {
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -795,7 +795,7 @@
   margin: 0;
 }
 
-.batch-compact {
+.viewer-batch-compact {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -805,11 +805,11 @@
   margin: 1px;
 }
 
-.batch-compact:last-child {
+.viewer-batch-compact:last-child {
   border-right: none;
 }
 
-.batch-name-compact {
+.viewer-batch-name-compact {
   font-weight: 700;
   font-size: 12px;
   color: #e65100;
@@ -819,7 +819,7 @@
   padding: 2px;
 }
 
-.batch-lab-compact {
+.viewer-batch-lab-compact {
   font-weight: 600;
   font-size: 12px;
   color: #2c3e50;
@@ -829,7 +829,7 @@
   padding: 2px;
 }
 
-.batch-room-compact {
+.viewer-batch-room-compact {
   font-size: 12px;
   color: #555;
   line-height: 1;
@@ -838,7 +838,7 @@
   padding: 3px;
 }
 
-.batch-teacher-compact {
+.viewer-batch-teacher-compact {
   font-size: 10px;
   color: #1976d2;
   background: rgba(33, 150, 243, 0.15);
@@ -850,7 +850,7 @@
 }
 
 /* Fixed Slot Badge Styling */
-.fixed-badge {
+.viewer-fixed-badge {
   background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
   color: white;
   font-size: 9px;
@@ -879,7 +879,7 @@
 }
 
 /* Classroom Badge Styling */
-.classroom-badge {
+.viewer-classroom-badge {
   font-size: 10px;
   padding: 3px 0px;
   border-radius: 10px;
@@ -890,19 +890,19 @@
   transition: all 0.3s ease;
 }
 
-.classroom-badge.fixed-classroom {
+.viewer-classroom-badge.fixed-classroom {
   background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
   color: white;
   box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
 }
 
-.classroom-badge.regular-classroom {
+.viewer-classroom-badge.regular-classroom {
   background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
   color: white;
   box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
 }
 
-.classroom-badge:hover {
+.viewer-classroom-badge:hover {
   transform: translateY(-1px);
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
 }
@@ -928,14 +928,14 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.subject-code {
+.viewer-subject-code {
   font-weight: 700;
   font-size: 13px;
   color: #2c3e50;
   margin-bottom: 4px;
 }
 
-.cell-content {
+.viewer-cell-content {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -946,7 +946,7 @@
   margin: 0;
 }
 
-.cell-content-compact {
+.viewer-cell-content-compact {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -957,19 +957,19 @@
   padding: 4px;
 }
 
-.teacher-name {
+.viewer-teacher-name {
   font-size: 12px;
   color: #555;
   font-weight: 600;
 }
 
 /* Hide time ranges - visible in header only */
-.time-range,
+.viewer-time-range,
 .slot-time {
   display: none;
 }
 
-.lab-name {
+.viewer-lab-name {
   font-weight: 700;
   font-size: 12px;
   color: #2c3e50;
@@ -977,7 +977,7 @@
   letter-spacing: 0.5px;
 }
 
-.batch-info {
+.viewer-batch-info {
   font-size: 12px;
   color: #555;
   display: flex;
@@ -986,7 +986,7 @@
   margin-top: 10px;
 }
 
-.batch-detail {
+.viewer-batch-detail {
   padding: 0px 0px;
   background: rgba(255, 255, 255, 0.6);
   border-radius: 6px;
@@ -994,13 +994,13 @@
   line-height: 1.6;
 }
 
-.batch-detail strong {
+.viewer-batch-detail strong {
   color: #2196f3;
   font-weight: 600;
   font-size: 13px;
 }
 
-.room-info {
+.viewer-room-info {
   font-size: 11px;
   color: #555;
 }
@@ -1180,7 +1180,7 @@
     font-size: 11px;
   }
 
-  .subject-code {
+  .viewer-subject-code {
     font-size: 12px;
   }
 

@@ -453,6 +453,33 @@ Screenshots showing "before" and "after" states make it easy to verify fixes and
 
 ---
 
+## 🔒 CSS Namespace Isolation (Nov 21, 2025)
+
+### Problem: Cross-Component CSS Conflicts
+
+TimetableViewer and TimetableEditor shared identical CSS class names (`.timetable-grid`, `.theory-cell`, `.subject-code`, etc.), causing styling interference. Changes to one component affected the other.
+
+### Solution: Component-Specific Prefixes
+
+- **TimetableViewer**: All classes prefixed with `viewer-` (e.g., `.viewer-timetable-grid`)
+- **TimetableEditor**: All classes prefixed with `editor-` (e.g., `.editor-timetable-grid`)
+
+### Implementation
+
+**Files Modified**:
+1. `TimetableViewer.css` - Renamed ~40 classes with `viewer-` prefix
+2. `TimetableViewer.jsx` - Updated all className references
+3. `TimetableEditor.css` - Renamed classes with `editor-` prefix  
+4. `TimetableEditor.jsx` - Updated all className references
+
+**Result**: Complete CSS isolation - components now style independently
+
+### Key Insight
+
+Standard CSS imports create global scope. Namespace prefixes provide simple, effective isolation without CSS Modules or build configuration changes.
+
+---
+
 ## Technical Specifications
 
 ### Grid Structure
@@ -502,6 +529,7 @@ Screenshots showing "before" and "after" states make it easy to verify fixes and
 
 ---
 **Last Updated**: 2025-11-21  
-**Status**: ✅ Complete - All alignment issues fully resolved
+**Status**: ✅ Complete - All alignment and isolation issues resolved
 - ✅ Nov 20, 2025: Lab slots + Theory slots + Data corruption fallback
 - ✅ Nov 21, 2025: Content overflow prevention + Explicit width constraints
+- ✅ Nov 21, 2025: CSS namespace isolation (viewer-/editor- prefixes)

@@ -382,7 +382,7 @@ function TimetableViewer() {
 
   const renderCell = (cell, dayIndex, timeIndex) => {
     if (!cell) {
-      return <td key={`${dayIndex}-${timeIndex}`} className="empty-cell"></td>
+      return <td key={`${dayIndex}-${timeIndex}`} className="viewer-empty-cell"></td>
     }
 
     if (cell.type === 'occupied') {
@@ -391,12 +391,12 @@ function TimetableViewer() {
 
     if (cell.type === 'break') {
       return (
-        <td key={`${dayIndex}-${timeIndex}`} className="break-cell" colSpan={cell.span}>
-          <div className="cell-content">
-            <div className="cell-content-compact">
-              <div className="break-icon">☕</div>
-              <div className="break-label">BREAK</div>
-              <div className="time-range">
+        <td key={`${dayIndex}-${timeIndex}`} className="viewer-break-cell" colSpan={cell.span}>
+          <div className="viewer-cell-content">
+            <div className="viewer-cell-content-compact">
+              <div className="viewer-break-icon">☕</div>
+              <div className="viewer-break-label">BREAK</div>
+              <div className="viewer-time-range">
                 {convertTo12Hour(cell.start_time)} - {convertTo12Hour(cell.end_time)}
               </div>
             </div>
@@ -429,11 +429,11 @@ function TimetableViewer() {
           colSpan={cell.span}
           title={`${slot.subject_name}\n${slot.teacher_name}\n${convertTo12Hour(slot.start_time)} - ${convertTo12Hour(slot.end_time)}${slot.classroom_name ? `\nRoom: ${slot.classroom_name}` : ''}`}
         >
-          <div className="cell-content">
-            <div className="cell-content-compact">
-              <div className="subject-code">{slot.subject_shortform}</div>
-              <div className="teacher-name">{slot.teacher_shortform}</div>
-              {slot.is_fixed_slot && <div className="fixed-badge">FIXED</div>}
+          <div className="viewer-cell-content">
+            <div className="viewer-cell-content-compact">
+              <div className="viewer-subject-code">{slot.subject_shortform}</div>
+              <div className="viewer-teacher-name">{slot.teacher_shortform}</div>
+              {slot.is_fixed_slot && <div className="viewer-fixed-badge">FIXED</div>}
               {slot.is_project !== true && slot.classroom_name && (
                 <div className={`classroom-badge ${slot.is_fixed_slot ? 'fixed-classroom' : 'regular-classroom'}`} title={`Classroom: ${slot.classroom_name}`}>
                   📍 {slot.classroom_name}
@@ -460,18 +460,18 @@ function TimetableViewer() {
       return (
         <td
           key={`${dayIndex}-${timeIndex}`}
-          className="lab-cell"
+          className="viewer-lab-cell"
           colSpan={cell.span}
           title={`Lab Session\n${batchDetails.map(b => `${b.name}: ${b.lab} in ${b.room}\nTeachers: ${b.teacher1 || 'TBD'}${b.teacher2 ? ', ' + b.teacher2 : ''}`).join('\n')}\n${convertTo12Hour(slot.start_time)} - ${convertTo12Hour(slot.end_time)}`}
         >
-          <div className="lab-content-horizontal">
+          <div className="viewer-lab-content-horizontal">
             {batchDetails.map((b, idx) => (
-              <div key={idx} className="batch-compact">
-                <div className="batch-name-compact">{b.name}</div>
-                <div className="batch-lab-compact">{b.lab}</div>
-                <div className="batch-room-compact">{b.room}</div>
-                {b.teacher1 && <div className="batch-teacher-compact">{b.teacher1}</div>}
-                {b.teacher2 && <div className="batch-teacher-compact">{b.teacher2}</div>}
+              <div key={idx} className="viewer-batch-compact">
+                <div className="viewer-batch-name-compact">{b.name}</div>
+                <div className="viewer-batch-lab-compact">{b.lab}</div>
+                <div className="viewer-batch-room-compact">{b.room}</div>
+                {b.teacher1 && <div className="viewer-batch-teacher-compact">{b.teacher1}</div>}
+                {b.teacher2 && <div className="viewer-batch-teacher-compact">{b.teacher2}</div>}
               </div>
             ))}
           </div>
@@ -626,14 +626,14 @@ function TimetableViewer() {
           })()}
 
           <div className="grid-wrapper">
-            <table className="timetable-grid">
+            <table className="viewer-timetable-grid">
               <thead>
                 <tr>
-                  <th className="day-header">D/T</th>
+                  <th className="viewer-day-header">D/T</th>
                   {timeSlots.map((time, idx) => {
                     const [startTime, endTime] = time.split(' - ')
                     return (
-                      <th key={idx} className="time-header">
+                      <th key={idx} className="viewer-time-header">
                         <div className="time-start">{startTime}</div>
                         <div className="time-to">to</div>
                         <div className="time-end">{endTime}</div>
@@ -647,7 +647,7 @@ function TimetableViewer() {
                   const dayCells = buildDayGrid(day)
                   return (
                     <tr key={dayIndex}>
-                      <td className="day-label">{weekDaysShort[dayIndex]}</td>
+                      <td className="viewer-day-label">{weekDaysShort[dayIndex]}</td>
                       {dayCells.map((cell, timeIndex) => renderCell(cell, dayIndex, timeIndex))}
                     </tr>
                   )
