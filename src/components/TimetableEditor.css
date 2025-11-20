@@ -137,9 +137,12 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.85;
   }
@@ -151,7 +154,8 @@
   font-size: 1rem;
 }
 
-.btn-save, .btn-revert {
+.btn-save,
+.btn-revert {
   padding: 8px 16px;
   border: none;
   border-radius: 8px;
@@ -190,7 +194,8 @@
   align-items: center;
 }
 
-.btn-undo, .btn-redo {
+.btn-undo,
+.btn-redo {
   padding: 8px 16px;
   border: 2px solid #8b5cf6;
   background: white;
@@ -202,7 +207,7 @@
   font-size: 0.9rem;
 }
 
-.btn-undo:hover:not(:disabled), 
+.btn-undo:hover:not(:disabled),
 .btn-redo:hover:not(:disabled) {
   background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   color: white;
@@ -210,7 +215,7 @@
   box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4);
 }
 
-.btn-undo:disabled, 
+.btn-undo:disabled,
 .btn-redo:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -240,7 +245,8 @@
    Loading & Error States
    ==================================== */
 
-.loading, .error-message {
+.loading,
+.error-message {
   text-align: center;
   padding: 40px;
   background: white;
@@ -359,7 +365,8 @@
   z-index: 10;
 }
 
-.day-header, .day-label {
+.day-header,
+.day-label {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   font-weight: 700;
@@ -445,9 +452,12 @@
 }
 
 @keyframes glow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
   }
+
   50% {
     box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
   }
@@ -606,7 +616,8 @@
   cursor: grabbing;
 }
 
-.fixed-badge, .lab-badge {
+.fixed-badge,
+.lab-badge {
   font-size: 6px;
   padding: 1px 3px;
   background: rgba(0, 0, 0, 0.15);
@@ -754,6 +765,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -834,7 +846,8 @@
 .warning-badge.clickable {
   cursor: pointer;
   transition: all 0.2s ease;
-  animation: none; /* Remove pulse animation when clickable */
+  animation: none;
+  /* Remove pulse animation when clickable */
 }
 
 .warning-badge.clickable:hover {
@@ -848,9 +861,12 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.7;
   }
@@ -892,6 +908,7 @@
     opacity: 0;
     transform: translateY(50px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1101,6 +1118,7 @@
     opacity: 0;
     transform: translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1263,4 +1281,3 @@
   color: #6b7280;
   font-size: 0.9rem;
 }
-

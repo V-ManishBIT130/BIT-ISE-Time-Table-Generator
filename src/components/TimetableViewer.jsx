@@ -42,29 +42,37 @@ function TimetableViewer() {
   }
 
   // Helper: Calculate span (number of 30-min slots)
-  const getTimeSpan = (startTime, endTime) => {
+  const getTimeSpan = (startTime, endTime, durationHours = null) => {
     const startIndex = getTimeSlotIndex(startTime)
     const endIndex = getTimeSlotIndex(endTime)
-    return endIndex - startIndex
+    const calculatedSpan = endIndex - startIndex
+
+    // Defensive check: If span is 0 or negative, use duration_hours fallback
+    if (calculatedSpan <= 0 && durationHours) {
+      console.warn(`⚠️ Invalid time span (${startTime}-${endTime}), using duration_hours: ${durationHours}`)
+      return durationHours * 2 // Convert hours to 30-min slots (1 hour = 2 slots)
+    }
+
+    return calculatedSpan
   }
 
   // Helper: Detect teacher conflicts
   // ONLY checks non-fixed slots (fixed slots verified in Step 2)
   const detectTeacherConflicts = (theorySlots) => {
     if (!theorySlots) return []
-    
+
     const conflicts = []
     const teacherSchedule = new Map()
-    
+
     theorySlots.forEach(slot => {
       // Skip fixed slots (verified in Step 2)
       if (slot.is_fixed_slot === true) return
-      
+
       // Skip slots without teachers
       if (!slot.teacher_id || slot.teacher_name === '[Other Dept]') return
-      
+
       const key = `${slot.teacher_id}_${slot.day}_${slot.start_time}`
-      
+
       if (teacherSchedule.has(key)) {
         const existingSlot = teacherSchedule.get(key)
         conflicts.push({
@@ -77,7 +85,7 @@ function TimetableViewer() {
         teacherSchedule.set(key, slot)
       }
     })
-    
+
     return conflicts
   }
 
@@ -178,7 +186,7 @@ function TimetableViewer() {
     const semester = timetable.sem
     const expectedLabCount = semester === 3 ? 5 : semester === 5 || semester === 7 ? 2 : 0
     const actualLabCount = timetable.lab_slots?.length || 0
-    
+
     if (actualLabCount >= expectedLabCount) {
       return null // All labs assigned
     }
@@ -206,9 +214,9 @@ function TimetableViewer() {
     timetable.theory_slots?.forEach((slot) => {
       if (slot.day === day) {
         const startIndex = getTimeSlotIndex(slot.start_time)
-        const span = getTimeSpan(slot.start_time, slot.end_time)
+        const span = getTimeSpan(slot.start_time, slot.end_time, slot.duration_hours)
 
-        console.log(`      ✅ Theory: ${slot.subject_shortform} at ${slot.start_time}-${slot.end_time} (index ${startIndex}, span ${span})`)
+        console.log(`      ✅ Theory: ${slot.subject_shortform} at ${slot.start_time}-${slot.end_time} (index ${startIndex}, span ${span}, duration: ${slot.duration_hours}h)`)
 
         cells[startIndex] = {
           type: 'theory',
@@ -268,34 +276,34 @@ function TimetableViewer() {
 
     // Get custom breaks for this day from database (exclude removed markers)
     const customBreaksForDay = (timetable.breaks || []).filter(b => b.day === day && !b.isRemoved)
-    
+
     // Get removed default breaks for this day
-    const removedDefaultBreaks = (timetable.breaks || []).filter(b => 
+    const removedDefaultBreaks = (timetable.breaks || []).filter(b =>
       b.day === day && b.isDefault && b.isRemoved
     )
-    
+
     // Get default breaks for this day (excluding any that were removed by user)
     const defaultBreaksForDay = defaultBreaks.filter(b => {
-      const isRemovedByUser = removedDefaultBreaks.some(removed => 
+      const isRemovedByUser = removedDefaultBreaks.some(removed =>
         removed.start_time === b.start_time && removed.end_time === b.end_time
       )
       return b.day === day && !isRemovedByUser
     })
-    
+
     console.log(`      • Custom breaks for ${day}: ${customBreaksForDay.length}`)
     console.log(`      • Default breaks for ${day}: ${defaultBreaksForDay.length}`)
     console.log(`      • Removed default breaks for ${day}: ${removedDefaultBreaks.length}`)
-    
+
     // Merge logic: Custom breaks override defaults at same time slot
     const mergedBreaks = [...defaultBreaksForDay]
-    
+
     customBreaksForDay.forEach(customBreak => {
       // Check if this custom break replaces a default break (same time)
       const replacesDefaultIndex = mergedBreaks.findIndex(
-        defBreak => defBreak.start_time === customBreak.start_time && 
-                    defBreak.end_time === customBreak.end_time
+        defBreak => defBreak.start_time === customBreak.start_time &&
+          defBreak.end_time === customBreak.end_time
       )
-      
+
       if (replacesDefaultIndex >= 0) {
         // Replace default with custom at same time
         mergedBreaks[replacesDefaultIndex] = customBreak
@@ -313,26 +321,26 @@ function TimetableViewer() {
     breaks.forEach((breakSlot, idx) => {
       const startIndex = getTimeSlotIndex(breakSlot.start_time)
       const span = getTimeSpan(breakSlot.start_time, breakSlot.end_time)
-      
+
       console.log(`\n      🔍 [BREAK ${idx + 1}] Checking break at ${breakSlot.start_time}-${breakSlot.end_time}`)
       console.log(`         • Start index: ${startIndex}`)
       console.log(`         • Span: ${span}`)
       console.log(`         • Label: ${breakSlot.label}`)
-      
+
       // Only add break if ALL slots in the span are empty (not occupied by theory/labs)
       let canAddBreak = true
       for (let i = 0; i < span; i++) {
         const checkIndex = startIndex + i
         const cellState = cells[checkIndex]
         console.log(`         • Checking cell[${checkIndex}]: ${cellState === null ? 'EMPTY' : cellState.type}`)
-        
+
         if (cells[checkIndex] !== null) {
           canAddBreak = false
           console.log(`         ❌ Cell[${checkIndex}] is occupied by ${cellState.type}! Cannot add break.`)
           break
         }
       }
-      
+
       if (canAddBreak && startIndex >= 0) {
         console.log(`         ✅ All cells empty! Adding break...`)
         cells[startIndex] = {
@@ -385,10 +393,12 @@ function TimetableViewer() {
       return (
         <td key={`${dayIndex}-${timeIndex}`} className="break-cell" colSpan={cell.span}>
           <div className="cell-content">
-            <div className="break-icon">☕</div>
-            <div className="break-label">BREAK</div>
-            <div className="time-range">
-              {convertTo12Hour(cell.start_time)} - {convertTo12Hour(cell.end_time)}
+            <div className="cell-content-compact">
+              <div className="break-icon">☕</div>
+              <div className="break-label">BREAK</div>
+              <div className="time-range">
+                {convertTo12Hour(cell.start_time)} - {convertTo12Hour(cell.end_time)}
+              </div>
             </div>
           </div>
         </td>
@@ -402,7 +412,16 @@ function TimetableViewer() {
       if (slot.is_fixed_slot) subjectType = 'fixed'
       else if (slot.teacher_name === '[Other Dept]') subjectType = 'other-dept'
       else if (slot.subject_name?.toLowerCase().includes('project')) subjectType = 'project'
-      
+
+      // Debug log for theory cell rendering
+      if (cell.span !== 2 && slot.duration_hours === 1) {
+        console.error(`❌ Theory cell span mismatch! ${slot.subject_shortform}: span=${cell.span}, duration=${slot.duration_hours}h, ${slot.start_time}-${slot.end_time}`)
+        console.log(`   Full slot data:`, slot)
+      }
+
+      // Always log theory cell rendering for debugging alignment issues
+      console.log(`📘 Rendering theory: ${slot.subject_shortform} - span: ${cell.span}, colSpan will be: ${cell.span}, duration: ${slot.duration_hours}h`)
+
       return (
         <td
           key={`${dayIndex}-${timeIndex}`}
@@ -411,17 +430,16 @@ function TimetableViewer() {
           title={`${slot.subject_name}\n${slot.teacher_name}\n${convertTo12Hour(slot.start_time)} - ${convertTo12Hour(slot.end_time)}${slot.classroom_name ? `\nRoom: ${slot.classroom_name}` : ''}`}
         >
           <div className="cell-content">
-            <div className="subject-code">{slot.subject_shortform}</div>
-            <div className="teacher-name">{slot.teacher_shortform}</div>
-            <div className="time-range">
-              {convertTo12Hour(slot.start_time)} - {convertTo12Hour(slot.end_time)}
+            <div className="cell-content-compact">
+              <div className="subject-code">{slot.subject_shortform}</div>
+              <div className="teacher-name">{slot.teacher_shortform}</div>
+              {slot.is_fixed_slot && <div className="fixed-badge">FIXED</div>}
+              {slot.is_project !== true && slot.classroom_name && (
+                <div className={`classroom-badge ${slot.is_fixed_slot ? 'fixed-classroom' : 'regular-classroom'}`} title={`Classroom: ${slot.classroom_name}`}>
+                  📍 {slot.classroom_name}
+                </div>
+              )}
             </div>
-            {slot.is_fixed_slot && <div className="fixed-badge">FIXED</div>}
-            {slot.is_project !== true && slot.classroom_name && (
-              <div className={`classroom-badge ${slot.is_fixed_slot ? 'fixed-classroom' : 'regular-classroom'}`} title={`Classroom: ${slot.classroom_name}`}>
-                📍 {slot.classroom_name}
-              </div>
-            )}
           </div>
         </td>
       )
@@ -429,7 +447,7 @@ function TimetableViewer() {
 
     if (cell.type === 'lab') {
       const slot = cell.data
-      
+
       // Extract batch details for display (including teachers per batch)
       const batchDetails = slot.batches?.map(b => ({
         name: b.batch_name,
@@ -438,7 +456,7 @@ function TimetableViewer() {
         teacher1: b.teacher1_shortform || b.teacher1_name,
         teacher2: b.teacher2_shortform || b.teacher2_name
       })) || []
-      
+
       return (
         <td
           key={`${dayIndex}-${timeIndex}`}
@@ -466,12 +484,12 @@ function TimetableViewer() {
 
   return (
     <div className="timetable-viewer">
-      <DepartmentHeader 
-        title="Timetable Viewer" 
+      <DepartmentHeader
+        title="Timetable Viewer"
         subtitle="View generated timetables in grid format with 30-minute intervals"
       />
-      
-      
+
+
 
       <div className="viewer-controls">
         <div className="controls-left">
