@@ -564,6 +564,11 @@
   cursor: grab;
   user-select: none;
   font-weight: 700;
+  /* Limit to single 30-minute slot width */
+  min-width: 45px;
+  max-width: 45px;
+  width: 45px;
+  box-sizing: border-box;
 }
 
 .break-slot:active {
