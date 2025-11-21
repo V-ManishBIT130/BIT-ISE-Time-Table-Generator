@@ -20,7 +20,7 @@ function LabsView() {
   const [selectedLabRoom, setSelectedLabRoom] = useState(null)
 
   const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-  
+
   // 1-hour segments for clearer visibility (shows actual occupancy per hour)
   const TIME_SLOTS = [
     '08:00-09:00',
@@ -63,7 +63,7 @@ function LabsView() {
       const response = await axios.get('/api/dept-labs')
       if (response.data.success) {
         // Sort by room number
-        const sorted = response.data.data.sort((a, b) => 
+        const sorted = response.data.data.sort((a, b) =>
           a.labRoom_no.localeCompare(b.labRoom_no)
         )
         setLabRooms(sorted)
@@ -81,7 +81,7 @@ function LabsView() {
   const fetchTimetables = async () => {
     setLoading(true)
     setError('')
-    
+
     try {
       const response = await axios.get('/api/timetables', {
         params: {
@@ -122,19 +122,19 @@ function LabsView() {
     // Each lab session will be stored only at its START hour
     timetables.forEach(tt => {
       const labSlots = tt.lab_slots || []
-      
+
       labSlots.forEach(slot => {
         const { day, start_time, end_time, batches } = slot
-        
+
         if (!batches || batches.length === 0) return
-        
+
         batches.forEach(batch => {
           const batchRoomNo = batch.lab_room_name
-          
+
           if (batchRoomNo === roomNo) {
             // Find the 1-hour slot that matches the start time
             const matchingSlot = TIME_SLOTS.find(hourSlot => hourSlot.startsWith(start_time))
-            
+
             if (matchingSlot && occupancy[roomNo][day] && occupancy[roomNo][day][matchingSlot]) {
               occupancy[roomNo][day][matchingSlot].push({
                 batchName: batch.batch_name,
@@ -184,17 +184,17 @@ function LabsView() {
   }
 
   const stats = calculateStats()
-  const utilizationRate = stats.totalSlots > 0 
+  const utilizationRate = stats.totalSlots > 0
     ? ((stats.occupiedSlots / stats.totalSlots) * 100).toFixed(1)
     : 0
 
   return (
     <div className="labs-view">
-      <DepartmentHeader 
-        title="Lab's View" 
+      <DepartmentHeader
+        title="Lab's View"
         subtitle="Monitor lab room occupancy and batch schedules"
       />
-      
+
       <div className="page-header">
         {/* Removed redundant h1 */}
       </div>
@@ -268,7 +268,7 @@ function LabsView() {
           <div className="lab-schedule-grid">
             {/* Header Row */}
             <div className="schedule-header">
-              <div className="corner-cell">Day / Time</div>
+              <div className="corner-cell">D/T</div>
               {TIME_SLOTS.map(slot => (
                 <div key={slot} className="time-header">{formatTimeSlot(slot)}</div>
               ))}
@@ -282,7 +282,7 @@ function LabsView() {
                   {TIME_SLOTS.map((slot, slotIdx) => {
                     const occupants = labOccupancy[selectedLabRoom.labRoom_no]?.[day]?.[slot] || []
                     const isEmpty = occupants.length === 0
-                    
+
                     // Check if previous slot has 2-hour session that spans into this slot
                     if (slotIdx > 0) {
                       const prevSlot = TIME_SLOTS[slotIdx - 1]
@@ -299,10 +299,10 @@ function LabsView() {
                     const gridEnd = gridStart + spanCount
 
                     return (
-                      <div 
-                        key={slot} 
+                      <div
+                        key={slot}
                         className={`time-cell ${isEmpty ? 'empty' : 'occupied'}`}
-                        style={{ 
+                        style={{
                           gridColumnStart: gridStart,
                           gridColumnEnd: gridEnd
                         }}
@@ -320,7 +320,7 @@ function LabsView() {
                                 <div className="session-time">
                                   {convertTo12Hour(occ.sessionTime.split('-')[0])} - {convertTo12Hour(occ.sessionTime.split('-')[1])}
                                 </div>
-                                {(occ.teacher1 || occ.teacher2) && (
+                               {(occ.teacher1 || occ.teacher2) && (
                                   <div className="teacher-info">
                                     {[occ.teacher1, occ.teacher2].filter(Boolean).join(', ')}
                                   </div>
