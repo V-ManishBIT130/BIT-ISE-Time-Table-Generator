@@ -194,18 +194,18 @@ function TeacherTimetableView() {
         subtitle="View individual teacher schedules across all sections"
       />
       
-      <div className="page-header">
+      <div className="teacher-page-header">
         {/* Removed redundant h1 */}
       </div>
 
       {/* Controls */}
-      <div className="controls-section">
-        <div className="control-group">
+      <div className="teacher-controls-section">
+        <div className="teacher-control-group">
           <label>Select Teacher:</label>
           <select
             value={selectedTeacher || ''}
             onChange={(e) => setSelectedTeacher(e.target.value)}
-            className="control-select"
+            className="teacher-control-select"
           >
             <option value="">-- Choose Teacher --</option>
             {teachers.map(teacher => (
@@ -216,39 +216,39 @@ function TeacherTimetableView() {
           </select>
         </div>
 
-        <div className="control-group">
+        <div className="teacher-control-group">
           <label>Semester Type:</label>
           <select
             value={semType}
             onChange={(e) => setSemType(e.target.value)}
-            className="control-select"
+            className="teacher-control-select"
           >
             <option value="odd">Odd (3, 5, 7)</option>
             <option value="even">Even (4, 6, 8)</option>
           </select>
         </div>
 
-        <div className="control-group">
+        <div className="teacher-control-group">
           <label>Academic Year:</label>
           <input
             type="text"
             value={academicYear}
             onChange={(e) => setAcademicYear(e.target.value)}
             placeholder="2024-2025"
-            className="control-input"
+            className="teacher-control-input"
           />
         </div>
 
         {schedule && (
-          <div className="view-mode-toggle">
+          <div className="teacher-view-mode-toggle">
             <button
-              className={`toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+              className={`teacher-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
               onClick={() => setViewMode('grid')}
             >
               Grid View
             </button>
             <button
-              className={`toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+              className={`teacher-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
               onClick={() => setViewMode('list')}
             >
               List View
@@ -257,7 +257,7 @@ function TeacherTimetableView() {
         )}
 
         {loading && (
-          <div className="loading-indicator">
+          <div className="teacher-loading-indicator">
             Loading schedule...
           </div>
         )}
@@ -265,7 +265,7 @@ function TeacherTimetableView() {
 
       {/* Error Message */}
       {error && (
-        <div className="error-message">
+        <div className="teacher-error-message">
           {error}
         </div>
       )}

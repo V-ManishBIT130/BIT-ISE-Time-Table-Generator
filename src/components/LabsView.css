@@ -11,24 +11,24 @@
   box-sizing: border-box;
 }
 
-.page-header {
+.labs-page-header {
   margin-bottom: 3px;
 }
 
-.page-header h1 {
+.labs-page-header h1 {
   font-size: 1rem;
   color: #2c3e50;
   margin: 0 0 1px 0;
 }
 
-.page-header p {
+.labs-page-header p {
   color: #7f8c8d;
   font-size: 0.7rem;
   margin: 0;
 }
 
 /* Controls Section - COMPACT */
-.controls-section {
+.labs-controls-section {
   background: white;
   padding: 2px 6px;
   border-radius: 4px;
@@ -41,26 +41,26 @@
   flex-shrink: 0;
 }
 
-.control-group {
+.labs-control-group {
   display: flex;
   flex-direction: row;
   gap: 4px;
   align-items: center;
 }
 
-.control-group label {
+.labs-control-group label {
   font-weight: 600;
   color: #2c3e50;
   font-size: 0.65rem;
   white-space: nowrap;
 }
 
-.button-group {
+.labs-button-group {
   display: flex;
   gap: 3px;
 }
 
-.toggle-btn {
+.labs-toggle-btn {
   padding: 2px 6px;
   background: white;
   border: 1px solid #e0e0e0;
@@ -71,18 +71,18 @@
   font-weight: 500;
 }
 
-.toggle-btn:hover {
+.labs-toggle-btn:hover {
   border-color: #3498db;
 }
 
-.toggle-btn.active {
+.labs-toggle-btn.active {
   background: #3498db;
   color: white;
   border-color: #3498db;
 }
 
-.control-select,
-.control-input {
+.labs-control-select,
+.labs-control-input {
   padding: 2px 6px;
   border: 1px solid #e0e0e0;
   border-radius: 3px;
@@ -91,13 +91,13 @@
   transition: all 0.2s;
 }
 
-.control-select:hover,
-.control-input:hover {
+.labs-control-select:hover,
+.labs-control-input:hover {
   border-color: #3498db;
 }
 
-.control-select:focus,
-.control-input:focus {
+.labs-control-select:focus,
+.labs-control-input:focus {
   outline: none;
   border-color: #3498db;
   box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
@@ -152,7 +152,7 @@
 }
 
 /* Messages - COMPACT */
-.error-message {
+.labs-error-message {
   background: #fee;
   border: 1px solid #fcc;
   border-radius: 3px;
@@ -163,14 +163,14 @@
   font-size: 0.68rem;
 }
 
-.loading-message {
+.labs-loading-message {
   text-align: center;
   padding: 1rem;
   color: #7f8c8d;
   font-size: 0.75rem;
 }
 
-.no-selection-message {
+.labs-no-selection-message {
   text-align: center;
   padding: 2rem 1rem;
   color: #7f8c8d;
@@ -270,7 +270,7 @@
   box-sizing: border-box;
 }
 
-.time-header {
+.labs-time-header {
   padding: 3px 3px;
   width: 100%;
   max-width: 100%;
@@ -290,7 +290,7 @@
   box-sizing: border-box;
 }
 
-.time-header:last-child {
+.labs-time-header:last-child {
   border-right: none;
 }
 
@@ -306,7 +306,7 @@
   border-bottom: none;
 }
 
-.day-header {
+.labs-day-header {
   width: 86px;
   flex-shrink: 0;
   padding: 6px 4px;
@@ -453,7 +453,7 @@
     grid-template-columns: 70px repeat(9, 1fr);
   }
 
-  .day-header {
+  .labs-day-header {
     width: 70px;
   }
 }
@@ -463,12 +463,12 @@
     padding: 2px;
   }
 
-  .controls-section {
+  .labs-controls-section {
     flex-direction: column;
   }
 
-  .control-select,
-  .control-input {
+  .labs-control-select,
+  .labs-control-input {
     min-width: 100%;
   }
 

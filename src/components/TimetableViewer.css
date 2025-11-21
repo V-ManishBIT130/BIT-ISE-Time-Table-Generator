@@ -22,32 +22,32 @@
   gap: 20px;
 }
 
-.controls-left {
+.viewer-controls-left {
   display: flex;
   gap: 20px;
   align-items: center;
   flex: 1;
 }
 
-.control-group {
+.viewer-control-group {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.control-group label {
+.viewer-control-group label {
   font-weight: 600;
   color: #2c3e50;
   font-size: 13px;
   white-space: nowrap;
 }
 
-.button-group {
+.viewer-button-group {
   display: flex;
   gap: 8px;
 }
 
-.toggle-btn {
+.viewer-toggle-btn {
   padding: 6px 14px;
   border: 2px solid #667eea;
   border-radius: 6px;
@@ -59,12 +59,12 @@
   transition: all 0.2s ease;
 }
 
-.toggle-btn.active {
+.viewer-toggle-btn.active {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 }
 
-.control-group select {
+.viewer-control-group select {
   padding: 6px 12px;
   border: 2px solid #e0e0e0;
   border-radius: 6px;
@@ -74,18 +74,18 @@
   min-width: 300px;
 }
 
-.summary-inline {
+.viewer-summary-inline {
   display: flex;
   gap: 12px;
   align-items: center;
 }
 
-.summary-stats-inline {
+.viewer-summary-stats-inline {
   display: flex;
   gap: 16px;
 }
 
-.stat-compact {
+.viewer-stat-compact {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -95,22 +95,22 @@
   border-left: 3px solid #667eea;
 }
 
-.stat-compact.success {
+.viewer-stat-compact.success {
   background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
   border-left-color: #4caf50;
 }
 
-.stat-compact .stat-value {
+.viewer-stat-compact .viewer-stat-value {
   font-size: 16px;
   font-weight: 700;
   color: #2c3e50;
 }
 
-.stat-compact.success .stat-value {
+.viewer-stat-compact.success .viewer-stat-value {
   color: #2e7d32;
 }
 
-.stat-compact .stat-label {
+.viewer-stat-compact .viewer-stat-label {
   font-size: 10px;
   color: #666;
   font-weight: 600;
@@ -288,7 +288,7 @@
   color: #7f8c8d;
 }
 
-.loading, .no-data {
+.viewer-loading, .viewer-no-data, .viewer-error-message {
   text-align: center;
   padding: 60px 20px;
   font-size: 18px;
@@ -298,7 +298,13 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.no-data p {
+.viewer-error-message {
+  color: #e74c3c;
+  background: #fee;
+  border: 1px solid #fcc;
+}
+
+.viewer-no-data p {
   margin-bottom: 20px;
   font-size: 18px;
 }
@@ -335,7 +341,7 @@
   opacity: 0.9;
 }
 
-.grid-wrapper {
+.viewer-grid-wrapper {
   overflow-x: hidden;
   overflow-y: auto;
   max-height: calc(100vh - 250px);
@@ -344,7 +350,7 @@
   position: relative;
 }
 
-.timetable-grid {
+.viewer-timetable-grid {
   border-collapse: collapse;
   width: 100%;
   min-width: 1400px;
@@ -352,12 +358,12 @@
   font-size: 11px;
 }
 
-.timetable-grid * {
+.viewer-timetable-grid * {
   box-sizing: border-box;
 }
 
 
-.timetable-grid thead {
+.viewer-timetable-grid thead {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);  
   color: white;
   position: sticky;
@@ -365,7 +371,7 @@
   z-index: 30;
 }
 
-.timetable-grid th {
+.viewer-timetable-grid th {
   padding: 4px 2px;
   text-align: center;
   font-weight: 600;
@@ -381,7 +387,7 @@
   text-overflow: ellipsis;
 }
 
-.timetable-grid td {
+.viewer-timetable-grid td {
   border: 1px solid #ddd;
   padding: 0;
   text-align: center;
@@ -393,7 +399,7 @@
   overflow: hidden;
 }
 
-.day-column {
+.viewer-day-column {
   width: 50px !important;
   min-width: 50px !important;
   max-width: 50px !important;
@@ -405,13 +411,13 @@
   overflow: hidden;
 }
 
-.time-column {
-  /* Width inherited from .timetable-grid td (75px) */
+.viewer-time-column {
+  /* Width inherited from .viewer-timetable-grid td (75px) */
   font-size: 10px;
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-.day-header {
+.viewer-day-header {
   font-size: 10px;
   height: 100%;
   width: 50px !important;
@@ -419,8 +425,8 @@
   max-width: 50px !important;
 }
 
-.time-header {
-  /* Width inherited from .timetable-grid th (75px) */
+.viewer-time-header {
+  /* Width inherited from .viewer-timetable-grid th (75px) */
   padding: 4px 2px;
   line-height: 1.1;
   overflow: hidden;
@@ -428,21 +434,21 @@
   white-space: nowrap;
 }
 
-.time-header .time-start,
-.time-header .time-end {
+.viewer-time-header .time-start,
+.viewer-time-header .time-end {
   font-weight: 600;
   font-size: 10px;
   white-space: nowrap;
 }
 
-.time-header .time-to {
+.viewer-time-header .time-to {
   font-size: 10px;
   font-weight: 700;
   opacity: 0.7;
   margin: 0;
 }
 
-.day-cell {
+.viewer-day-cell {
   background: #f8f9fa;
   border: 1px solid #ddd;
   padding: 4px 2px;
@@ -466,7 +472,7 @@
   overflow: hidden;
 }
 
-.day-label {
+.viewer-day-label {
   font-weight: 700;
   color: #2c3e50;
   font-size: 10px;
@@ -485,7 +491,7 @@
   overflow: hidden;
 }
 
-.timetable-cell {
+.viewer-timetable-cell {
   border: 1px solid #ddd;
   padding: 0;
   vertical-align: middle;
@@ -497,7 +503,7 @@
   font-size: 9px;
 }
 
-.timetable-cell:hover {
+.viewer-timetable-cell:hover {
   background: #f8f9ff;
   overflow: visible;
   z-index: 100;
@@ -1219,7 +1225,7 @@
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   }
 
-  .timetable-cell {
+  .viewer-timetable-cell {
     page-break-inside: avoid;
   }
 }

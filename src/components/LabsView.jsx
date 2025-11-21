@@ -195,13 +195,13 @@ function LabsView() {
         subtitle="Monitor lab room occupancy and batch schedules"
       />
 
-      <div className="page-header">
+      <div className="labs-page-header">
         {/* Removed redundant h1 */}
       </div>
 
       {/* Controls */}
-      <div className="controls-section">
-        <div className="control-group">
+      <div className="labs-controls-section">
+        <div className="labs-control-group">
           <label>Select Lab Room:</label>
           <select
             value={selectedLabRoom?._id || ''}
@@ -209,7 +209,7 @@ function LabsView() {
               const room = labRooms.find(r => r._id === e.target.value)
               setSelectedLabRoom(room)
             }}
-            className="control-select"
+            className="labs-control-select"
           >
             <option value="">Select a lab room...</option>
             {labRooms.map(room => (
@@ -220,17 +220,17 @@ function LabsView() {
           </select>
         </div>
 
-        <div className="control-group">
+        <div className="labs-control-group">
           <label>Semester Type:</label>
-          <div className="button-group">
+          <div className="labs-button-group">
             <button
-              className={`toggle-btn ${semType === 'odd' ? 'active' : ''}`}
+              className={`labs-toggle-btn ${semType === 'odd' ? 'active' : ''}`}
               onClick={() => setSemType('odd')}
             >
               Odd Semester
             </button>
             <button
-              className={`toggle-btn ${semType === 'even' ? 'active' : ''}`}
+              className={`labs-toggle-btn ${semType === 'even' ? 'active' : ''}`}
               onClick={() => setSemType('even')}
             >
               Even Semester
@@ -238,24 +238,24 @@ function LabsView() {
           </div>
         </div>
 
-        <div className="control-group">
+        <div className="labs-control-group">
           <label>Academic Year:</label>
           <input
             type="text"
             value={academicYear}
             onChange={(e) => setAcademicYear(e.target.value)}
             placeholder="2024-2025"
-            className="control-input"
+            className="labs-control-input"
           />
         </div>
       </div>
 
       {/* Error/Loading */}
-      {error && <div className="error-message">❌ {error}</div>}
-      {loading && <div className="loading-message">⏳ Loading timetables...</div>}
+      {error && <div className="labs-error-message">❌ {error}</div>}
+      {loading && <div className="labs-loading-message">⏳ Loading timetables...</div>}
 
       {!selectedLabRoom && !loading && (
-        <div className="no-selection-message">
+        <div className="labs-no-selection-message">
           👆 Please select a lab room from the dropdown above
         </div>
       )}
@@ -270,14 +270,14 @@ function LabsView() {
             <div className="schedule-header">
               <div className="corner-cell">D/T</div>
               {TIME_SLOTS.map(slot => (
-                <div key={slot} className="time-header">{formatTimeSlot(slot)}</div>
+                <div key={slot} className="labs-time-header">{formatTimeSlot(slot)}</div>
               ))}
             </div>
 
             {/* Day Rows */}
             {DAYS.map(day => (
               <div key={day} className="labs-day-row">
-                <div className="day-header">{day.substring(0, 3)}</div>
+                <div className="labs-day-header">{day.substring(0, 3)}</div>
                 <div className="labs-time-slots-container">
                   {TIME_SLOTS.map((slot, slotIdx) => {
                     const occupants = labOccupancy[selectedLabRoom.labRoom_no]?.[day]?.[slot] || []
