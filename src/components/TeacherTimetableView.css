@@ -1,73 +1,80 @@
 .teacher-timetable-view {
-  padding: 8px;
+  padding: 4px 8px;
   max-width: 100%;
-  margin: 0;
+  margin: 0 auto;
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  --day-label-width: 86px;
+  --time-slot-min-width: 110px;
+  --slots-per-hour: 2;
+  --total-time-columns: 18;
 }
 
 .page-header {
-  margin-bottom: 6px;
+  margin-bottom: 3px;
 }
 
 .page-header h1 {
-  font-size: 1.2rem;
+  font-size: 1rem;
   color: #2c3e50;
-  margin: 0 0 2px 0;
+  margin: 0 0 1px 0;
 }
 
 .page-header p {
   color: #7f8c8d;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   margin: 0;
 }
 
-/* Controls Section */
+/* Controls Section - COMPACTED */
 .controls-section {
   background: white;
-  padding: 6px 10px;
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  margin-bottom: 6px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  margin-bottom: 4px;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .loading-indicator {
-  padding: 4px 10px;
+  padding: 2px 6px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  border-radius: 5px;
+  border-radius: 3px;
   font-weight: 600;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   margin-left: auto;
 }
 
 .control-group {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  gap: 4px;
+  align-items: center;
 }
 
 .control-group label {
   font-weight: 600;
   color: #2c3e50;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
+  white-space: nowrap;
 }
 
 .control-select,
 .control-input {
-  padding: 4px 8px;
-  border: 1.5px solid #e0e0e0;
-  border-radius: 5px;
-  font-size: 0.75rem;
-  min-width: 150px;
+  padding: 2px 6px;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  min-width: 130px;
   transition: all 0.2s;
 }
 
@@ -85,18 +92,18 @@
 
 .view-mode-toggle {
   display: flex;
-  gap: 4px;
+  gap: 3px;
   margin-left: auto;
 }
 
 .toggle-btn {
-  padding: 4px 8px;
+  padding: 2px 6px;
   background: white;
-  border: 1.5px solid #e0e0e0;
-  border-radius: 5px;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 500;
 }
 
@@ -113,21 +120,21 @@
 /* Error Message */
 .error-message {
   background: #fee;
-  border: 1.5px solid #fcc;
-  border-radius: 5px;
-  padding: 6px 10px;
+  border: 1px solid #fcc;
+  border-radius: 3px;
+  padding: 3px 6px;
   color: #c33;
-  margin-bottom: 6px;
+  margin-bottom: 3px;
   font-weight: 500;
-  font-size: 0.75rem;
+  font-size: 0.68rem;
 }
 
-/* Schedule Section */
+/* Schedule Section - COMPACTED */
 .schedule-section {
   background: white;
-  padding: 8px;
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  padding: 4px;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   width: 100%;
   flex: 1;
   overflow: hidden;
@@ -136,33 +143,37 @@
   min-height: 0;
 }
 
-/* Grid View - Days Vertical, Time Horizontal */
+/* Grid View - Days Vertical, Time Horizontal - ULTRA COMPACT */
 .timetable-grid {
   background: white;
-  border-radius: 5px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border-radius: 3px;
+  overflow: auto;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   border: 1px solid #e0e0e0;
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  align-self: stretch;
+  scrollbar-gutter: stable both-edges;
 }
 
 .grid-header {
   display: grid;
-  grid-template-columns: 45px repeat(9, 1fr);
+  grid-template-columns: var(--day-label-width)
+    repeat(var(--total-time-columns), minmax(calc(var(--time-slot-min-width) / var(--slots-per-hour)), 1fr));
   border-bottom: 2px solid #667eea;
   background: #f8f9fa;
   position: sticky;
   top: 0;
   z-index: 10;
   flex-shrink: 0;
+  min-height: 32px;
 }
 
 .corner-cell {
-  padding: 3px 1px;
+  padding: 4px 6px;
   font-weight: 700;
   color: white;
   border-right: 1px solid rgba(255, 255, 255, 0.3);
@@ -170,23 +181,26 @@
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   line-height: 1.1;
   text-align: center;
+  width: var(--day-label-width);
+  box-sizing: border-box;
 }
 
 .time-header-cell {
-  padding: 3px 1px;
+  padding: 4px 6px;
   text-align: center;
   font-weight: 700;
   color: white;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-right: 1px solid rgba(255, 255, 255, 0.3);
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   line-height: 1.1;
   display: flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
 }
 
 .time-header-cell:last-child {
@@ -195,9 +209,10 @@
 
 .day-row {
   display: grid;
-  grid-template-columns: 45px repeat(9, 1fr);
+  grid-template-columns: var(--day-label-width) 1fr;
   border-bottom: 1px solid #e0e0e0;
-  height: 70px;
+  align-items: stretch;
+  min-height: 64px;
 }
 
 .day-row:last-child {
@@ -205,7 +220,7 @@
 }
 
 .day-header-cell {
-  padding: 3px 1px;
+  padding: 6px 6px;
   font-weight: 700;
   color: #2c3e50;
   border-right: 1px solid #d0d0d0;
@@ -213,16 +228,21 @@
   align-items: center;
   justify-content: center;
   background: #f8f9fa;
-  font-size: 0.65rem;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  width: var(--day-label-width);
+  box-sizing: border-box;
 }
 
 .time-slots-container {
   display: grid;
-  grid-template-columns: repeat(9, 1fr);
+  grid-template-columns: repeat(var(--total-time-columns), minmax(calc(var(--time-slot-min-width) / var(--slots-per-hour)), 1fr));
   grid-column: 2 / -1;
   position: relative;
-  height: 100%;
   align-items: stretch;
+  padding: 4px 0;
+  column-gap: 0;
+  row-gap: 6px;
 }
 
 /* Add vertical gridlines */
@@ -236,37 +256,67 @@
   background: repeating-linear-gradient(
     90deg,
     transparent,
-    transparent calc((100% / 9) - 1px),
-    #e0e0e0 calc((100% / 9) - 1px),
-    #e0e0e0 calc(100% / 9)
+    transparent calc((100% / var(--total-time-columns)) - 1px),
+    #e0e0e0 calc((100% / var(--total-time-columns)) - 1px),
+    #e0e0e0 calc(100% / var(--total-time-columns))
   );
   pointer-events: none;
   z-index: 1;
 }
 
-/* Ensure grid items don't overflow */
+/* Ensure grid items don't overflow - ENHANCED */
 .time-slots-container > * {
   min-width: 0;
   min-height: 0;
+  box-sizing: border-box;
+}
+
+/* Prevent content overflow in schedule items */
+.schedule-item,
+.schedule-item * {
+  box-sizing: border-box !important;
+  max-width: 100%;
+}
+
+/* Ensure text doesn't expand cells */
+.item-section,
+.item-subject,
+.item-time,
+.item-location,
+.batch-info {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  gap: 0;
 }
 
 .schedule-item {
-  padding: 2px 3px;
-  border-radius: 2px;
-  margin: 2px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  margin: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 1px;
-  font-size: 0.62rem;
+  align-items: flex-start;
+  text-align: left;
+  gap: 2px;
+  font-size: 0.58rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   transition: all 0.15s;
   background: white;
   position: relative;
   z-index: 2;
   line-height: 1.15;
-  height: calc(100% - 4px);
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+.schedule-item .content-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
 }
 
 .schedule-item:hover {
@@ -287,21 +337,23 @@
 
 .item-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
+  gap: 4px;
   margin-bottom: 1px;
 }
 
 .item-section {
   font-weight: 700;
   color: #2c3e50;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
+  line-height: 1.1;
 }
 
 .item-subject {
   font-weight: 700;
   color: #2c3e50;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   margin-bottom: 0;
   line-height: 1.1;
   overflow: hidden;
@@ -310,25 +362,27 @@
 }
 
 .item-time {
-  font-size: 0.58rem;
-  color: #7f8c8d;
+  font-size: 0.55rem;
   font-weight: 600;
+  color: #34495e;
 }
 
 .item-location {
-  font-size: 0.58rem;
-  color: #7f8c8d;
+  font-size: 0.55rem;
+  color: #000000;
   margin-top: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.1;
 }
 
 .batch-info {
-  font-size: 0.58rem;
+  font-size: 0.54rem;
   color: #2c3e50;
   padding: 0;
-  line-height: 1.15;
+  margin: 0;
+  line-height: 1.1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -344,24 +398,24 @@
 }
 
 .room-name {
-  color: #7f8c8d;
-  font-size: 0.56rem;
+  color: #000000;
+  font-size: 0.54rem;
 }
 
-/* Statistics Summary - Below Timetable */
+/* Statistics Summary - Below Timetable - COMPACT */
 .statistics-summary {
-  margin-top: 6px;
-  padding: 6px 8px;
+  margin-top: 3px;
+  padding: 4px 6px;
   background: #f8f9fa;
-  border-radius: 4px;
-  border-left: 3px solid #667eea;
+  border-radius: 3px;
+  border-left: 2px solid #667eea;
   flex-shrink: 0;
 }
 
 .statistics-summary h3 {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   color: #2c3e50;
-  margin: 0 0 4px 0;
+  margin: 0 0 2px 0;
   font-weight: 600;
 }
 
@@ -370,14 +424,15 @@
   padding: 0;
   margin: 0;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .summary-list li {
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   color: #2c3e50;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
 .summary-list li strong {
@@ -515,35 +570,30 @@
 
 /* Responsive Design */
 @media (max-width: 1400px) {
-  .grid-header,
-  .day-row {
-    grid-template-columns: 45px repeat(9, 1fr);
+  .teacher-timetable-view {
+    --day-label-width: 68px;
+    --time-slot-min-width: 96px;
   }
-  
-  .time-slots-container {
-    grid-template-columns: repeat(9, 1fr);
-  }
-  
+
   .schedule-item {
-    font-size: 0.58rem;
-    padding: 2px 3px;
+    font-size: 0.55rem;
   }
 }
 
 @media (max-width: 768px) {
   .teacher-timetable-view {
-    padding: 6px;
+    padding: 4px;
   }
   
   .controls-section {
-    gap: 6px;
+    gap: 4px;
     flex-direction: column;
   }
   
   .control-select,
   .control-input {
     min-width: 100%;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
   }
   
   .view-mode-toggle {
@@ -555,18 +605,15 @@
     flex: 1;
   }
   
-  .grid-header,
-  .day-row {
-    grid-template-columns: 42px repeat(9, 1fr);
-  }
-  
-  .time-slots-container {
-    grid-template-columns: repeat(9, 1fr);
+  .teacher-timetable-view {
+    --day-label-width: 58px;
+    --time-slot-min-width: 78px;
   }
   
   .schedule-item {
-    font-size: 0.55rem;
-    padding: 2px;
+    font-size: 0.5rem;
+    padding: 2px 4px;
+    min-height: 36px;
   }
   
   /* Force list view on mobile */
@@ -575,7 +622,7 @@
   }
   
   .schedule-section {
-    padding: 8px;
+    padding: 4px;
   }
   
   .toggle-btn:first-child {
