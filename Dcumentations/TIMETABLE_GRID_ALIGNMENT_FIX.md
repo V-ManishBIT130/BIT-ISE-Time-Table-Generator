@@ -207,58 +207,42 @@ The two-layer approach separates **structural constraints** (outer div fills cel
 3. **Time header alignment** - Headers use same 75px width as columns
 4. **Day column sticky** - Fixed at 50px, scrolls with content
 5. **Lab slots spanning correctly** - Multi-hour labs display properly
-6. **Theory slots spanning** - Fixed with defensive fallback mechanism
 
-### 🐛 Bug Fixed (Nov 20, 2025)
-
-**Theory slots appearing as single 30-minute cells instead of spanning correctly**
-
-**Problem Identified**:
-- Some timetables in database had incorrect or missing `end_time` values for theory slots
-- Frontend `getTimeSpan()` function calculated span as `endIndex - startIndex`
-- When `end_time` was missing/incorrect, span calculated as 0 or 1 instead of 2
-- Result: 1-hour theory classes cramped into 30-minute slots
+### ⚠️ Partially Working
+**Theory slots spanning** - Works for SOME timetables but not all
 
 **Inconsistency Pattern**:
-- ✅ Section 5B: All theory slots had correct `end_time` values
-- ❌ Section 3B: Many theory slots had missing/incorrect `end_time`
-- ❌ Section 5A: Many theory slots had missing/incorrect `end_time`
-- ✅ Lab slots: Always had correct times (Step 3 algorithm robust)
+- ✅ Section 5B: All theory slots span correctly
+- ❌ Section 3A: Some theory slots show as single cells
+- ✅ Lab slots: Always span correctly across all sections
 
-**Root Cause**:
-- Database inconsistency from previous timetable generations
-- Different sections generated at different times with different algorithm versions
-- No defensive fallback in frontend for corrupt data
+### 🔍 Ongoing Investigation
 
-**Solution Implemented**:
-Added defensive fallback in `getTimeSpan()` function:
-```javascript
-const getTimeSpan = (startTime, endTime, durationHours = null) => {
-  const startIndex = getTimeSlotIndex(startTime)
-  const endIndex = getTimeSlotIndex(endTime)
-  const calculatedSpan = endIndex - startIndex
-  
-  // Defensive check: If span is 0 or negative, use duration_hours fallback
-  if (calculatedSpan <= 0 && durationHours) {
-    console.warn(`⚠️ Invalid time span (${startTime}-${endTime}), using duration_hours: ${durationHours}`)
-    return durationHours * 2 // Convert hours to 30-min slots (1 hour = 2 slots)
-  }
-  
-  return calculatedSpan
-}
+**Why Labs Work But Theory Sometimes Doesn't**:
+
+Both use identical rendering logic:
+```jsx
+<td colSpan={cell.span} className="theory-cell">
+  {/* content */}
+</td>
+
+<td colSpan={cell.span} className="lab-cell">
+  {/* content */}
+</td>
 ```
 
-**Benefits**:
-- ✅ Gracefully handles corrupt data from database
-- ✅ Uses `duration_hours` field as fallback (always reliable)
-- ✅ Logs warning when fallback is used (aids debugging)
-- ✅ Works for all theory slots regardless of data quality
-- ✅ No need to regenerate timetables immediately
+**Potential Causes to Investigate**:
+1. **CSS specificity conflict**: Check if `.theory-cell` has width overrides
+2. **Data issue**: Verify `cell.span` is calculated correctly for all theory slots
+3. **Browser rendering bug**: colSpan with `border-collapse: collapse` quirks
+4. **Parent container constraint**: Something constraining theory cells differently
 
-**Long-term Recommendation**:
-- Regenerate timetables for affected sections using updated Step 4 algorithm
-- Ensures all `end_time` values are correctly calculated and stored
-- Current fix is defensive - proper data should still be the goal
+**Next Steps for Complete Fix**:
+1. Inspect browser DevTools on Section 3A theory cells
+2. Check computed `width` value on cells that aren't spanning
+3. Verify `colSpan` attribute is actually being set in DOM
+4. Compare CSS cascade between working lab cells and non-working theory cells
+5. Check if `cell.span` value is correct in buildDayGrid() function
 
 ## Technical Specifications
 
@@ -308,5 +292,5 @@ const getTimeSpan = (startTime, endTime, durationHours = null) => {
 - HTML table width calculation algorithm
 
 ---
-**Last Updated**: 2025-11-20  
-**Status**: ✅ Complete - All issues resolved (Lab slots + Theory slots)
+**Last Updated**: 2025-11-20
+**Status**: Partial fix - Lab slots ✅, Theory slots ⚠️ (inconsistent)

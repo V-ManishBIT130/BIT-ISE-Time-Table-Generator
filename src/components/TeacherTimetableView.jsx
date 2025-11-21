@@ -297,6 +297,7 @@ function TeacherTimetableView() {
                     const startIdx = getTimeSlotIndex(item.start_time)
                     const span = getTimeSpan(item.duration_hours)
                     
+                    // Grid positions are 1-based within the time-slots-container
                     const gridStart = Math.max(1, startIdx + 1)
                     const gridEnd = gridStart + span
 

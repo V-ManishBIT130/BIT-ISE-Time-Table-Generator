@@ -336,7 +336,7 @@
 }
 
 .grid-wrapper {
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: auto;
   max-height: calc(100vh - 250px);
   width: 100%;
@@ -959,10 +959,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
-  gap: 2px;
-  padding: 4px;
+  width: fit-content;
+  height: fit-content;
+  gap: 1px;
+  padding: 2px;
 }
 
 .teacher-name {

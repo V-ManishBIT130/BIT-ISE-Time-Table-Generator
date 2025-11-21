@@ -161,8 +161,7 @@
 
 .grid-header {
   display: grid;
-  grid-template-columns: var(--day-label-width)
-    repeat(var(--total-time-columns), minmax(calc(var(--time-slot-min-width) / var(--slots-per-hour)), 1fr));
+  grid-template-columns: var(--day-label-width) repeat(var(--total-time-columns), minmax(calc(var(--time-slot-min-width) / var(--slots-per-hour)), 1fr));
   border-bottom: 2px solid #667eea;
   background: #f8f9fa;
   position: sticky;
@@ -208,11 +207,11 @@
 }
 
 .day-row {
-  display: grid;
-  grid-template-columns: var(--day-label-width) 1fr;
+  display: flex !important;
   border-bottom: 1px solid #e0e0e0;
   align-items: stretch;
-  min-height: 64px;
+  min-height: 100px;
+  position: relative;
 }
 
 .day-row:last-child {
@@ -231,18 +230,19 @@
   font-size: 0.62rem;
   text-transform: uppercase;
   width: var(--day-label-width);
+  flex-shrink: 0;
   box-sizing: border-box;
 }
 
 .time-slots-container {
+  flex: 1;
   display: grid;
-  grid-template-columns: repeat(var(--total-time-columns), minmax(calc(var(--time-slot-min-width) / var(--slots-per-hour)), 1fr));
-  grid-column: 2 / -1;
+  grid-template-columns: repeat(var(--total-time-columns), 1fr);
   position: relative;
   align-items: stretch;
   padding: 4px 0;
   column-gap: 0;
-  row-gap: 6px;
+  row-gap: 0;
 }
 
 /* Add vertical gridlines */
@@ -253,22 +253,13 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent,
-    transparent calc((100% / var(--total-time-columns)) - 1px),
-    #e0e0e0 calc((100% / var(--total-time-columns)) - 1px),
-    #e0e0e0 calc(100% / var(--total-time-columns))
-  );
+  background: repeating-linear-gradient(90deg,
+      transparent,
+      transparent calc((100% / var(--total-time-columns)) - 1px),
+      #e0e0e0 calc((100% / var(--total-time-columns)) - 1px),
+      #e0e0e0 calc(100% / var(--total-time-columns)));
   pointer-events: none;
   z-index: 1;
-}
-
-/* Ensure grid items don't overflow - ENHANCED */
-.time-slots-container > * {
-  min-width: 0;
-  min-height: 0;
-  box-sizing: border-box;
 }
 
 /* Prevent content overflow in schedule items */
@@ -293,7 +284,7 @@
 .schedule-item {
   padding: 4px 6px;
   border-radius: 4px;
-  margin: 0;
+  margin: 2px 2px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -308,7 +299,7 @@
   position: relative;
   z-index: 2;
   line-height: 1.15;
-  min-height: 40px;
+  height: 100%;
   box-sizing: border-box;
 }
 
@@ -584,47 +575,48 @@
   .teacher-timetable-view {
     padding: 4px;
   }
-  
+
   .controls-section {
     gap: 4px;
     flex-direction: column;
   }
-  
+
   .control-select,
   .control-input {
     min-width: 100%;
     font-size: 0.65rem;
   }
-  
+
   .view-mode-toggle {
     margin-left: 0;
     width: 100%;
   }
-  
+
   .toggle-btn {
     flex: 1;
   }
-  
+
   .teacher-timetable-view {
     --day-label-width: 58px;
     --time-slot-min-width: 78px;
   }
-  
+
   .schedule-item {
     font-size: 0.5rem;
     padding: 2px 4px;
-    min-height: 36px;
+    margin: 0px;
+    min-height: 100%;
   }
-  
+
   /* Force list view on mobile */
   .timetable-grid {
     display: none;
   }
-  
+
   .schedule-section {
     padding: 4px;
   }
-  
+
   .toggle-btn:first-child {
     display: none;
   }
