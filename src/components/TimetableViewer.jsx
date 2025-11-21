@@ -478,12 +478,12 @@ function TimetableViewer() {
 
 
       <div className="viewer-controls">
-        <div className="controls-left">
-          <div className="control-group">
+        <div className="viewer-controls-left">
+          <div className="viewer-control-group">
             <label>Semester Type:</label>
-            <div className="button-group">
+            <div className="viewer-button-group">
               <button
-                className={`toggle-btn ${semType === 'odd' ? 'active' : ''}`}
+                className={`viewer-toggle-btn ${semType === 'odd' ? 'active' : ''}`}
                 onClick={() => {
                   setSemType('odd')
                   setSelectedSection('')
@@ -493,7 +493,7 @@ function TimetableViewer() {
                 {semType === 'odd' ? '✓ ' : ''}Odd Semester
               </button>
               <button
-                className={`toggle-btn ${semType === 'even' ? 'active' : ''}`}
+                className={`viewer-toggle-btn ${semType === 'even' ? 'active' : ''}`}
                 onClick={() => {
                   setSemType('even')
                   setSelectedSection('')
@@ -505,7 +505,7 @@ function TimetableViewer() {
             </div>
           </div>
 
-          <div className="control-group">
+          <div className="viewer-control-group">
             <label htmlFor="section-select">Select Section:</label>
             <select
               id="section-select"
@@ -524,27 +524,27 @@ function TimetableViewer() {
         </div>
 
         {timetable && timetable.generation_metadata?.theory_scheduling_summary && (
-          <div className="summary-inline">
-            <div className="summary-stats-inline">
-              <div className="stat-compact">
-                <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.total_subjects_found}</span>
-                <span className="stat-label">Subjects</span>
+          <div className="viewer-summary-inline">
+            <div className="viewer-summary-stats-inline">
+              <div className="viewer-stat-compact">
+                <span className="viewer-stat-value">{timetable.generation_metadata.theory_scheduling_summary.total_subjects_found}</span>
+                <span className="viewer-stat-label">Subjects</span>
               </div>
-              <div className="stat-compact success">
-                <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.success_rate}%</span>
-                <span className="stat-label">Success</span>
+              <div className="viewer-stat-compact success">
+                <span className="viewer-stat-value">{timetable.generation_metadata.theory_scheduling_summary.success_rate}%</span>
+                <span className="viewer-stat-label">Success</span>
               </div>
-              <div className="stat-compact">
-                <span className="stat-value">{timetable.generation_metadata.theory_scheduling_summary.total_scheduled}/{timetable.generation_metadata.theory_scheduling_summary.total_subjects_found}</span>
-                <span className="stat-label">Scheduled</span>
+              <div className="viewer-stat-compact">
+                <span className="viewer-stat-value">{timetable.generation_metadata.theory_scheduling_summary.total_scheduled}/{timetable.generation_metadata.theory_scheduling_summary.total_subjects_found}</span>
+                <span className="viewer-stat-label">Scheduled</span>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {loading && <div className="loading">Loading timetable...</div>}
-      {error && <div className="error-message">{error}</div>}
+      {loading && <div className="viewer-loading">Loading timetable...</div>}
+      {error && <div className="viewer-error-message">{error}</div>}
 
       {timetable && (
         <div className="timetable-container">
@@ -611,15 +611,15 @@ function TimetableViewer() {
             )
           })()}
 
-          <div className="grid-wrapper">
-            <table className="timetable-grid">
+          <div className="viewer-grid-wrapper">
+            <table className="viewer-timetable-grid">
               <thead>
                 <tr>
-                  <th className="day-header">D/T</th>
+                  <th className="viewer-day-header">D/T</th>
                   {timeSlots.map((time, idx) => {
                     const [startTime, endTime] = time.split(' - ')
                     return (
-                      <th key={idx} className="time-header">
+                      <th key={idx} className="viewer-time-header">
                         <div className="time-start">{startTime}</div>
                         <div className="time-to">to</div>
                         <div className="time-end">{endTime}</div>
@@ -633,7 +633,7 @@ function TimetableViewer() {
                   const dayCells = buildDayGrid(day)
                   return (
                     <tr key={dayIndex}>
-                      <td className="day-label">{weekDaysShort[dayIndex]}</td>
+                      <td className="viewer-day-label">{weekDaysShort[dayIndex]}</td>
                       {dayCells.map((cell, timeIndex) => renderCell(cell, dayIndex, timeIndex))}
                     </tr>
                   )
@@ -645,7 +645,7 @@ function TimetableViewer() {
       )}
 
       {!loading && !error && !timetable && selectedSection && (
-        <div className="no-data">No timetable data available for this section.</div>
+        <div className="viewer-no-data">No timetable data available for this section.</div>
       )}
     </div>
   )

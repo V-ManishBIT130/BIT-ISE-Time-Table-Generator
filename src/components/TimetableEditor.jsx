@@ -59,7 +59,7 @@ function DroppableZone({ id, children }) {
   return (
     <td
       ref={setNodeRef}
-      className={`drop-zone ${isOver ? 'drag-over' : ''}`}
+      className={`editor-drop-zone ${isOver ? 'drag-over' : ''}`}
     >
       {children}
     </td>
@@ -113,7 +113,7 @@ function EmptyCell({ day, time, addBreakMode, onSlotClick, showAvailableClassroo
 
   return (
     <div
-      className={`drop-zone-inner ${addBreakMode ? 'add-break-active' : ''}`}
+      className={`editor-drop-zone-inner ${addBreakMode ? 'add-break-active' : ''}`}
       onClick={() => onSlotClick(day, time)}
       style={{ cursor: addBreakMode ? 'pointer' : 'default' }}
     >
@@ -122,7 +122,7 @@ function EmptyCell({ day, time, addBreakMode, onSlotClick, showAvailableClassroo
       ) : showAvailableClassrooms ? (
         <div className="available-rooms-display">
           {loading || availableRooms === null ? (
-            <div className="loading-rooms">⏳</div>
+            <div className="editor-loading-rooms">⏳</div>
           ) : availableRooms.length > 0 ? (
             <>
               <div className="rooms-list">
@@ -135,7 +135,7 @@ function EmptyCell({ day, time, addBreakMode, onSlotClick, showAvailableClassroo
               </div>
             </>
           ) : (
-            <div className="no-rooms">✗</div>
+            <div className="editor-no-rooms">✗</div>
           )}
         </div>
       ) : (
@@ -2079,17 +2079,17 @@ function TimetableEditor() {
       </div>
 
       <div className="editor-controls">
-        <div className="control-group">
+        <div className="editor-control-group">
           <label>Semester Type:</label>
-          <div className="button-group">
+          <div className="editor-button-group">
             <button
-              className={`toggle-btn ${semType === 'odd' ? 'active' : ''}`}
+              className={`editor-toggle-btn ${semType === 'odd' ? 'active' : ''}`}
               onClick={() => setSemType('odd')}
             >
               {semType === 'odd' ? '✓ ' : ''}Odd
             </button>
             <button
-              className={`toggle-btn ${semType === 'even' ? 'active' : ''}`}
+              className={`editor-toggle-btn ${semType === 'even' ? 'active' : ''}`}
               onClick={() => setSemType('even')}
             >
               {semType === 'even' ? '✓ ' : ''}Even
@@ -2097,7 +2097,7 @@ function TimetableEditor() {
           </div>
         </div>
 
-        <div className="control-group">
+        <div className="editor-control-group">
           <label htmlFor="section-select">Section:</label>
           <select
             id="section-select"
@@ -2222,11 +2222,11 @@ function TimetableEditor() {
             <table className="editor-timetable-grid">
               <thead>
                 <tr>
-                  <th className="day-header">Day / Time</th>
+                  <th className="editor-day-header">Day / Time</th>
                   {timeSlots.map((time, idx) => {
                     const [startTime, endTime] = time.split(' - ')
                     return (
-                      <th key={idx} className="time-header">
+                      <th key={idx} className="editor-time-header">
                         <div className="time-start">{startTime}</div>
                         <div className="time-to">to</div>
                         <div className="time-end">{endTime}</div>
@@ -2240,7 +2240,7 @@ function TimetableEditor() {
                   const dayCells = buildDayGrid(day)
                   return (
                     <tr key={day}>
-                      <td className="day-label">{day}</td>
+                      <td className="editor-day-label">{day}</td>
                       {dayCells.map((cell, timeIndex) => renderCell(cell, day, timeIndex))}
                     </tr>
                   )
@@ -2319,9 +2319,9 @@ function TimetableEditor() {
               <h4>Available Classrooms:</h4>
 
               {loadingRooms ? (
-                <div className="loading-rooms">Loading available rooms...</div>
+                <div className="editor-loading-rooms">Loading available rooms...</div>
               ) : availableRooms.length === 0 ? (
-                <div className="no-rooms">⚠️ No classrooms available at this time</div>
+                <div className="editor-no-rooms">⚠️ No classrooms available at this time</div>
               ) : (
                 <div className="room-list">
                   {availableRooms.map((room) => (

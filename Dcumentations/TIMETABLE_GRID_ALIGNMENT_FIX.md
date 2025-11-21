@@ -466,7 +466,219 @@ Changes to one file have **zero impact** on the other component! 🎯
 - HTML table width calculation algorithm
 
 ---
+
+## CSS Namespace Isolation - Critical Frontend Architecture
+
+### The Problem: Global CSS Conflicts
+After fixing the grid alignment issues, we discovered a **critical architectural flaw**: multiple timetable components were sharing generic CSS class names, causing style conflicts and broken layouts.
+
+**Components Affected**:
+1. `TimetableViewer.jsx` - Read-only section timetable view
+2. `TimetableEditor.jsx` - Drag-and-drop timetable editor
+3. `LabsView.jsx` - Lab room occupancy schedule
+4. `TeacherTimetableView.jsx` - Individual teacher schedule view
+
+**Shared Generic Classes Causing Conflicts**:
+- `.control-group` - Used across multiple components
+- `.toggle-btn` - Buttons styled differently in each component
+- `.button-group` - Layout container conflicts
+- `.loading` / `.error-message` - Different styling per component
+- `.timetable-grid` - Table structure conflicts
+- `.day-header` / `.time-header` - Grid header styling
+- `.day-label` - Row label styling
+- `.drop-zone` / `.drop-zone-inner` - Editor-specific but conflicting
+
+**Impact**:
+- TimetableViewer and TimetableEditor grid layouts **completely broken**
+- Time slots displaying **vertically instead of horizontally** (user screenshot evidence)
+- Drop zones appearing with **purple background** instead of white
+- Control buttons inheriting wrong styles from other components
+- Unpredictable rendering as styles from one component override another
+
+### The Solution: Component-Specific CSS Namespacing
+
+We implemented a **prefix-based namespace strategy** where every CSS class is prefixed with its component name:
+
+#### Namespace Prefixes
+- `viewer-` → TimetableViewer
+- `editor-` → TimetableEditor  
+- `labs-` → LabsView
+- `teacher-` → TeacherTimetableView
+
+#### Systematic Refactoring Process
+
+**Step 1: Identify Conflicting Classes**
+Used grep search to find all shared class names across components:
+```bash
+grep -E "\.(control-group|toggle-btn|timetable-grid|day-header|time-header)" *.{css,jsx}
+```
+
+**Step 2: PowerShell Batch Replacement**
+For CSS files, used PowerShell with regex to batch-replace class names:
+```powershell
+(Get-Content "TimetableViewer.css") `
+  -replace '\.grid-wrapper\b', '.viewer-grid-wrapper' `
+  -replace '\.timetable-grid\b', '.viewer-timetable-grid' `
+  -replace '\.day-header\b', '.viewer-day-header' `
+  -replace '\.time-header\b', '.viewer-time-header' `
+  | Set-Content "TimetableViewer.css"
+```
+
+**Step 3: Manual JSX className Updates**
+Used multi_replace_string_in_file for precise JSX updates:
+```jsx
+// Before
+<th className="day-header">Day / Time</th>
+<th className="time-header">{time}</th>
+<td className="day-label">{day}</td>
+
+// After
+<th className="editor-day-header">Day / Time</th>
+<th className="editor-time-header">{time}</th>
+<td className="editor-day-label">{day}</td>
+```
+
+**Step 4: Verification**
+Grep search with negative lookahead to find remaining unprefixed classes:
+```bash
+grep -E "\.(day-header|time-header)\b(?!-)" TimetableViewer.{css,jsx}
+```
+
+#### Complete Refactoring Results
+
+**TimetableViewer** (Section Timetable View):
+- ✅ `.viewer-grid-wrapper` - Scroll container
+- ✅ `.viewer-timetable-grid` - Table structure
+- ✅ `.viewer-day-header` - Day/Time corner cell
+- ✅ `.viewer-time-header` - Time slot headers
+- ✅ `.viewer-day-label` - Day row labels
+- ✅ `.viewer-day-cell` - Grid cells
+- ✅ `.viewer-toggle-btn` - View control buttons
+- ✅ `.viewer-controls` - Control panel container
+- ✅ `.viewer-stat-compact` - Statistics display
+
+**TimetableEditor** (Drag-and-Drop Editor):
+- ✅ `.editor-timetable-grid` - Editable table
+- ✅ `.editor-day-header` - Day/Time header cell
+- ✅ `.editor-time-header` - Time column headers
+- ✅ `.editor-day-label` - Day row labels
+- ✅ `.editor-drop-zone` - Empty cell drop targets
+- ✅ `.editor-drop-zone-inner` - Drop zone content area
+- ✅ `.editor-toggle-btn` - Editor control buttons
+- ✅ `.editor-controls` - Control panel
+- ✅ `.editor-control-group` - Form control groups
+- ✅ `.editor-loading-rooms` - Loading state for room modal
+- ✅ `.editor-no-rooms` - Empty state message
+- ✅ `.editor-subject-code` - Subject code display
+
+**LabsView** (Lab Room Schedule):
+- ✅ `.labs-controls-section` - Control panel container
+- ✅ `.labs-toggle-btn` - View toggle buttons
+- ✅ `.labs-control-select` - Dropdown selectors
+- ✅ `.labs-time-header` - Time slot headers
+- ✅ `.labs-day-header` - Day labels
+- ✅ `.labs-day-row` - Day row containers
+- ✅ `.labs-time-slots-container` - Time slot grid
+
+**TeacherTimetableView** (Teacher Schedule):
+- ✅ `.teacher-controls-section` - Control panel
+- ✅ `.teacher-toggle-btn` - View control buttons
+- ✅ `.teacher-control-select` - Teacher selector dropdown
+- ✅ `.timetable-grid` - Kept unprefixed (unique structure, no conflicts)
+- ✅ `.time-header-cell` - Already unique naming
+- ✅ `.day-header-cell` - Already unique naming
+
+#### Critical Bug Fix: Drop Zone Purple Background
+
+**User Report**: "the boxes are appearing all in purple color behind those slots which was white first, only on hovering that row is becoming white"
+
+**Root Cause**: 
+- `.drop-zone` and `.drop-zone-inner` classes in TimetableEditor were **not prefixed**
+- Conflicting with styles from other components
+- Background color being overridden by global CSS
+
+**Fix Applied**:
+```jsx
+// JSX updates
+<td className="editor-drop-zone ${isOver ? 'drag-over' : ''}">
+  <div className="editor-drop-zone-inner ${addBreakMode ? 'add-break-active' : ''}">
+```
+
+```css
+/* CSS updates */
+.editor-drop-zone {
+  background: #f7fafc;  /* White/light gray */
+  border: 1px dashed #cbd5e0;
+}
+
+.editor-drop-zone:hover {
+  background: #edf2f7;
+}
+
+.editor-drop-zone-inner {
+  color: #cbd5e0;
+  /* Proper centering */
+}
+```
+
+### Key Architectural Lessons
+
+1. **Global CSS is Dangerous**: Even in component-based React apps, global CSS can cause unpredictable conflicts
+2. **Namespace Everything**: Every CSS class should indicate which component it belongs to
+3. **Be Systematic**: Use automated tools (grep, PowerShell regex) for large-scale refactoring
+4. **Verify Thoroughly**: Always search for remaining unprefixed classes after refactoring
+5. **Browser Cache Matters**: Users must hard refresh (Ctrl+Shift+R) to see CSS changes
+6. **Batch Operations**: PowerShell regex replacement is faster than manual find-replace for CSS files
+7. **Test Each Component**: Changes to one component's styles should never affect another
+
+### Benefits Achieved
+
+✅ **Complete Style Isolation** - Each component has independent styles  
+✅ **No Cross-Component Conflicts** - Changes to one component won't break others  
+✅ **Predictable Rendering** - Styles apply only where intended  
+✅ **Maintainability** - Clear ownership of each CSS class  
+✅ **Debugging Easier** - Class names indicate which component they belong to  
+✅ **Future-Proof** - New components can follow same namespace pattern  
+
+### Best Practices Established
+
+**CSS File Structure**:
+```css
+/* Component: TimetableViewer */
+.viewer-root-container { }
+.viewer-controls { }
+.viewer-grid-wrapper { }
+.viewer-timetable-grid { }
+/* All classes prefixed with viewer- */
+```
+
+**JSX className Convention**:
+```jsx
+<div className="editor-controls">
+  <button className="editor-toggle-btn active">
+  <div className="editor-drop-zone">
+</div>
+```
+
+**Verification Command**:
+```bash
+# Check for unprefixed shared classes
+grep -E "\.(control-group|toggle-btn|day-header|time-header)\b(?!-)" *.css
+```
+
+### Files Modified for CSS Isolation
+1. `src/components/TimetableViewer.css` - All classes prefixed with `viewer-`
+2. `src/components/TimetableViewer.jsx` - Updated all className references
+3. `src/components/TimetableEditor.css` - All classes prefixed with `editor-`
+4. `src/components/TimetableEditor.jsx` - Updated all className references
+5. `src/components/LabsView.css` - All classes prefixed with `labs-`
+6. `src/components/LabsView.jsx` - Updated all className references
+7. `src/components/TeacherTimetableView.css` - Control classes prefixed with `teacher-`
+8. `src/components/TeacherTimetableView.jsx` - Updated control className references
+
+---
 **Last Updated**: 2025-11-21
 **Status**: 
 - Section Timetable (Table-based) - Lab slots ✅, Theory slots ⚠️ (inconsistent)
 - Teacher Timetable (Flex+Grid hybrid) - ✅ **FULLY WORKING**
+- **CSS Namespace Isolation** - ✅ **COMPLETE** (All 4 components fully isolated)

@@ -14,24 +14,24 @@
   --total-time-columns: 18;
 }
 
-.page-header {
+.teacher-page-header {
   margin-bottom: 3px;
 }
 
-.page-header h1 {
+.teacher-page-header h1 {
   font-size: 1rem;
   color: #2c3e50;
   margin: 0 0 1px 0;
 }
 
-.page-header p {
+.teacher-page-header p {
   color: #7f8c8d;
   font-size: 0.7rem;
   margin: 0;
 }
 
 /* Controls Section - COMPACTED */
-.controls-section {
+.teacher-controls-section {
   background: white;
   padding: 2px 6px;
   border-radius: 4px;
@@ -44,7 +44,7 @@
   flex-shrink: 0;
 }
 
-.loading-indicator {
+.teacher-loading-indicator {
   padding: 2px 6px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -54,22 +54,22 @@
   margin-left: auto;
 }
 
-.control-group {
+.teacher-control-group {
   display: flex;
   flex-direction: row;
   gap: 4px;
   align-items: center;
 }
 
-.control-group label {
+.teacher-control-group label {
   font-weight: 600;
   color: #2c3e50;
   font-size: 0.65rem;
   white-space: nowrap;
 }
 
-.control-select,
-.control-input {
+.teacher-control-select,
+.teacher-control-input {
   padding: 2px 6px;
   border: 1px solid #e0e0e0;
   border-radius: 3px;
@@ -78,25 +78,25 @@
   transition: all 0.2s;
 }
 
-.control-select:hover,
-.control-input:hover {
+.teacher-control-select:hover,
+.teacher-control-input:hover {
   border-color: #3498db;
 }
 
-.control-select:focus,
-.control-input:focus {
+.teacher-control-select:focus,
+.teacher-control-input:focus {
   outline: none;
   border-color: #3498db;
   box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
 }
 
-.view-mode-toggle {
+.teacher-view-mode-toggle {
   display: flex;
   gap: 3px;
   margin-left: auto;
 }
 
-.toggle-btn {
+.teacher-toggle-btn {
   padding: 2px 6px;
   background: white;
   border: 1px solid #e0e0e0;
@@ -107,18 +107,18 @@
   font-weight: 500;
 }
 
-.toggle-btn:hover {
+.teacher-toggle-btn:hover {
   border-color: #3498db;
 }
 
-.toggle-btn.active {
+.teacher-toggle-btn.active {
   background: #3498db;
   color: white;
   border-color: #3498db;
 }
 
 /* Error Message */
-.error-message {
+.teacher-error-message {
   background: #fee;
   border: 1px solid #fcc;
   border-radius: 3px;
@@ -337,14 +337,14 @@
 .item-section {
   font-weight: 700;
   color: #2c3e50;
-  font-size: 0.6rem;
+  font-size: 0.85rem;
   line-height: 1.1;
 }
 
 .item-subject {
   font-weight: 700;
   color: #2c3e50;
-  font-size: 0.6rem;
+  font-size: 0.85rem;
   margin-bottom: 0;
   line-height: 1.1;
   overflow: hidden;
@@ -353,14 +353,15 @@
 }
 
 .item-time {
-  font-size: 0.55rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: #34495e;
 }
 
 .item-location {
-  font-size: 0.55rem;
+  font-size: 0.75rem;
   color: #000000;
+  font-weight: bold;
   margin-top: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -381,6 +382,7 @@
 
 .batch-name {
   font-weight: 700;
+  font-size: 12px;
 }
 
 .lab-name {
@@ -390,7 +392,7 @@
 
 .room-name {
   color: #000000;
-  font-size: 0.54rem;
+  font-size: 0.85rem;
 }
 
 /* Statistics Summary - Below Timetable - COMPACT */
@@ -576,23 +578,23 @@
     padding: 4px;
   }
 
-  .controls-section {
+  .teacher-controls-section {
     gap: 4px;
     flex-direction: column;
   }
 
-  .control-select,
-  .control-input {
+  .teacher-control-select,
+  .teacher-control-input {
     min-width: 100%;
     font-size: 0.65rem;
   }
 
-  .view-mode-toggle {
+  .teacher-view-mode-toggle {
     margin-left: 0;
     width: 100%;
   }
 
-  .toggle-btn {
+  .teacher-toggle-btn {
     flex: 1;
   }
 
@@ -617,7 +619,7 @@
     padding: 4px;
   }
 
-  .toggle-btn:first-child {
+  .teacher-toggle-btn:first-child {
     display: none;
   }
 }
