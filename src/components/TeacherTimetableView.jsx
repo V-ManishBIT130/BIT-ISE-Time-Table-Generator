@@ -29,6 +29,9 @@ function TeacherTimetableView() {
     '08:00', '09:00', '10:00', '11:00', '12:00',
     '13:00', '14:00', '15:00', '16:00'
   ]
+  const SLOTS_PER_HOUR = 2
+  const SLOT_DURATION_MINUTES = 60 / SLOTS_PER_HOUR
+  const GRID_START_HOUR = 8
 
   // Helper: Format time slot with end time (1-hour blocks) - Compact format
   const formatTimeSlot = (startTime24) => {
@@ -129,13 +132,18 @@ function TeacherTimetableView() {
 
   // Get time slot index for grid positioning (1-hour slots)
   const getTimeSlotIndex = (time) => {
-    const hour = parseInt(time.split(':')[0])
-    return hour - 8 // 8:00 AM is index 0
+    const [hourStr, minuteStr] = time.split(':')
+    const hour = parseInt(hourStr)
+    const minutes = parseInt(minuteStr)
+    const totalMinutes = hour * 60 + minutes
+    const startMinutes = GRID_START_HOUR * 60
+    const offset = Math.max(0, totalMinutes - startMinutes)
+    return Math.round(offset / SLOT_DURATION_MINUTES)
   }
 
   // Calculate span for grid items based on duration
   const getTimeSpan = (durationHours) => {
-    return Math.ceil(durationHours) // Each slot is 1 hour
+    return Math.max(1, Math.round(durationHours * SLOTS_PER_HOUR))
   }
 
   // Build grid structure for the week
@@ -270,7 +278,11 @@ function TeacherTimetableView() {
             <div className="grid-header">
               <div className="corner-cell">Day/Time</div>
               {TIME_SLOTS.map(time => (
-                <div key={time} className="time-header-cell">
+                <div
+                  key={time}
+                  className="time-header-cell"
+                  style={{ gridColumn: `span ${SLOTS_PER_HOUR}` }}
+                >
                   {formatTimeSlot(time)}
                 </div>
               ))}
@@ -285,17 +297,20 @@ function TeacherTimetableView() {
                     const startIdx = getTimeSlotIndex(item.start_time)
                     const span = getTimeSpan(item.duration_hours)
                     
+                    const gridStart = Math.max(1, startIdx + 1)
+                    const gridEnd = gridStart + span
+
                     return (
                       <div
                         key={idx}
                         className={`schedule-item ${item.type}`}
                         style={{
-                          gridColumnStart: startIdx + 1,
-                          gridColumnEnd: startIdx + 1 + span
+                          gridColumnStart: gridStart,
+                          gridColumnEnd: gridEnd
                         }}
                       >
                         {item.type === 'theory' ? (
-                          <>
+                          <div className= "content-wrap">
                             <div className="item-header">
                               <span className="item-section">{item.section_name}</span>
                             </div>
@@ -304,23 +319,19 @@ function TeacherTimetableView() {
                               {formatTime(item.start_time)}-{formatTime(item.end_time)}
                             </div>
                             <div className="item-location">{item.classroom_name}</div>
-                          </>
+                          </div>
                         ) : (
-                          <>
-                            <div className="item-header">
-                              <span className="item-section">{item.section_name}</span>
-                            </div>
+                          <div className="content-wrap">
                             <div className="item-time">
                               {formatTime(item.start_time)}-{formatTime(item.end_time)}
                             </div>
                             {item.batches.map((batch, bIdx) => (
                               <div key={bIdx} className="batch-info">
-                                <span className="batch-name">{batch.batch_name}:</span>
-                                <span className="lab-name">{batch.lab_shortform}</span>
+                                <span className="batch-name">{batch.batch_name}: {batch.lab_shortform}</span>
                                 <span className="room-name">@{batch.lab_room_name}</span>
                               </div>
                             ))}
-                          </>
+                          </div>
                         )}
                       </div>
                     )
