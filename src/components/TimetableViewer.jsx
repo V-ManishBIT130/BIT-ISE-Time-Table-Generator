@@ -42,18 +42,10 @@ function TimetableViewer() {
   }
 
   // Helper: Calculate span (number of 30-min slots)
-  const getTimeSpan = (startTime, endTime, durationHours = null) => {
+  const getTimeSpan = (startTime, endTime) => {
     const startIndex = getTimeSlotIndex(startTime)
     const endIndex = getTimeSlotIndex(endTime)
-    const calculatedSpan = endIndex - startIndex
-
-    // Defensive check: If span is 0 or negative, use duration_hours fallback
-    if (calculatedSpan <= 0 && durationHours) {
-      console.warn(`⚠️ Invalid time span (${startTime}-${endTime}), using duration_hours: ${durationHours}`)
-      return durationHours * 2 // Convert hours to 30-min slots (1 hour = 2 slots)
-    }
-
-    return calculatedSpan
+    return endIndex - startIndex
   }
 
   // Helper: Detect teacher conflicts
@@ -214,9 +206,9 @@ function TimetableViewer() {
     timetable.theory_slots?.forEach((slot) => {
       if (slot.day === day) {
         const startIndex = getTimeSlotIndex(slot.start_time)
-        const span = getTimeSpan(slot.start_time, slot.end_time, slot.duration_hours)
+        const span = getTimeSpan(slot.start_time, slot.end_time)
 
-        console.log(`      ✅ Theory: ${slot.subject_shortform} at ${slot.start_time}-${slot.end_time} (index ${startIndex}, span ${span}, duration: ${slot.duration_hours}h)`)
+        console.log(`      ✅ Theory: ${slot.subject_shortform} at ${slot.start_time}-${slot.end_time} (index ${startIndex}, span ${span})`)
 
         cells[startIndex] = {
           type: 'theory',
@@ -413,15 +405,6 @@ function TimetableViewer() {
       else if (slot.teacher_name === '[Other Dept]') subjectType = 'other-dept'
       else if (slot.subject_name?.toLowerCase().includes('project')) subjectType = 'project'
 
-      // Debug log for theory cell rendering
-      if (cell.span !== 2 && slot.duration_hours === 1) {
-        console.error(`❌ Theory cell span mismatch! ${slot.subject_shortform}: span=${cell.span}, duration=${slot.duration_hours}h, ${slot.start_time}-${slot.end_time}`)
-        console.log(`   Full slot data:`, slot)
-      }
-
-      // Always log theory cell rendering for debugging alignment issues
-      console.log(`📘 Rendering theory: ${slot.subject_shortform} (${slot.day}) - span: ${cell.span}, colSpan: ${cell.span}, width should be: ${cell.span * 75}px`)
-
       return (
         <td
           key={`${dayIndex}-${timeIndex}`}
@@ -433,6 +416,9 @@ function TimetableViewer() {
             <div className="cell-content-compact">
               <div className="subject-code">{slot.subject_shortform}</div>
               <div className="teacher-name">{slot.teacher_shortform}</div>
+              <div className="time-range">
+                {convertTo12Hour(slot.start_time)} - {convertTo12Hour(slot.end_time)}
+              </div>
               {slot.is_fixed_slot && <div className="fixed-badge">FIXED</div>}
               {slot.is_project !== true && slot.classroom_name && (
                 <div className={`classroom-badge ${slot.is_fixed_slot ? 'fixed-classroom' : 'regular-classroom'}`} title={`Classroom: ${slot.classroom_name}`}>
