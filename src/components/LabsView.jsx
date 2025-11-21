@@ -250,38 +250,6 @@ function LabsView() {
         </div>
       </div>
 
-      {/* Statistics */}
-      <div className="statistics-section">
-        <h2>📊 Lab Utilization Statistics</h2>
-        <div className="stats-grid">
-          <div className="stat-card total">
-            <div className="stat-icon">📦</div>
-            <div className="stat-content">
-              <div className="stat-value">{stats.totalSlots}</div>
-              <div className="stat-label">Total Slots</div>
-              <div className="stat-sublabel">{selectedLabRoom?.labRoom_no || 'Select a lab'}</div>
-            </div>
-          </div>
-
-          <div className="stat-card occupied">
-            <div className="stat-icon">✅</div>
-            <div className="stat-content">
-              <div className="stat-value">{stats.occupiedSlots}</div>
-              <div className="stat-label">Occupied Slots</div>
-              <div className="stat-sublabel">{utilizationRate}% utilized</div>
-            </div>
-          </div>
-
-          <div className="stat-card empty">
-            <div className="stat-icon">🆓</div>
-            <div className="stat-content">
-              <div className="stat-value">{stats.emptySlots}</div>
-              <div className="stat-label">Empty Slots</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Error/Loading */}
       {error && <div className="error-message">❌ {error}</div>}
       {loading && <div className="loading-message">⏳ Loading timetables...</div>}
@@ -295,7 +263,7 @@ function LabsView() {
       {/* Lab Schedule Grid */}
       {selectedLabRoom && (
         <div className="lab-schedule-section">
-          <h2>🗓️ {selectedLabRoom.labRoom_no} - {selectedLabRoom.labName}</h2>
+          <h2>🗓 {selectedLabRoom.labRoom_no} - {selectedLabRoom.labName}</h2>
 
           <div className="lab-schedule-grid">
             {/* Header Row */}
@@ -308,58 +276,84 @@ function LabsView() {
 
             {/* Day Rows */}
             {DAYS.map(day => (
-              <div key={day} className="day-row">
-                <div className="day-header">{day}</div>
-                {TIME_SLOTS.map((slot, slotIdx) => {
-                  const occupants = labOccupancy[selectedLabRoom.labRoom_no]?.[day]?.[slot] || []
-                  const isEmpty = occupants.length === 0
-                  
-                  // Check if previous slot has 2-hour session that spans into this slot
-                  if (slotIdx > 0) {
-                    const prevSlot = TIME_SLOTS[slotIdx - 1]
-                    const prevOccupants = labOccupancy[selectedLabRoom.labRoom_no]?.[day]?.[prevSlot] || []
-                    if (prevOccupants.length > 0 && prevOccupants[0].duration === 2) {
-                      // This slot is covered by previous 2-hour session, skip rendering
-                      return null
+              <div key={day} className="labs-day-row">
+                <div className="day-header">{day.substring(0, 3)}</div>
+                <div className="labs-time-slots-container">
+                  {TIME_SLOTS.map((slot, slotIdx) => {
+                    const occupants = labOccupancy[selectedLabRoom.labRoom_no]?.[day]?.[slot] || []
+                    const isEmpty = occupants.length === 0
+                    
+                    // Check if previous slot has 2-hour session that spans into this slot
+                    if (slotIdx > 0) {
+                      const prevSlot = TIME_SLOTS[slotIdx - 1]
+                      const prevOccupants = labOccupancy[selectedLabRoom.labRoom_no]?.[day]?.[prevSlot] || []
+                      if (prevOccupants.length > 0 && prevOccupants[0].duration === 2) {
+                        // This slot is covered by previous 2-hour session, skip rendering
+                        return null
+                      }
                     }
-                  }
 
-                  // If this slot has a 2-hour session, span 2 columns
-                  const spanCount = (!isEmpty && occupants[0]?.duration === 2) ? 2 : 1
+                    // If this slot has a 2-hour session, span 2 columns (grid-based)
+                    const spanCount = (!isEmpty && occupants[0]?.duration === 2) ? 2 : 1
+                    const gridStart = slotIdx + 1
+                    const gridEnd = gridStart + spanCount
 
-                  return (
-                    <div 
-                      key={slot} 
-                      className={`time-cell ${isEmpty ? 'empty' : 'occupied'}`}
-                      style={{ gridColumn: `span ${spanCount}` }}
-                    >
-                      {isEmpty ? (
-                        <span className="empty-label">🆓 Free</span>
-                      ) : (
-                        <div className="occupants-list">
-                          {occupants.map((occ, idx) => (
-                            <div key={idx} className="occupant-item">
-                              <div className="occupant-header">
-                                <span className="batch-name">{occ.batchName}</span>
-                                <span className="lab-name">{occ.labName}</span>
-                              </div>
-                              <div className="session-time">
-                                🕐 {convertTo12Hour(occ.sessionTime.split('-')[0])} - {convertTo12Hour(occ.sessionTime.split('-')[1])}
-                              </div>
-                              {(occ.teacher1 || occ.teacher2) && (
-                                <div className="teacher-info">
-                                  👨‍🏫 {[occ.teacher1, occ.teacher2].filter(Boolean).join(', ')}
+                    return (
+                      <div 
+                        key={slot} 
+                        className={`time-cell ${isEmpty ? 'empty' : 'occupied'}`}
+                        style={{ 
+                          gridColumnStart: gridStart,
+                          gridColumnEnd: gridEnd
+                        }}
+                      >
+                        {isEmpty ? (
+                          <span className="empty-label">🆓 Free</span>
+                        ) : (
+                          <div className="occupants-list">
+                            {occupants.map((occ, idx) => (
+                              <div key={idx} className="occupant-item">
+                                <div className="occupant-header">
+                                  <span className="batch-name">{occ.batchName}</span>
+                                  <span className="lab-name">{occ.labName}</span>
                                 </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+                                <div className="session-time">
+                                  {convertTo12Hour(occ.sessionTime.split('-')[0])} - {convertTo12Hour(occ.sessionTime.split('-')[1])}
+                                </div>
+                                {(occ.teacher1 || occ.teacher2) && (
+                                  <div className="teacher-info">
+                                    {[occ.teacher1, occ.teacher2].filter(Boolean).join(', ')}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             ))}
+          </div>
+
+          {/* Statistics Summary - Below Timetable */}
+          <div className="statistics-section">
+            <h3>Weekly Summary for {selectedLabRoom.labRoom_no} - {selectedLabRoom.labName}</h3>
+            <ul className="summary-list">
+              <li>
+                <strong>Total Slots:</strong> {stats.totalSlots} ({DAYS.length} days × {TIME_SLOTS.length} hours)
+              </li>
+              <li>
+                <strong>Occupied Slots:</strong> {stats.occupiedSlots} slots
+              </li>
+              <li>
+                <strong>Empty Slots:</strong> {stats.emptySlots} slots
+              </li>
+              <li>
+                <strong>Utilization Rate:</strong> {utilizationRate}% utilized
+              </li>
+            </ul>
           </div>
         </div>
       )}
