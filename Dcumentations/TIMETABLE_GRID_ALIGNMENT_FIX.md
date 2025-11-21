@@ -286,11 +286,187 @@ Both use identical rendering logic:
 3. **Cascade inheritance**: Width properties must be carefully managed - too many constraints break spanning behavior
 4. **Debugging approach**: Start with uniform base structure, then enable advanced features incrementally
 
+---
+
+## Teacher's Timetable View - Lessons Learned
+
+### Challenge Overview
+After fixing the section timetable viewer (table-based grid), we encountered a new challenge: creating a **teacher-centric view** that shows a single teacher's complete weekly schedule. The requirements were different:
+- Show **all days vertically** (MON to FRI)
+- Show **time slots horizontally** (8:00 AM to 5:00 PM)
+- Display both **theory classes** and **lab sessions** in the same grid
+- Full-height schedule items that fill the row
+- Perfect alignment between time headers and actual time slots
+
+### Initial Problems Encountered
+
+1. **Misalignment Gap**: There was an unexpected gap next to the day column, pushing 8:00 AM slots to the right
+2. **Items Cut Off**: Some schedule items were only showing half their content (especially visible on Wednesday)
+3. **Items Not Filling Height**: Schedule items were centered but only taking ~40px of the available ~100px row height
+4. **Browser Cache Issues**: CSS changes not reflecting due to cached `display: grid` override
+
+### The Hybrid Flex + Grid Solution
+
+After multiple iterations, we discovered the **optimal architecture**:
+
+#### Structure
+```css
+.day-row {
+  display: flex !important;          /* Outer: Flex for day + slots container */
+  border-bottom: 1px solid #e0e0e0;
+  align-items: stretch;              /* Critical: makes children fill height */
+  min-height: 100px;
+  position: relative;
+}
+
+.day-header-cell {
+  width: var(--day-label-width);     /* Fixed width (86px) */
+  flex-shrink: 0;                    /* Prevents shrinking */
+  /* Day label styling */
+}
+
+.time-slots-container {
+  flex: 1;                           /* Takes remaining space */
+  display: grid;                     /* Inner: Grid for positioning items */
+  grid-template-columns: repeat(var(--total-time-columns), 1fr);
+  align-items: stretch;              /* Items fill full height */
+  row-gap: 0;                        /* No gaps between rows */
+}
+
+.schedule-item {
+  height: 100%;                      /* Fill full grid cell height */
+  margin: 2px 2px;                   /* Minimal margins */
+  /* Position using grid-column-start/end */
+}
+```
+
+#### Why This Works Perfectly
+
+**Flex for Layout**:
+- `.day-row` uses `display: flex` to create a simple two-column layout
+- Day column (86px fixed) + Time slots container (remaining space)
+- No complex grid calculations needed at the row level
+- `align-items: stretch` ensures children take full height
+
+**Grid for Positioning**:
+- `.time-slots-container` uses `display: grid` with 18 equal columns
+- Schedule items use `grid-column-start` and `grid-column-end` to span multiple time slots
+- Grid automatically handles overlapping items (vertical stacking)
+- `align-items: stretch` makes items fill the full row height
+
+**Clean Separation**:
+- Structure (flex) is separate from positioning (grid)
+- No nested grid conflicts
+- No colspan calculation issues
+- No alignment gaps
+
+### Grid Column Calculation
+
+```javascript
+const startIdx = getTimeSlotIndex(item.start_time)  // 0-17 for 8:00 AM - 4:30 PM
+const span = getTimeSpan(item.duration_hours)       // Hours × 2 (30-min slots)
+
+const gridStart = Math.max(1, startIdx + 1)         // 1-based grid positioning
+const gridEnd = gridStart + span                    // End column
+
+// Example: 10:00 AM class (2 hours)
+// startIdx = 4 (10:00 AM is 5th slot, 0-indexed)
+// span = 4 (2 hours × 2 slots/hour)
+// gridStart = 5 (column 5 in the 18-column grid)
+// gridEnd = 9 (spans columns 5-8, total 4 columns = 2 hours)
+```
+
+### Critical CSS Properties
+
+**For Full-Height Items**:
+```css
+.time-slots-container {
+  align-items: stretch;    /* NOT center - fills height */
+  row-gap: 0;              /* No vertical gaps */
+}
+
+.schedule-item {
+  height: 100%;            /* NOT min-height - fills available space */
+  margin: 2px 2px;         /* Minimal margins for spacing */
+  box-sizing: border-box;  /* Include padding in height calculation */
+}
+```
+
+**For Alignment**:
+```css
+.day-row {
+  display: flex !important;  /* !important to override cache */
+  align-items: stretch;      /* Children fill full height */
+}
+```
+
+### Browser Cache Gotcha
+
+**Problem**: Changes to `display: flex` weren't applying because browser cached old `display: grid`
+
+**Solution**: 
+- Added `!important` flag: `display: flex !important;`
+- Instructed user to hard refresh: `Ctrl + Shift + R`
+- This forces browser to re-evaluate CSS priority
+
+### Component Independence
+
+**Important Note**: The Teacher's Timetable View is **completely independent** from the Section Timetable Viewer:
+
+- **Different files**: `TeacherTimetableView.css` vs `TimetableViewer.css`
+- **Different components**: `TeacherTimetableView.jsx` vs `TimetableViewer.jsx`
+- **Different structures**: Flex+Grid hybrid vs HTML Table
+- **No shared classes**: Class names are scoped to each component
+
+**CSS Isolation**:
+```
+TeacherTimetableView.css:
+  .teacher-timetable-view      → Root container
+  .day-row                     → Flex row
+  .time-slots-container        → Grid container
+  .schedule-item               → Individual items
+
+TimetableViewer.css:
+  .timetable-viewer            → Root container
+  .timetable-grid (table)      → HTML table
+  .theory-cell (td)            → Table cells
+  .lab-cell (td)               → Table cells
+```
+
+Changes to one file have **zero impact** on the other component! 🎯
+
+### Key Lessons Learned
+
+1. **Hybrid Layouts Are Powerful**: Don't be afraid to mix `display: flex` and `display: grid` in parent-child relationships
+2. **align-items: stretch is Magic**: For full-height children, use `stretch` instead of `center` or `flex-start`
+3. **height: 100% vs min-height**: Use `height: 100%` for exact fill, `min-height` for minimum constraints
+4. **Browser Cache is Real**: Always test with hard refresh (`Ctrl + Shift + R`) after CSS changes
+5. **!important Has Its Place**: When fighting specificity or cache, `!important` can save the day
+6. **Component Isolation**: Keep CSS files separate to avoid cross-contamination between features
+7. **Flex for Structure, Grid for Positioning**: Flex excels at layout, Grid excels at precise positioning
+8. **Start Simple, Add Complexity**: We tried complex grid structures first, simpler flex+grid hybrid won
+
+### Final Architecture Benefits
+
+✅ **Perfect alignment** - Time headers match time slots exactly  
+✅ **Full-height items** - Schedule items fill entire row height  
+✅ **No gaps** - Day column flush against time slots container  
+✅ **No cut-off items** - All schedule items fully visible  
+✅ **Scalable** - Works for any number of time slots or days  
+✅ **Maintainable** - Clear separation of concerns (flex vs grid)  
+✅ **Independent** - No conflicts with other timetable components  
+✅ **Professional appearance** - Clean, modern, industry-standard look  
+
 ## References
 - MDN: `table-layout` property
 - MDN: `colSpan` attribute behavior
+- MDN: CSS Flexbox Layout
+- MDN: CSS Grid Layout
+- MDN: `align-items` property
 - HTML table width calculation algorithm
 
 ---
-**Last Updated**: 2025-11-20
-**Status**: Partial fix - Lab slots ✅, Theory slots ⚠️ (inconsistent)
+**Last Updated**: 2025-11-21
+**Status**: 
+- Section Timetable (Table-based) - Lab slots ✅, Theory slots ⚠️ (inconsistent)
+- Teacher Timetable (Flex+Grid hybrid) - ✅ **FULLY WORKING**
