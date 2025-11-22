@@ -214,7 +214,7 @@ function LabsView() {
             <option value="">Select a lab room...</option>
             {labRooms.map(room => (
               <option key={room._id} value={room._id}>
-                {room.labRoom_no} - {room.labName}
+                {room.labRoom_no}
               </option>
             ))}
           </select>
@@ -263,7 +263,7 @@ function LabsView() {
       {/* Lab Schedule Grid */}
       {selectedLabRoom && (
         <div className="lab-schedule-section">
-          <h2>🗓 {selectedLabRoom.labRoom_no} - {selectedLabRoom.labName}</h2>
+          <h2>🗓 {selectedLabRoom.labRoom_no}</h2>
 
           <div className="lab-schedule-grid">
             {/* Header Row */}
@@ -339,7 +339,7 @@ function LabsView() {
 
           {/* Statistics Summary - Below Timetable */}
           <div className="statistics-section">
-            <h3>Weekly Summary for {selectedLabRoom.labRoom_no} - {selectedLabRoom.labName}</h3>
+            <h3>Weekly Summary for {selectedLabRoom.labRoom_no}</h3>
             <ul className="summary-list">
               <li>
                 <strong>Total Slots:</strong> {stats.totalSlots} ({DAYS.length} days × {TIME_SLOTS.length} hours)
