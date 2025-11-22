@@ -51,6 +51,46 @@ router.get('/', async (req, res) => {
 })
 
 /**
+ * GET /api/timetables/stats
+ * Get dashboard statistics for timetables
+ */
+router.get('/stats', async (req, res) => {
+  try {
+    // Get total count
+    const totalTimetables = await Timetable.countDocuments()
+    
+    // Get odd semester count
+    const oddSemTimetables = await Timetable.countDocuments({ sem_type: 'odd' })
+    
+    // Get even semester count
+    const evenSemTimetables = await Timetable.countDocuments({ sem_type: 'even' })
+    
+    // Get recent generations (last 5)
+    const recentGenerations = await Timetable.find()
+      .sort({ generation_date: -1 })
+      .limit(5)
+      .select('section_name sem sem_type generation_date generation_metadata theory_slots lab_slots')
+      .lean()
+    
+    res.json({
+      success: true,
+      totalTimetables,
+      oddSemTimetables,
+      evenSemTimetables,
+      recentGenerations
+    })
+    
+  } catch (error) {
+    console.error('Error fetching timetable stats:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch timetable statistics',
+      error: error.message
+    })
+  }
+})
+
+/**
  * GET /api/timetables/teacher-schedule/:teacherId
  * Get complete schedule for a specific teacher across ALL sections
  * Shows all theory classes and lab sessions assigned to this teacher
