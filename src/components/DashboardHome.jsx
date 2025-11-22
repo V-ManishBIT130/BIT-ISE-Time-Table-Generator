@@ -231,37 +231,7 @@ function DashboardHome() {
         </div>
       </div>
 
-      {/* Recent Activity */}
-      {timetableStats.recentGenerations && timetableStats.recentGenerations.length > 0 && (
-        <div className="section">
-          <h2>📊 Recent Timetable Generations</h2>
-          <div className="recent-activity">
-            {timetableStats.recentGenerations.map((gen, idx) => (
-              <div key={idx} className="activity-card">
-                <div className="activity-icon">✅</div>
-                <div className="activity-details">
-                  <h4>{gen.section_name} - Semester {gen.sem}</h4>
-                  <p className="activity-meta">
-                    <span>📅 {new Date(gen.generation_date).toLocaleDateString()}</span>
-                    <span>⏱️ {gen.generation_metadata?.generation_time_ms ? `${(gen.generation_metadata.generation_time_ms / 1000).toFixed(2)}s` : 'N/A'}</span>
-                    {gen.generation_metadata?.theory_scheduling_summary && (
-                      <span>📈 {gen.generation_metadata.theory_scheduling_summary.success_rate || '0%'} Success</span>
-                    )}
-                  </p>
-                  <div className="activity-stats">
-                    <span className="stat-badge theory">
-                      📚 {gen.theory_slots?.length || 0} Theory Slots
-                    </span>
-                    <span className="stat-badge lab">
-                      🧪 {gen.lab_slots?.length || 0} Lab Sessions
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
 
       {/* Top Constraints Followed */}
       <div className="section">
