@@ -1162,7 +1162,14 @@ export async function scheduleTheory(semType, academicYear) {
       
       console.log(`      ✅ Section slots: ${newlyScheduledCount} newly scheduled, ${existingFixedSlots.length} fixed slots preserved\n`)
       
-      // Prepare summary data (only count subjects scheduled in Step 4, exclude fixed)
+      // Prepare summary data
+      // IMPORTANT: total_scheduled should include BOTH fixed slots AND newly scheduled
+      // so the viewer shows correct "X/Y SCHEDULED" (not just Step 4 work)
+      const totalActuallyScheduled = totalSkipped + totalScheduled
+      const overallSuccessRate = allAssignments.length > 0 
+        ? ((totalActuallyScheduled / allAssignments.length) * 100).toFixed(1) 
+        : 100
+      
       const summaryData = {
         total_subjects_found: allAssignments.length,
         subjects_in_fixed_slots: totalSkipped,
@@ -1176,18 +1183,20 @@ export async function scheduleTheory(semType, academicYear) {
         other_dept_failed: results.otherDept.failed,
         projects_scheduled: results.projects.scheduled,
         projects_failed: results.projects.failed,
-        total_scheduled: totalScheduled,
-        success_rate: successRate
+        total_scheduled: totalActuallyScheduled, // Fixed + newly scheduled
+        success_rate: overallSuccessRate // Overall rate including fixed slots
       }
       
-      console.log(`\n      � DEBUG: Summary data for ${sectionName}:`)
+      console.log(`\n      📝 DEBUG: Summary data for ${sectionName}:`)
       console.log(`         - allAssignments.length: ${allAssignments.length}`)
-      console.log(`         - totalSkipped: ${totalSkipped}`)
-      console.log(`         - totalToSchedule: ${totalToSchedule}`)
-      console.log(`         - totalScheduled: ${totalScheduled}`)
-      console.log(`         - successRate: ${successRate}`)
+      console.log(`         - totalSkipped (fixed): ${totalSkipped}`)
+      console.log(`         - totalToSchedule (step4): ${totalToSchedule}`)
+      console.log(`         - totalScheduled (step4): ${totalScheduled}`)
+      console.log(`         - totalActuallyScheduled (fixed + step4): ${totalActuallyScheduled}`)
+      console.log(`         - step4 success rate: ${successRate}%`)
+      console.log(`         - overall success rate: ${overallSuccessRate}%`)
       
-      console.log(`\n      �💾 Saving to database with theory_scheduling_summary:`)
+      console.log(`\n      💾 Saving to database with theory_scheduling_summary:`)
       console.log(`         ${JSON.stringify(summaryData, null, 2)}`)
       
       // Save updated timetable with theory scheduling summary

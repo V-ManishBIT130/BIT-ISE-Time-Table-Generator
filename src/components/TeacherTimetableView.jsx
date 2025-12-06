@@ -328,8 +328,8 @@ function TeacherTimetableView() {
                             </div>
                             {item.batches.map((batch, bIdx) => (
                               <div key={bIdx} className="batch-info">
-                                <span className="batch-name">{batch.batch_name}: {batch.lab_shortform}</span>
-                                <span className="room-name">@{batch.lab_room_name}</span>
+                                <div className="batch-name">{batch.batch_name}: {batch.lab_shortform}</div>
+                                <div className="room-name">@{batch.lab_room_name}</div>
                               </div>
                             ))}
                           </div>

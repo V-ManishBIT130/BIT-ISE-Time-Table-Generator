@@ -96,6 +96,68 @@
 
 ---
 
+### 6. Auto-Save on Drag Implementation (Dec 2025)
+
+**Problem:** Frontend state updates were not automatically persisted to database.
+- User drags slot in TimetableEditor
+- State updates in frontend (optimistic UI)
+- Changes only saved when user clicks "Save Changes" button
+- If user refreshes or navigates away, changes lost
+- Conflict detection could check stale database data
+
+**Solution: Automatic Database Sync**
+- Added `autoSaveAfterDrag()` function in TimetableEditor
+- Every drag operation now immediately saves to database via PUT API
+- Eliminates desync between frontend state and database
+- No manual save button needed for drag operations
+
+**Implementation:**
+```javascript
+const autoSaveAfterDrag = async () => {
+  try {
+    await axios.put(`/api/timetables/${timetable._id}/update-slots`, {
+      theory_slots: timetable.theory_slots,
+      breaks: timetable.breaks
+    })
+    console.log('✅ Auto-saved after drag operation')
+  } catch (error) {
+    console.error('❌ Auto-save failed:', error)
+  }
+}
+```
+
+**Result:** Seamless UX with automatic persistence, preventing data loss.
+
+---
+
+### 7. Metadata Calculation Fix (Dec 2025)
+
+**Problem:** Viewer displayed incorrect "X/Y SCHEDULED" counts.
+- Step 4 algorithm calculates `total_scheduled` (subjects scheduled in Step 4)
+- Does NOT include `subjects_in_fixed_slots` (already scheduled in Step 2)
+- Viewer displays: `total_scheduled / total_subjects_found`
+- Example: Sem 7 showed "3/4" even though all 4 subjects were in timetable
+  - 4 total subjects
+  - 1 fixed slot (OEC/PEC external)
+  - 3 scheduled in Step 4
+  - Display: 3/4 ❌ Should be: 4/4 ✅
+
+**Solution: Include Fixed Slots in Count**
+- Updated summary calculation in `step4_schedule_theory_breaks.js`:
+  ```javascript
+  const totalActuallyScheduled = totalSkipped + totalScheduled
+  const overallSuccessRate = ((totalActuallyScheduled / allAssignments.length) * 100).toFixed(1)
+  
+  summaryData.total_scheduled = totalActuallyScheduled // Fixed + newly scheduled
+  summaryData.success_rate = overallSuccessRate // Overall rate including fixed
+  ```
+- Created `fix_metadata.js` script to update existing timetables
+- All sections now show correct counts (4/4 for Sem 7)
+
+**Result:** Accurate progress display reflecting actual timetable completion.
+
+---
+
 ## 🔧 Technical Fixes
 
 ### Multi-Segment Conflict Tracking (Nov 12, 2025)

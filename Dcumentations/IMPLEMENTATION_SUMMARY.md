@@ -73,6 +73,26 @@
 - Locked badge styling
 - Responsive design
 
+### Phase 7: Recent Enhancements (December 2025)
+✅ **Auto-Save Implementation**
+- Automatic database persistence after every drag operation
+- Eliminates manual save button requirement
+- Prevents data loss and state desync
+- Implementation: `autoSaveAfterDrag()` function
+
+✅ **Conflict Detection Improvements**
+- Fixed ObjectId comparison in backend (string vs ObjectId)
+- Proper timetable exclusion using `mongoose.Types.ObjectId`
+- Added detailed logging for debugging
+- Accurate conflict detection within same section
+
+✅ **Metadata Calculation Fix**
+- Fixed theory_scheduling_summary to include fixed slots
+- `total_scheduled` now shows: fixed + newly scheduled
+- Viewer displays correct "X/Y SCHEDULED" counts
+- Example: Sem 7 now shows 4/4 instead of 3/4
+- Created `fix_metadata.js` script for existing timetables
+
 ## API Endpoints
 
 ### 1. Available Rooms Query
