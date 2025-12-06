@@ -240,7 +240,7 @@
   grid-template-columns: repeat(var(--total-time-columns), 1fr);
   position: relative;
   align-items: stretch;
-  padding: 4px 0;
+  padding: 2px 0px 2px 0px;
   column-gap: 0;
   row-gap: 0;
 }
@@ -288,8 +288,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-start;
+  justify-content: center;
+  align-items: center;
   text-align: left;
   gap: 2px;
   font-size: 0.58rem;
@@ -306,6 +306,8 @@
 .schedule-item .content-wrap {
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  align-items: center;
   gap: 2px;
   width: 100%;
 }
@@ -382,17 +384,21 @@
 
 .batch-name {
   font-weight: 700;
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .lab-name {
   font-weight: 600;
   color: #e91e63;
+  font-size: 15px;
 }
 
 .room-name {
+  display: flex;
   color: #000000;
   font-size: 0.85rem;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Statistics Summary - Below Timetable - COMPACT */

@@ -92,37 +92,54 @@ Interactive timetable editor allowing manual adjustments through drag-and-drop f
 
 - **Redo button** - Shows count of available redo actions- **Redo button** - Shows count of available redo actions
 
-- **Auto-disable** - Buttons disabled when stacks are empty- **Auto-disable** - Buttons disabled when stacks are empty
+- **Auto-disable** - Buttons disabled when stacks are empty
 
 
 
-### 3. Conflict Detection### 3. Conflict Detection
+### 3. Auto-Save Functionality (NEW - December 2025)
+
+#### Automatic Database Persistence
+- ✅ **No Manual Save Required** - Changes saved immediately after drag
+- ✅ **Instant Sync** - Frontend and database always in sync
+- ✅ **Data Loss Prevention** - No lost changes on refresh/navigation
+- ✅ **Conflict Detection Accuracy** - Always checks current database state
+
+#### How It Works
+```javascript
+// After every drag operation:
+1. Update frontend state (optimistic UI)
+2. Call autoSaveAfterDrag() automatically
+3. PUT request to /api/timetables/:id/update-slots
+4. Database updated immediately
+5. User sees success feedback
+```
+
+#### Benefits
+- **Seamless UX** - No extra button clicks needed
+- **Data Integrity** - State and database always match
+- **Reliable Conflicts** - Detection uses latest data
+- **Error Recovery** - Failed saves show immediate feedback
 
 
 
-#### Local Conflicts (Same Section)#### Local Conflicts (Same Section)
+### 4. Conflict Detection
 
-- Teacher time conflicts within same section- Teacher time conflicts within same section
+#### Local Conflicts (Same Section)
+- Teacher time conflicts within same section
+- Room double-booking
+- Time slot overlaps
+- ✅ **Respects removed default breaks** - Won't show conflict for deleted breaks
 
-- Room double-booking- Room double-booking
-
-- Time slot overlaps- Time slot overlaps
-
-- ✅ **Respects removed default breaks** - Won't show conflict for deleted breaks- ✅ **Respects removed default breaks** - Won't show conflict for deleted breaks
-
-
-
-#### Global Conflicts (Cross-Section)#### Global Conflicts (Cross-Section)
-
-- Teacher teaching in multiple sections simultaneously- Teacher teaching in multiple sections simultaneously
-
-- Backend API validates across all timetables- Backend API validates across all timetables
-
-- Detailed conflict warnings with section information- Detailed conflict warnings with section information
+#### Global Conflicts (Cross-Section)
+- Teacher teaching in multiple sections simultaneously
+- Backend API validates across all timetables
+- Detailed conflict warnings with section information
+- ✅ **Fixed ObjectId Comparison** (Dec 2025) - Proper exclusion of current section
+- ✅ **Enhanced Logging** - Detailed conflict detection debugging
 
 
 
-### 4. Custom Break Management### 4. Custom Break Management
+### 5. Custom Break Management
 
 - **Add Breaks:** Click empty slot to add 30-minute break- **Add Breaks:** Click empty slot to add 30-minute break
 

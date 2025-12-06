@@ -155,7 +155,7 @@ function DashboardHome() {
 
       {/* System Overview */}
       <div className="section">
-        <h2>🎯 System Overview</h2>
+        
         <div className="overview-grid">
           <div className="overview-card">
             <div className="overview-header">

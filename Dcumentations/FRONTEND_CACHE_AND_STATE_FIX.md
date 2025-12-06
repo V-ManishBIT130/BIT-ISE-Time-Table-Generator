@@ -329,13 +329,81 @@ Expected:
 
 ---
 
+## 🆕 Additional Enhancements (December 2025)
+
+### Auto-Save Implementation
+
+**Problem:** Manual save button required after drag operations led to:
+- Lost changes if user refreshed page
+- Desync between frontend state and database
+- Stale conflict detection based on old database data
+
+**Solution:**
+- Added `autoSaveAfterDrag()` function
+- Automatically persists changes after every drag operation
+- Calls `PUT /api/timetables/:id/update-slots` immediately
+- Eliminates need for manual "Save Changes" button
+
+**Code:**
+```javascript
+const autoSaveAfterDrag = async () => {
+  try {
+    await axios.put(`/api/timetables/${timetable._id}/update-slots`, {
+      theory_slots: timetable.theory_slots,
+      breaks: timetable.breaks
+    })
+    console.log('✅ Auto-saved after drag operation')
+  } catch (error) {
+    console.error('❌ Auto-save failed:', error)
+  }
+}
+```
+
+**Result:** Seamless UX with automatic persistence, no data loss risk.
+
+### Backend ObjectId Fix
+
+**Problem:** Conflict detection was comparing string IDs with MongoDB ObjectIds incorrectly.
+- Frontend sends: `exclude_timetable_id='69330e938cd9cf03af4e8282'` (string)
+- Backend compares: `tt._id.toString() !== exclude_timetable_id`
+- False conflicts detected when moving slots within same section
+
+**Solution:**
+```javascript
+// Import mongoose for ObjectId conversion
+import mongoose from 'mongoose'
+
+// Convert string to ObjectId
+const excludeTimetableObjectId = exclude_timetable_id 
+  ? new mongoose.Types.ObjectId(exclude_timetable_id) 
+  : null
+
+// Use .equals() for ObjectId comparison
+const otherTimetables = allTimetables.filter(tt => {
+  if (excludeTimetableObjectId) {
+    return !tt._id.equals(excludeTimetableObjectId)
+  }
+  return true
+})
+```
+
+**Result:** Accurate timetable exclusion, no false positive conflicts.
+
+---
+
 ## 📝 File Locations
 
 **Frontend:**
-- `src/components/TimetableEditor.jsx` - Main implementation
+- `src/components/TimetableEditor.jsx` - Main implementation + auto-save
 
 **Backend:**
 - `backend_server/routes/classrooms.js` - API endpoint with exclusion logic
+- `backend_server/routes/timetables.js` - Conflict detection with ObjectId fix
+- `backend_server/algorithms/step4_schedule_theory_breaks.js` - Metadata calculation fix
+
+**Maintenance Scripts:**
+- `backend_server/scripts/fix_metadata.js` - Update existing timetable metadata
+- `backend_server/scripts/check_metadata.js` - Verify metadata accuracy
 
 ---
 
@@ -358,9 +426,22 @@ Three invalidation strategies needed:
 ### 4. User Experience Matters
 The difference between 30 seconds and <1 second transforms frustration into delight.
 
+### 5. MongoDB ObjectId Comparison (Dec 2025)
+String comparison fails with ObjectId types. Always use:
+- `new mongoose.Types.ObjectId(string)` for conversion
+- `.equals()` method for ObjectId comparison
+- Detailed logging to verify exclusion logic
+
+### 6. Auto-Save Eliminates State Desync (Dec 2025)
+Automatic database persistence after every operation:
+- Prevents data loss from page refresh
+- Ensures conflict detection uses current state
+- Improves UX by removing manual save steps
+- Trade-off: More API calls, but negligible performance impact
+
 ---
 
 **Status:** ✅ Fully Implemented and Tested  
-**Date:** November 12, 2025  
+**Date:** November 12, 2025 (Updated: December 6, 2025)  
 **Impact:** HIGH - Transforms core editing workflow  
 **Complexity:** Medium - Pure frontend logic with minimal backend changes

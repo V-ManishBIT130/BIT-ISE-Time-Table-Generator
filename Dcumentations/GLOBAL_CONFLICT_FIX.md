@@ -34,6 +34,43 @@ Created new endpoint: **GET /api/timetables/check-teacher-conflict**
 - `exclude_timetable_id` - Current section's timetable (to exclude)
 - `exclude_slot_id` - Current slot being moved (to exclude)
 
+### 3. ObjectId Comparison Fix (Dec 2025)
+
+**Problem:** Backend was receiving `exclude_timetable_id` as string but comparing against MongoDB ObjectId.
+- Frontend sends: `exclude_timetable_id='69330e938cd9cf03af4e8282'` (string)
+- Backend compares: `tt._id.toString() !== exclude_timetable_id`
+- MongoDB `_id` is ObjectId type, requires conversion for comparison
+- String comparison failed, causing backend to check ALL timetables including current one
+- Result: False conflicts detected when moving slots within same section
+
+**Solution: Proper ObjectId Handling**
+```javascript
+// Import mongoose for ObjectId conversion
+import mongoose from 'mongoose'
+
+// Convert string to ObjectId for comparison
+const excludeTimetableObjectId = exclude_timetable_id 
+  ? new mongoose.Types.ObjectId(exclude_timetable_id) 
+  : null
+
+// Use .equals() method for ObjectId comparison
+const otherTimetables = allTimetables.filter(tt => {
+  if (excludeTimetableObjectId) {
+    return !tt._id.equals(excludeTimetableObjectId)
+  }
+  return true
+})
+```
+
+**Detailed Logging Added:**
+```javascript
+console.log(`📊 Total timetables in DB: ${allTimetables.length}`)
+console.log(`🔍 Excluding timetable: ${exclude_timetable_id}`)
+console.log(`✅ Timetables to check: ${otherTimetables.length}`)
+```
+
+**Result:** Accurate exclusion of current timetable, no more false positives.
+
 **What it does:**
 1. Searches ALL timetables (except current section)
 2. Checks theory_slots for teacher conflicts
@@ -55,10 +92,28 @@ Created new endpoint: **GET /api/timetables/check-teacher-conflict**
 }
 ```
 
-### 3. Bug Fix: Save Function Crash
+### 4. Bug Fix: Save Function Crash
 **Error:** `TypeError: Cannot read properties of undefined (reading 'length')`
 
 **Fixed:** Added optional chaining to handle undefined arrays safely.
+
+### 5. Auto-Save Integration (Dec 2025)
+
+**Enhancement:** Drag operations now auto-save to database immediately.
+- Eliminates need for manual "Save Changes" button click
+- Ensures conflict detection always checks current database state
+- Prevents data loss from page refresh or navigation
+- Seamless UX with instant persistence
+
+**Implementation in TimetableEditor:**
+```javascript
+const updateSlotPosition = async (slotId, newDay, newStartTime, newEndTime) => {
+  // ... state updates ...
+  
+  // AUTO-SAVE: Immediately persist to database
+  await autoSaveAfterDrag()
+}
+```
 
 ---
 

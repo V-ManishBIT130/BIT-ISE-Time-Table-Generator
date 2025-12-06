@@ -1,4 +1,5 @@
 import express from 'express'
+import mongoose from 'mongoose'
 import Timetable from '../models/timetable_model.js'
 import { generateTimetables } from '../algorithms/timetable_generator.js'
 import { loadSectionsAndInitialize } from '../algorithms/step1_load_sections.js'
@@ -294,23 +295,58 @@ router.get('/check-teacher-conflict', async (req, res) => {
     
     console.log(`   📏 Checking time range: ${start_time} - ${checkEndTime}`)
     
+    // CRITICAL FIX: Convert string ID to ObjectId for proper MongoDB comparison
+    const excludeTimetableObjectId = exclude_timetable_id ? 
+      (mongoose.Types.ObjectId.isValid(exclude_timetable_id) ? 
+        new mongoose.Types.ObjectId(exclude_timetable_id) : 
+        null) : 
+      null
+    
+    console.log(`   🔍 [BACKEND] Exclude timetable ID:`, {
+      original: exclude_timetable_id,
+      objectId: excludeTimetableObjectId?.toString()
+    })
+    
     // Find all timetables (excluding current one)
-    const timetables = await Timetable.find({
-      _id: { $ne: exclude_timetable_id }
-    }).populate('section_id', 'section_name sem')
+    const query = excludeTimetableObjectId ? 
+      { _id: { $ne: excludeTimetableObjectId } } : 
+      {}
+    
+    const timetables = await Timetable.find(query).populate('section_id', 'section_name sem')
+    
+    console.log(`   📚 [BACKEND] Found ${timetables.length} timetables to check`)
+    console.log(`   📋 [BACKEND] Timetable IDs being checked:`, timetables.map(tt => ({
+      id: tt._id.toString(),
+      section: tt.section_name
+    })))
     
     // Check theory slots for TIME OVERLAP
     for (const tt of timetables) {
       if (tt.theory_slots && Array.isArray(tt.theory_slots)) {
         for (const slot of tt.theory_slots) {
+          // CRITICAL FIX: Properly exclude the slot being moved
+          const slotIdStr = slot._id?.toString()
+          const shouldExclude = exclude_slot_id && slotIdStr === exclude_slot_id
+          
+          if (shouldExclude) {
+            console.log('   ⏭️  [BACKEND] Skipping excluded slot:', {
+              slotId: slotIdStr,
+              subject: slot.subject_name,
+              section: tt.section_name,
+              time: `${slot.start_time}-${slot.end_time}`
+            })
+            continue // Skip this slot - it's the one being moved
+          }
+          
           if (slot.teacher_id?.toString() === teacher_id &&
-              slot.day === day &&
-              slot._id?.toString() !== exclude_slot_id) {
+              slot.day === day) {
             // Check if times overlap
             if (timesOverlap(start_time, checkEndTime, slot.start_time, slot.end_time)) {
               console.log('   ❌ [BACKEND] Time overlap conflict found in theory slots!', {
                 conflictTime: `${slot.start_time}-${slot.end_time}`,
-                requestedTime: `${start_time}-${checkEndTime}`
+                requestedTime: `${start_time}-${checkEndTime}`,
+                conflictSlotId: slotIdStr,
+                excludeSlotId: exclude_slot_id
               })
               return res.json({
                 success: true,
