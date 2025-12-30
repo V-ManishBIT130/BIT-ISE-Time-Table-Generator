@@ -14,6 +14,7 @@ import TimetableGenerator from './components/TimetableGenerator'
 import TimetableEditor from './components/TimetableEditor'
 import TeacherTimetableView from './components/TeacherTimetableView'
 import LabsView from './components/LabsView'
+import ClassroomView from './components/ClassroomView'
 import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 
@@ -58,6 +59,7 @@ function App() {
           <Route path="view" element={<TimetableViewer />} />
           <Route path="editor" element={<TimetableEditor />} />
           <Route path="teacher-view" element={<TeacherTimetableView />} />
+          <Route path="classroom-view" element={<ClassroomView />} />
           <Route path="labs-view" element={<LabsView />} />
           
         </Route>

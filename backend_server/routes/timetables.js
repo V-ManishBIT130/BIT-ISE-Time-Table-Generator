@@ -421,7 +421,7 @@ router.get('/check-teacher-conflict', async (req, res) => {
  */
 router.get('/available-rooms', async (req, res) => {
   try {
-    const { day, start_time, end_time, sem_type, academic_year, exclude_timetable_id } = req.query
+    const { day, start_time, end_time, sem_type, academic_year, exclude_timetable_id, exclude_slot_id } = req.query
     
     if (!day || !start_time || !end_time || !sem_type || !academic_year) {
       return res.status(400).json({
@@ -430,7 +430,7 @@ router.get('/available-rooms', async (req, res) => {
       })
     }
     
-    console.log('🔍 [AVAILABLE ROOMS] Query:', { day, start_time, end_time, sem_type, academic_year })
+    console.log('🔍 [AVAILABLE ROOMS] Query:', { day, start_time, end_time, sem_type, academic_year, exclude_slot_id })
     
     // Helper: Check if two time ranges overlap
     const timesOverlap = (start1, end1, start2, end2) => {
@@ -457,9 +457,18 @@ router.get('/available-rooms', async (req, res) => {
     const occupiedRooms = new Set()
     
     console.log(`   📏 Checking for overlaps with time range: ${start_time} - ${end_time}`)
+    if (exclude_slot_id) {
+      console.log(`   🔍 Excluding slot: ${exclude_slot_id}`)
+    }
     
     for (const tt of timetables) {
       for (const slot of tt.theory_slots || []) {
+        // Skip the slot being edited
+        if (exclude_slot_id && slot._id.toString() === exclude_slot_id) {
+          console.log(`   ⏭️  Skipping excluded slot: ${slot.subject_shortform} at ${slot.start_time}-${slot.end_time}`)
+          continue
+        }
+        
         if (slot.day === day && slot.classroom_name) {
           // Check if this slot overlaps with the requested time range
           if (timesOverlap(start_time, end_time, slot.start_time, slot.end_time)) {
@@ -934,23 +943,30 @@ router.patch('/:timetableId/theory-slot/:slotId/classroom', async (req, res) => 
     
     console.log('   ✅ No conflicts - room is available!')
     
-    // Update slot position if current position was provided (unsaved move)
+    // CRITICAL FIX: Only update slot position if it's ACTUALLY different from database
+    // This prevents reverting positions after auto-save from drag-and-drop
     if (current_day && current_start_time) {
-      console.log('📍 [UPDATE POSITION] Updating slot position to match frontend:', {
-        oldDay: slot.day,
-        oldTime: slot.start_time,
-        newDay: current_day,
-        newTime: current_start_time
-      })
-      slot.day = current_day
-      slot.start_time = current_start_time
-      // Update end time based on duration
-      const duration = slot.duration_hours || 1
-      const [h, m] = current_start_time.split(':').map(Number)
-      const totalMinutes = h * 60 + m + (duration * 60)
-      const newHours = Math.floor(totalMinutes / 60)
-      const newMinutes = totalMinutes % 60
-      slot.end_time = `${newHours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`
+      const positionChanged = slot.day !== current_day || slot.start_time !== current_start_time
+      
+      if (positionChanged) {
+        console.log('📍 [UPDATE POSITION] Slot position differs from DB - updating to match frontend:', {
+          dbDay: slot.day,
+          dbTime: slot.start_time,
+          frontendDay: current_day,
+          frontendTime: current_start_time
+        })
+        slot.day = current_day
+        slot.start_time = current_start_time
+        // Update end time based on duration
+        const duration = slot.duration_hours || 1
+        const [h, m] = current_start_time.split(':').map(Number)
+        const totalMinutes = h * 60 + m + (duration * 60)
+        const newHours = Math.floor(totalMinutes / 60)
+        const newMinutes = totalMinutes % 60
+        slot.end_time = `${newHours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`
+      } else {
+        console.log('✓ [SKIP POSITION UPDATE] Slot position in DB matches frontend - no update needed')
+      }
     }
     
     // Update the classroom

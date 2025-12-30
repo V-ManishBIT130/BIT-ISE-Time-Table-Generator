@@ -1,8 +1,10 @@
-# Frontend Cache and State Management Fix - November 12, 2025
+# Frontend Cache and State Management Fix
+
+**Last Updated:** December 30, 2025
 
 ## 📋 Overview
 
-This document consolidates all frontend cache invalidation and state management fixes implemented to resolve room availability display issues in the Timetable Editor. The fixes transform the user experience from a 5-step manual process to instant, real-time updates.
+This document consolidates all frontend cache invalidation, state management, and automatic persistence fixes implemented to resolve room availability display issues and eliminate manual save operations in the Timetable Editor. The fixes transform the user experience from a five-step manual process requiring explicit saves to instant, real-time updates with automatic database synchronization.
 
 ---
 
@@ -432,16 +434,25 @@ String comparison fails with ObjectId types. Always use:
 - `.equals()` method for ObjectId comparison
 - Detailed logging to verify exclusion logic
 
-### 6. Auto-Save Eliminates State Desync (Dec 2025)
+### 6. Auto-Save Eliminates State Desync (December 2025)
 Automatic database persistence after every operation:
 - Prevents data loss from page refresh
 - Ensures conflict detection uses current state
 - Improves UX by removing manual save steps
+- Applies to: drag-drop, classroom changes, break operations, undo, redo
 - Trade-off: More API calls, but negligible performance impact
+
+### 7. Always-On Classroom Visibility (December 2025)
+Critical information made immediately accessible:
+- Available classrooms displayed by default in all empty slots
+- Removed toggle button that users enabled every session anyway
+- Compact badge design shows all rooms without overwhelming interface
+- Eliminates extra click required to access essential scheduling data
+- Workflow acceleration: instant visibility of room availability
 
 ---
 
 **Status:** ✅ Fully Implemented and Tested  
-**Date:** November 12, 2025 (Updated: December 6, 2025)  
+**Date:** November 12, 2025 (Updated: December 30, 2025)  
 **Impact:** HIGH - Transforms core editing workflow  
 **Complexity:** Medium - Pure frontend logic with minimal backend changes

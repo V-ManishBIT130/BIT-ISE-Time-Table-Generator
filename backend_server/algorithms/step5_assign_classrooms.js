@@ -21,6 +21,18 @@ import Timetable from '../models/timetable_model.js'
 import Classroom from '../models/dept_class_model.js'
 
 /**
+ * Helper: Shuffle array for random distribution
+ */
+function shuffleArray(array) {
+  const shuffled = [...array]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
+/**
  * Helper: Build global room usage tracker
  * Key format: "day-startTime-roomNo"
  * Value: { sectionName, subjectShortform, slotType }
@@ -87,7 +99,10 @@ function findAvailableRoom(day, startTime, duration, classrooms, roomUsageTracke
   // Calculate number of 30-minute segments
   const numSegments = Math.ceil(duration * 2) // 1hr=2, 1.5hr=3, 2hr=4, etc.
   
-  for (const room of classrooms) {
+  // RANDOMIZE: Shuffle classrooms to prevent deterministic "first available" selection
+  const shuffledClassrooms = shuffleArray(classrooms)
+  
+  for (const room of shuffledClassrooms) {
     let roomAvailable = true
     
     // Check ALL 30-minute segments for this room

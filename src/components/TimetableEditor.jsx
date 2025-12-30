@@ -6,11 +6,11 @@ import DepartmentHeader from './DepartmentHeader'
 import './TimetableEditor.css'
 
 /**
- * TIMETABLE EDITOR - DRAG & DROP WITH PROTECTED SLOTS
+ * TIMETABLE EDITOR - DRAG & DROP WITH PROTECTED TIME SLOTS
  * 
  * CRITICAL FIX (Nov 2025):
  * ========================
- * Labs and Fixed Slots (OEC/PEC) are now PROTECTED from being overridden.
+ * Labs and Fixed Slots (OEC/PEC) TIME SLOTS are now PROTECTED from being overridden.
  * 
  * Changes Made:
  * 1. Added HARD BLOCK conflict detection for lab slots
@@ -20,13 +20,26 @@ import './TimetableEditor.css'
  * 5. Enhanced CSS: thicker borders + glow effect for protected slots
  * 6. Alert modal changed: Hard blocks show error (no "OK to proceed")
  * 
- * Protected Slots:
- * - Lab Sessions: Cannot be moved or overridden (orange with 🧪)
- * - Fixed Slots (OEC/PEC): Cannot be moved or overridden (teal with 🔒)
+ * LATEST UPDATE (Dec 2025): CLASSROOM FLEXIBILITY FOR FIXED SLOTS
+ * ==================================================================
+ * Fixed slots (OEC/PEC) now allow CLASSROOM changes while TIME remains locked.
+ * This is practical because only the time slot is fixed by policy, not the room.
  * 
- * Theory slots can still be dragged, but will be BLOCKED if:
- * - Target time overlaps with any lab session
- * - Target time overlaps with any fixed slot (OEC/PEC)
+ * Slot Editing Rules:
+ * -------------------
+ * - Lab Sessions: TIME locked, ROOM locked (cannot move or change classrooms)
+ * - Fixed Slots (OEC/PEC): TIME locked, ROOM editable ✨ (can change classroom, cannot move time)
+ * - Theory Slots: TIME editable, ROOM editable (fully draggable and editable)
+ * 
+ * Movement Restrictions (Drag & Drop):
+ * - Lab sessions: Cannot be moved (orange with 🧪)
+ * - Fixed slots: Cannot be moved (teal with 🔒)
+ * - Theory slots can be dragged, but BLOCKED if target time overlaps with labs or fixed slots
+ * 
+ * Classroom Assignment (Click Badge):
+ * - Lab sessions: Not clickable (rooms assigned in Step 3)
+ * - Fixed slots: CLICKABLE - can change classroom with conflict detection ✨
+ * - Theory slots: CLICKABLE - can change classroom with conflict detection
  */
 
 // Draggable Slot Component
@@ -124,16 +137,11 @@ function EmptyCell({ day, time, addBreakMode, onSlotClick, showAvailableClassroo
           {loading || availableRooms === null ? (
             <div className="editor-loading-rooms">⏳</div>
           ) : availableRooms.length > 0 ? (
-            <>
-              <div className="rooms-list">
-                {availableRooms.slice(0, 2).map((room, idx) => (
-                  <span key={idx} className="room-badge">{room.room_no}</span>
-                ))}
-                {availableRooms.length > 2 && (
-                  <span className="room-more">+{availableRooms.length - 2}</span>
-                )}
-              </div>
-            </>
+            <div className="rooms-list" title="⚠️ These rooms are available for 30-min slots only. For 1-hour classes, both consecutive 30-min slots must have the same room available.">
+              {availableRooms.map((room, idx) => (
+                <span key={idx} className="room-badge">{room.room_no}</span>
+              ))}
+            </div>
           ) : (
             <div className="editor-no-rooms">✗</div>
           )}
@@ -167,7 +175,7 @@ function TimetableEditor() {
   // NEW: State for unscheduled subjects and available classrooms
   const [unscheduledSubjects, setUnscheduledSubjects] = useState([])
   const [showUnscheduledPanel, setShowUnscheduledPanel] = useState(false)
-  const [showAvailableClassrooms, setShowAvailableClassrooms] = useState(false)
+  const [showAvailableClassrooms, setShowAvailableClassrooms] = useState(true) // Always show by default
   const [availableClassroomsCache, setAvailableClassroomsCache] = useState({})
 
   // NEW: Timetable version counter - increments on every state change to trigger EmptyCell refresh
@@ -1023,64 +1031,26 @@ function TimetableEditor() {
           : s
       )
 
-      // CRITICAL FIX: Clear cache BEFORE updating timetable state
-      // This ensures cache is cleared synchronously before EmptyCell tries to refetch
+      // CRITICAL FIX: Clear ENTIRE cache when slot is moved
+      // This ensures ALL empty slots refresh with current availability (not just specific ones)
       if (classroomsAssigned && hadClassroom) {
-        console.log('🗑️ [CLASSROOM RESET] Slot moved - clearing old slot cache BEFORE state update:', {
+        console.log('🗑️ [CLASSROOM RESET] Slot moved - clearing ENTIRE cache:', {
           oldRoom: slot.classroom_name,
           oldPosition: `${slot.day} ${slot.start_time}`,
           slot: slot.subject_shortform,
           duration: slot.duration_hours
         })
 
-        // Invalidate cache for BOTH 30-min halves of the old position
-        const oldStartCacheKey = `${slot.day}_${convertTo12Hour(slot.start_time)}`
-        console.log(`🧹 [CACHE INVALIDATE] Clearing cache for old start: ${oldStartCacheKey}`)
-        console.log(`   Old room being freed: ${slot.classroom_name}`)
-        console.log(`   Slot duration: ${slot.duration_hours} hour(s)`)
-
-        // Add to bypass list so fetchAvailableClassrooms won't use stale cache
-        bypassCacheKeys.current.add(oldStartCacheKey)
-
-        // If this is a 1-hour slot, also clear the second 30-min half
-        if (slot.duration_hours === 1) {
-          const [hours, minutes] = slot.start_time.split(':').map(Number)
-          const midMinutes = hours * 60 + minutes + 30
-          const midHours = Math.floor(midMinutes / 60)
-          const midMins = midMinutes % 60
-          const midTime24 = `${String(midHours).padStart(2, '0')}:${String(midMins).padStart(2, '0')}`
-          const midCacheKey = `${slot.day}_${convertTo12Hour(midTime24)}`
-
-          console.log(`🧹 [CACHE INVALIDATE] Also clearing cache for second half: ${midCacheKey}`)
-          console.log(`   Both halves freed: ${slot.day} ${convertTo12Hour(slot.start_time)}-${convertTo12Hour(slot.end_time)}`)
-          console.log(`   Room ${slot.classroom_name} should now show as available`)
-
-          // Add second half to bypass list
-          bypassCacheKeys.current.add(midCacheKey)
-
-          setAvailableClassroomsCache(prev => {
-            const newCache = { ...prev }
-            const hadFirstHalf = oldStartCacheKey in prev
-            const hadSecondHalf = midCacheKey in prev
-            delete newCache[oldStartCacheKey]
-            delete newCache[midCacheKey]
-            console.log(`   ✅ Cache cleared BEFORE state update - 1st half cached: ${hadFirstHalf}, 2nd half cached: ${hadSecondHalf}`)
-            console.log(`   ⚡ Added to bypass list: [${oldStartCacheKey}, ${midCacheKey}]`)
-            console.log(`   📊 Remaining cache keys:`, Object.keys(newCache))
-            return newCache
-          })
-        } else {
-          // For non-1-hour slots, just clear the start time
-          setAvailableClassroomsCache(prev => {
-            const newCache = { ...prev }
-            const wasCached = oldStartCacheKey in prev
-            delete newCache[oldStartCacheKey]
-            console.log(`   ✅ Cache cleared BEFORE state update - Was cached: ${wasCached}`)
-            console.log(`   ⚡ Added to bypass list: [${oldStartCacheKey}]`)
-            console.log(`   📊 Remaining cache keys:`, Object.keys(newCache))
-            return newCache
-          })
-        }
+        console.log(`🧹 [FULL CACHE CLEAR] Clearing ALL ${Object.keys(availableClassroomsCache).length} cached entries`)
+        console.log(`   Reason: Room ${slot.classroom_name} freed - all slots need to refresh`)
+        
+        // Clear ALL cache entries (not just specific keys)
+        setAvailableClassroomsCache({})
+        
+        // Clear bypass list since cache is now empty
+        bypassCacheKeys.current.clear()
+        
+        console.log(`   ✅ Full cache cleared - all EmptyCells will refetch fresh data`)
       }
 
       // NOW update the timetable state (this increments version counter)
@@ -1088,6 +1058,41 @@ function TimetableEditor() {
         ...prev,
         theory_slots: updatedTheorySlots
       }))
+      
+      // CRITICAL: Also clear cache for NEW position if room was assigned
+      // This ensures the new position shows as occupied immediately
+      if (classroomsAssigned && hadClassroom) {
+        const newStartCacheKey = `${newDay}_${convertTo12Hour(newStartTime)}`
+        console.log(`🧹 [CACHE] Also clearing NEW position cache: ${newStartCacheKey}`)
+        bypassCacheKeys.current.add(newStartCacheKey)
+        
+        if (slot.duration_hours === 1) {
+          const [hours, minutes] = newStartTime.split(':').map(Number)
+          const midMinutes = hours * 60 + minutes + 30
+          const midHours = Math.floor(midMinutes / 60)
+          const midMins = midMinutes % 60
+          const midTime24 = `${String(midHours).padStart(2, '0')}:${String(midMins).padStart(2, '0')}`
+          const newMidCacheKey = `${newDay}_${convertTo12Hour(midTime24)}`
+          console.log(`🧹 [CACHE] Also clearing NEW second half: ${newMidCacheKey}`)
+          bypassCacheKeys.current.add(newMidCacheKey)
+        }
+        
+        // Force cache clear for both old and new positions
+        setAvailableClassroomsCache(prev => {
+          const newCache = { ...prev }
+          delete newCache[newStartCacheKey]
+          if (slot.duration_hours === 1) {
+            const [hours, minutes] = newStartTime.split(':').map(Number)
+            const midMinutes = hours * 60 + minutes + 30
+            const midHours = Math.floor(midMinutes / 60)
+            const midMins = midMinutes % 60
+            const midTime24 = `${String(midHours).padStart(2, '0')}:${String(midMins).padStart(2, '0')}`
+            const newMidCacheKey = `${newDay}_${convertTo12Hour(midTime24)}`
+            delete newCache[newMidCacheKey]
+          }
+          return newCache
+        })
+      }
 
       // Track change
       setChangeHistory(prev => [...prev, {
@@ -1123,13 +1128,44 @@ function TimetableEditor() {
         console.log('🔄 [CACHE STATUS] Old position cache invalidated - will show freed classroom on next fetch')
       }
 
+      // 🆕 AUTO-SAVE: Immediately save to database after drag-and-drop
+      await autoSave()
+
     } catch (err) {
       console.error('❌ [UPDATE ERROR] Failed to update slot:', err)
       alert('Failed to update slot position')
     }
   }
 
-  // Save all changes to database
+  // Auto-save function - saves to database immediately
+  const autoSave = async () => {
+    if (!timetable) return
+
+    console.log('💾 [AUTO-SAVE] Saving changes to database...')
+    
+    try {
+      const response = await axios.put(
+        `/api/timetables/${timetable._id}/update-slots`,
+        {
+          theory_slots: timetable.theory_slots || [],
+          breaks: timetable.breaks || []
+        }
+      )
+
+      if (response.data.success) {
+        console.log('✅ [AUTO-SAVE SUCCESS] Changes saved automatically!')
+        setUnsavedChanges(0)
+        setChangeHistory([])
+      } else {
+        console.error('❌ [AUTO-SAVE FAILED] Backend returned failure')
+      }
+    } catch (err) {
+      console.error('❌ [AUTO-SAVE ERROR] Failed to auto-save:', err)
+      // Don't show alert for auto-save failures, just log it
+    }
+  }
+
+  // Save all changes to database (manual save button)
   const saveChanges = async () => {
     if (unsavedChanges === 0) return
 
@@ -1262,6 +1298,9 @@ function TimetableEditor() {
     }
 
     setUnsavedChanges(prev => prev + 1)
+    
+    // 🆕 AUTO-SAVE: Immediately save to database after break deletion
+    autoSave()
   }
 
   // Handle slot click for adding break
@@ -1296,27 +1335,37 @@ function TimetableEditor() {
     })
 
     setUnsavedChanges(prev => prev + 1)
+    
+    // 🆕 AUTO-SAVE: Immediately save to database after break addition
+    autoSave()
+    
     setAddBreakMode(false) // Deactivate after adding
 
     console.log('✅ [ADD BREAK SUCCESS] Break added to', `${day} ${convertTo12Hour(startTime)}`)
   }
 
   // Fetch available rooms for a slot
-  const fetchAvailableRooms = async (day, startTime, endTime) => {
-    console.log('🔍 [FETCH ROOMS] Getting available classrooms for', { day, startTime, endTime })
+  const fetchAvailableRooms = async (day, startTime, endTime, slotId = null) => {
+    console.log('🔍 [FETCH ROOMS] Getting available classrooms for', { day, startTime, endTime, slotId })
 
     setLoadingRooms(true)
     try {
-      const response = await axios.get('/api/timetables/available-rooms', {
-        params: {
-          day,
-          start_time: startTime,
-          end_time: endTime,
-          sem_type: semType,
-          academic_year: timetable.academic_year,
-          exclude_timetable_id: timetable._id
-        }
-      })
+      const params = {
+        day,
+        start_time: startTime,
+        end_time: endTime,
+        sem_type: semType,
+        academic_year: timetable.academic_year,
+        exclude_timetable_id: timetable._id
+      }
+      
+      // CRITICAL: Exclude the current slot being edited so it doesn't block itself
+      if (slotId) {
+        params.exclude_slot_id = slotId
+        console.log('   🔍 Excluding current slot from room check:', slotId)
+      }
+      
+      const response = await axios.get('/api/timetables/available-rooms', { params })
 
       if (response.data.success) {
         console.log('✅ [ROOMS FETCHED]', response.data.available_rooms.length, 'rooms available')
@@ -1421,8 +1470,9 @@ function TimetableEditor() {
     setShowRoomModal(true)
 
     // Fetch available rooms for this slot's CURRENT time range (full duration)
+    // CRITICAL: Pass slot ID to exclude this slot from occupancy check
     console.log('🔍 [ROOM MODAL] Fetching rooms for FULL duration:', currentSlot.start_time, '-', currentSlot.end_time)
-    await fetchAvailableRooms(currentSlot.day, currentSlot.start_time, currentSlot.end_time)
+    await fetchAvailableRooms(currentSlot.day, currentSlot.start_time, currentSlot.end_time, currentSlot._id)
   }
 
   // Update classroom assignment
@@ -1453,49 +1503,22 @@ function TimetableEditor() {
         const slotStartTime = selectedSlotForRoom.start_time
         const slotDuration = selectedSlotForRoom.duration_hours || 1
 
-        // CRITICAL FIX: Clear cache for this slot's time (for BOTH halves if 1-hour)
-        console.log('🧹 [CACHE CLEAR] Clearing cache after classroom change')
+        // CRITICAL FIX: Clear ENTIRE cache after classroom assignment
+        // This ensures ALL empty slots refresh with updated availability
+        console.log('🧹 [FULL CACHE CLEAR] Clearing cache after classroom assignment')
         console.log(`   Slot: ${slotDay} ${convertTo12Hour(slotStartTime)}`)
         console.log(`   Duration: ${slotDuration} hour(s)`)
         console.log(`   Old room: ${oldRoomName || 'None'} → New room: ${newRoomName}`)
+        console.log(`   Clearing ALL ${Object.keys(availableClassroomsCache).length} cached entries`)
+        console.log(`   Reason: Room assignment changed - all slots need to refresh`)
 
-        // Clear first half cache
-        const firstHalfKey = `${slotDay}_${convertTo12Hour(slotStartTime)}`
-        console.log(`   Clearing cache key: ${firstHalfKey}`)
-
-        // Add to bypass list (in case EmptyCell tries to fetch during state update batching)
-        bypassCacheKeys.current.add(firstHalfKey)
-
-        setAvailableClassroomsCache(prev => {
-          const newCache = { ...prev }
-          delete newCache[firstHalfKey]
-          return newCache
-        })
-
-        // If 1-hour slot, also clear second half cache
-        if (slotDuration === 1) {
-          const [hours, minutes] = slotStartTime.split(':').map(Number)
-          const midMinutes = hours * 60 + minutes + 30
-          const midHours = Math.floor(midMinutes / 60)
-          const midMins = midMinutes % 60
-          const midTime24 = `${String(midHours).padStart(2, '0')}:${String(midMins).padStart(2, '0')}`
-          const secondHalfKey = `${slotDay}_${convertTo12Hour(midTime24)}`
-
-          console.log(`   Also clearing second half: ${secondHalfKey}`)
-
-          // Add second half to bypass list
-          bypassCacheKeys.current.add(secondHalfKey)
-
-          setAvailableClassroomsCache(prev => {
-            const newCache = { ...prev }
-            delete newCache[secondHalfKey]
-            return newCache
-          })
-
-          console.log(`   ⚡ Added to bypass list: [${firstHalfKey}, ${secondHalfKey}]`)
-        } else {
-          console.log(`   ⚡ Added to bypass list: [${firstHalfKey}]`)
-        }
+        // Clear ALL cache entries
+        setAvailableClassroomsCache({})
+        
+        // Clear bypass list
+        bypassCacheKeys.current.clear()
+        
+        console.log(`   ✅ Full cache cleared - all EmptyCells will refetch fresh data`)
 
         // Update local state
         const updatedTheorySlots = timetable.theory_slots.map(s =>
@@ -1521,9 +1544,13 @@ function TimetableEditor() {
           newRoomName
         })
 
-        setUnsavedChanges(prev => prev + 1)
+        // NOTE: No need to call autoSave() here - classroom was already saved by the PATCH request above
+        // The backend directly updated the database, so we just update local state to match
+        // Auto-saving here would send stale frontend state and overwrite the classroom assignment
+        setUnsavedChanges(0) // Reset to 0 since backend is already synced
         setShowRoomModal(false)
         setSelectedSlotForRoom(null)
+        
       } else {
         console.error('❌ [UPDATE FAILED]', response.data.message)
         setError(response.data.message || 'Failed to update classroom')
@@ -1673,6 +1700,9 @@ function TimetableEditor() {
       default:
         console.warn('⚠️ [UNDO] Unknown action type:', action.type)
     }
+    
+    // 🆕 AUTO-SAVE: Immediately save to database after undo operation
+    autoSave()
   }
 
   const handleRedo = () => {
@@ -1796,6 +1826,9 @@ function TimetableEditor() {
       default:
         console.warn('⚠️ [REDO] Unknown action type:', action.type)
     }
+    
+    // 🆕 AUTO-SAVE: Immediately save to database after redo operation
+    autoSave()
   }
 
   // Build grid data
@@ -2012,22 +2045,24 @@ function TimetableEditor() {
         </div>
 
         {/* Show clickable classroom badge if step >= 5 and classroom assigned */}
-        {classroomsAssigned && cell.type === 'theory' && slot.classroom_name && !slot.is_project && (
+        {/* ALLOWS classroom editing for BOTH regular theory AND fixed slots (time remains fixed for fixed slots) */}
+        {classroomsAssigned && (cell.type === 'theory' || cell.type === 'fixed') && slot.classroom_name && !slot.is_project && (
           <div
             className={`classroom-badge clickable ${slot.is_fixed_slot ? 'fixed-classroom' : 'regular-classroom'}`}
             onClick={() => handleChangeRoom(slot)}
-            title="Click to change classroom"
+            title={slot.is_fixed_slot ? "Click to change classroom (time slot remains fixed)" : "Click to change classroom"}
           >
             📍 {slot.classroom_name} ▼
           </div>
         )}
 
         {/* Show clickable warning badge if step >= 5 but classroom NOT assigned */}
-        {classroomsAssigned && cell.type === 'theory' && !slot.classroom_name && !slot.is_project && (
+        {/* ALLOWS classroom assignment for BOTH regular theory AND fixed slots */}
+        {classroomsAssigned && (cell.type === 'theory' || cell.type === 'fixed') && !slot.classroom_name && !slot.is_project && (
           <div
             className="warning-badge clickable"
             onClick={() => handleChangeRoom(slot)}
-            title="Click to assign classroom"
+            title={slot.is_fixed_slot ? "Click to assign classroom (time slot remains fixed)" : "Click to assign classroom"}
           >
             ⚠️ Needs Room (Click)
           </div>
@@ -2070,7 +2105,20 @@ function TimetableEditor() {
       <div className="editor-header">
         {/* Instructions */}
         {timetable && timetable.generation_metadata?.current_step >= 5 ? (
-          <p>✏️ Drag theory slots to reschedule. <strong>Note:</strong> Moving a slot will clear its classroom assignment - you'll need to reassign a room.</p>
+          <>
+            <p>✏️ Drag theory slots to reschedule. <strong>Note:</strong> Moving a slot will clear its classroom assignment - you'll need to reassign a room.</p>
+            <p className="info-message" style={{padding: '8px', marginTop: '8px'}}>
+              ℹ️ <strong>Green room badges</strong> show 30-minute availability. For 1-hour classes, you need the <strong>same room free in BOTH</strong> consecutive 30-min slots.
+              If no rooms appear when assigning, it means no single room is free for the full duration.
+            </p>
+            {unsavedChanges > 0 && (
+              <p className="warning-message">
+                ⚠️ <strong>Important:</strong> You have {unsavedChanges} unsaved change(s). 
+                Click "Save Changes" to persist your edits to the database. 
+                The "Show Available Classrooms" feature will reflect your changes only after saving.
+              </p>
+            )}
+          </>
         ) : timetable && timetable.generation_metadata?.current_step === 4 ? (
           <p className="warning-message">⚠️ Editing is disabled until Step 5 (Classroom Assignment) is completed. Please run Step 5 first to assign classrooms, then you can edit the timetable.</p>
         ) : (
@@ -2151,13 +2199,6 @@ function TimetableEditor() {
               title="Show/hide unscheduled subjects"
             >
               📋 Unscheduled ({unscheduledSubjects.length})
-            </button>
-            <button
-              className={`btn-feature ${showAvailableClassrooms ? 'active' : ''}`}
-              onClick={() => setShowAvailableClassrooms(!showAvailableClassrooms)}
-              title="Show/hide available classrooms in empty slots"
-            >
-              🏫 Show Available Rooms
             </button>
             {timetable && timetable.generation_metadata?.current_step >= 5 && (
               <button

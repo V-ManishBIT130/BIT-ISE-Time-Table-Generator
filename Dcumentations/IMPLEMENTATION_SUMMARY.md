@@ -74,24 +74,49 @@
 - Responsive design
 
 ### Phase 7: Recent Enhancements (December 2025)
-✅ **Auto-Save Implementation**
-- Automatic database persistence after every drag operation
-- Eliminates manual save button requirement
-- Prevents data loss and state desync
-- Implementation: `autoSaveAfterDrag()` function
+
+✅ **Automatic Database Persistence**
+- Every edit operation immediately saves to database
+- Applied to: drag-drop moves, classroom assignments, break additions/deletions, undo/redo
+- Optimistic UI updates for instant feedback
+- Eliminates manual "Save Changes" button requirement
+- Prevents accidental data loss from unsaved changes
+
+✅ **Always-On Classroom Visibility**
+- Empty slots automatically display all available classrooms by default
+- Removed toggle button for "Show Available Classrooms" feature
+- Compact badge design for multiple room display
+- Instant visual feedback for room availability during editing
+
+✅ **Room Availability Accuracy**
+- Added slot exclusion parameter to backend availability check
+- Current slot being edited excluded from occupancy calculation
+- Shows correct available rooms when reassigning classrooms
+- Empty cells check database, modals check frontend state with exclusion
 
 ✅ **Conflict Detection Improvements**
-- Fixed ObjectId comparison in backend (string vs ObjectId)
-- Proper timetable exclusion using `mongoose.Types.ObjectId`
-- Added detailed logging for debugging
+- Fixed ObjectId comparison in backend (string vs ObjectId conversion)
+- Proper timetable exclusion using mongoose ObjectId type
+- Added detailed logging for debugging conflict scenarios
 - Accurate conflict detection within same section
 
 ✅ **Metadata Calculation Fix**
-- Fixed theory_scheduling_summary to include fixed slots
-- `total_scheduled` now shows: fixed + newly scheduled
-- Viewer displays correct "X/Y SCHEDULED" counts
-- Example: Sem 7 now shows 4/4 instead of 3/4
-- Created `fix_metadata.js` script for existing timetables
+- Theory scheduling summary now includes both fixed and newly scheduled slots
+- Display shows correct scheduled/total ratio
+- Example: Semester 7 now shows four out of four instead of three out of four
+- Created maintenance script for updating existing timetable metadata
+
+✅ **Success Rate Display Fix**
+- Capped success rate calculation at one hundred percent maximum
+- Fixed denominator to use total subjects found instead of subjects to schedule
+- Prevents impossible success rates above one hundred percent
+- Accurate reflection of scheduling achievement
+
+✅ **Algorithm File Organization**
+- Removed duplicate step5_assign_teachers.js file
+- Clarified Step 5 handles classroom assignment
+- Clarified Step 6 handles teacher assignment
+- Clean algorithm folder with proper step sequence
 
 ## API Endpoints
 
