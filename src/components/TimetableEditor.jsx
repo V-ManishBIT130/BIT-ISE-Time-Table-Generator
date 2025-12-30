@@ -1138,17 +1138,24 @@ function TimetableEditor() {
   }
 
   // Auto-save function - saves to database immediately
-  const autoSave = async () => {
+  const autoSave = async (overrideData = {}) => {
     if (!timetable) return
 
     console.log('💾 [AUTO-SAVE] Saving changes to database...')
+    
+    // Use override data if provided (to avoid stale state), otherwise use current state
+    const theorySlots = overrideData.theory_slots !== undefined ? overrideData.theory_slots : (timetable.theory_slots || [])
+    const breaks = overrideData.breaks !== undefined ? overrideData.breaks : (timetable.breaks || [])
+    
+    console.log('   Theory slots:', theorySlots.length)
+    console.log('   Breaks:', breaks.length)
     
     try {
       const response = await axios.put(
         `/api/timetables/${timetable._id}/update-slots`,
         {
-          theory_slots: timetable.theory_slots || [],
-          breaks: timetable.breaks || []
+          theory_slots: theorySlots,
+          breaks: breaks
         }
       )
 
@@ -1248,9 +1255,11 @@ function TimetableEditor() {
         isRemoved: true  // Special flag to skip default break
       }
 
+      const updatedBreaks = [...(timetable.breaks || []), removedBreakMarker]
+
       setTimetable(prev => ({
         ...prev,
-        breaks: [...(prev.breaks || []), removedBreakMarker]
+        breaks: updatedBreaks
       }))
 
       // Add to undo stack
@@ -1260,6 +1269,11 @@ function TimetableEditor() {
         startTime: startTime,
         endTime: addHours(startTime, 0.5)
       })
+
+      setUnsavedChanges(prev => prev + 1)
+      
+      // 🔧 CRITICAL FIX: Pass fresh breaks to avoid stale state
+      autoSave({ breaks: updatedBreaks })
 
       console.log('✅ [REMOVE SUCCESS] Default break removed (slot now free)')
     } else {
@@ -1294,13 +1308,13 @@ function TimetableEditor() {
         })
       }
 
+      setUnsavedChanges(prev => prev + 1)
+      
+      // 🔧 CRITICAL FIX: Pass fresh breaks to avoid stale state
+      autoSave({ breaks: updatedBreaks })
+
       console.log('✅ [DELETE SUCCESS] Custom break removed')
     }
-
-    setUnsavedChanges(prev => prev + 1)
-    
-    // 🆕 AUTO-SAVE: Immediately save to database after break deletion
-    autoSave()
   }
 
   // Handle slot click for adding break
@@ -1336,8 +1350,10 @@ function TimetableEditor() {
 
     setUnsavedChanges(prev => prev + 1)
     
-    // 🆕 AUTO-SAVE: Immediately save to database after break addition
-    autoSave()
+    // 🔧 CRITICAL FIX: Pass fresh data to autoSave to avoid stale state race condition
+    // React state updates are async, so we must pass updatedBreaks directly
+    console.log('💾 [SAVE BREAK] Passing fresh breaks array to autoSave:', updatedBreaks.length)
+    autoSave({ breaks: updatedBreaks })
     
     setAddBreakMode(false) // Deactivate after adding
 
@@ -2052,7 +2068,7 @@ function TimetableEditor() {
             onClick={() => handleChangeRoom(slot)}
             title={slot.is_fixed_slot ? "Click to change classroom (time slot remains fixed)" : "Click to change classroom"}
           >
-            📍 {slot.classroom_name} ▼
+            {slot.classroom_name} ▼
           </div>
         )}
 

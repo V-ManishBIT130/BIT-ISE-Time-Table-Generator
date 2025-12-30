@@ -422,7 +422,7 @@ function TimetableViewer() {
               {slot.is_fixed_slot && <div className="fixed-badge">FIXED</div>}
               {slot.is_project !== true && slot.classroom_name && (
                 <div className={`classroom-badge ${slot.is_fixed_slot ? 'fixed-classroom' : 'regular-classroom'}`} title={`Classroom: ${slot.classroom_name}`}>
-                  📍 {slot.classroom_name}
+                  {slot.classroom_name}
                 </div>
               )}
             </div>

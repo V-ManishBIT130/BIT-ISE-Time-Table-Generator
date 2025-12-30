@@ -1,6 +1,6 @@
 # 📚 Lessons Learned & Critical Fixes
 
-**Last Updated:** November 13, 2025
+**Last Updated:** December 31, 2025
 
 ---
 
@@ -15,12 +15,9 @@
 - **Phase 2:** Added section shuffle within semesters → 92% success
 - **Phase 3:** Added semester priority swap (3rd↔5th) → 100% success
 
-**Key Insight:** Pattern analysis of successful runs revealed:
-- Different section orders lead to different slot distributions
-- Sometimes 3rd sem benefits from first pick, sometimes 5th does
-- Day diversity critical: 5th sem spread across 4+ days → guaranteed success
+**Key Insight:** Different section orders lead to different slot distributions. Sometimes 3rd sem benefits from first pick, sometimes 5th does. Day diversity critical: 5th sem spread across 4+ days → guaranteed success.
 
-**Result:** 10,800 unique strategy combinations instead of just 500
+**Result:** 10,800 unique strategy combinations instead of just 500.
 
 ---
 
@@ -28,53 +25,29 @@
 
 **Problem:** Pure random shuffle caused clustering (all labs Monday/Wednesday).
 
-**Solution:** Prefer different days AND different times for consecutive picks:
-- Pick 1: Monday 08:00
-- Pick 2: Prefers Tuesday/Wed/Thu/Fri + different time (not 08:00)
-- Pick 3: Prefers unused day + unused time
-
-**Result:** Natural spread without manual tuning, prevents slot exhaustion.
+**Solution:** Prefer different days AND different times for consecutive picks. Natural spread without manual tuning, prevents slot exhaustion.
 
 ---
 
 ### 3. Time Slot Optimization (Nov 13, 2025)
 
-**Evolution of Time Slots:**
+**Evolution:**
+- **Attempt 1:** 15 flexible slots → too chaotic (70% success)
+- **Attempt 2:** 4 fixed non-overlapping slots → too restrictive (75% success)
+- **Attempt 3:** 8 strategic slots → too many overlaps (85% success)
+- **Final:** 5 proven slots from historical analysis (100% success)
+  - 08:00-10:00, 10:00-12:00, 12:00-14:00, 14:00-16:00, 15:00-17:00
 
-**Attempt 1:** 15 flexible slots with 30-min increments
-- Too many options, created chaos
-- Success rate: 70%
-
-**Attempt 2:** 4 fixed non-overlapping slots (08:00-10:00, 10:00-12:00, 12:00-14:00, 14:00-16:00)
-- Too restrictive, early exhaustion
-- Success rate: 75%
-
-**Attempt 3:** 8 strategic slots with 1-hour offsets
-- Too many overlaps, increased conflicts
-- Success rate: 85%
-
-**Final Solution:** 5 proven slots from historical analysis
-- 08:00-10:00, 10:00-12:00, 12:00-14:00, 14:00-16:00, 15:00-17:00
-- Matches pattern that achieved 100% historically
-- Success rate: 100%
-
-**Key Learning:** Analyzed user's successful output to discover optimal pattern, not invented.
+**Key Learning:** Analyze successful patterns instead of inventing new ones.
 
 ---
 
-### 4. Daily Lab Limit (Nov 13-14, 2025)
+### 4. Daily Lab Limit Evolution (Nov 13-14, 2025)
 
 **Faculty Input Critical:**
-
-**Initial:** Max 2 labs/day (assumed necessary)
-- Result: Only 60% success, too restrictive
-
-**Update 1 (Nov 13):** "3 labs per day is fine with proper breaks"
-- Updated: Max 3 labs/day, still non-consecutive
-- Result: 100% success
-
-**Final (Nov 14):** NO daily limit - only prevent consecutive labs
-- Maximum flexibility, quality maintained through gap enforcement
+- **Initial:** Max 2 labs/day → 60% success (too restrictive)
+- **Update:** Max 3 labs/day → 100% success
+- **Final:** NO daily limit, only prevent consecutive labs → Maximum flexibility
 
 **Key Learning:** Domain experts know feasibility better than algorithms.
 
@@ -82,122 +55,80 @@
 
 ### 5. Room Distribution Balance (Nov 14, 2025)
 
-**Problem Discovered:**
-- Compatible rooms (e.g., 612A and 604A supporting same labs)
-- First room in DB query always selected ("first-fit" strategy)
-- Result: 612A overloaded, 604A underutilized
+**Problem:** Compatible rooms (e.g., 612A and 604A) showed bias toward first-listed room in database query.
 
-**Solution: Shuffled Room Selection**
-- Randomize compatible room order before selection
-- Each scheduling decision gets different room order
-- Result: Even distribution across all compatible rooms
+**Solution:** Randomize compatible room order before selection.
 
-**Key Learning:** Random room selection prevents bias toward first-listed rooms.
+**Result:** Even distribution across all compatible rooms.
 
 ---
 
-### 6. Automatic Database Persistence (December 2025)
+### 6. React State Async Race Conditions (Dec 30-31, 2025)
 
-**User Pain Point:** Manual "Save Changes" button after every edit operation frustrated users.
+**Problem 1: Stale Cache Display**
+Moving slots cleared only specific cache keys. Other empty slots showed stale "✗ No rooms" even though rooms were free. Only page refresh fixed it.
 
-**Problem Analysis:**
-- Drag-and-drop only updated frontend React state
-- Database remained out of sync until explicit save
-- Room availability displays showed stale data from database
-- Users had to remember to save or lose changes
+**Solution:** Clear entire cache on any change instead of partial invalidation. All EmptyCells refetch fresh data.
 
-**Solution: Instant Auto-Save**
-- Added automatic database save after every single operation
-- Drag-drop, classroom assignment, break operations, undo, redo all trigger immediate save
-- Eliminated manual save button requirement entirely
-- Room availability now reflects changes instantly
+**Problem 2: Breaks Not Persisting**
+User adds break → appears in UI → navigate away → break disappeared. 
 
-**Result:** Seamless editing experience, zero data loss risk, instant visual feedback.
+**Root Cause:** React batches state updates asynchronously. Code called `autoSave()` immediately after `setTimetable()`, but state hadn't updated yet:
+```javascript
+setTimetable({ breaks: updatedBreaks })  // Queued
+autoSave()  // Reads OLD timetable.breaks!
+```
 
-**Key Learning:** Modern web applications should auto-save by default - manual saves are outdated UX.
+**Solution:** Pass fresh data directly to autoSave:
+```javascript
+autoSave({ breaks: updatedBreaks })  // Explicit data
+```
 
----
+**Problem 3: Classroom Assignment Overwrites**
+Drag slot (auto-saves ✅) → Assign classroom via PATCH (saves ✅) → Auto-save runs with stale state (overwrites ❌)
 
-### 7. Always-On Classroom Visibility (December 2025)
+**Solution:** Remove redundant auto-save after PATCH. Backend already saved.
 
-**User Feedback:** Clicking "Show Available Classrooms" button every session was tedious.
-
-**Problem:** Critical information hidden behind toggle that users always enabled anyway.
-
-**Solution:**
-- Set classroom visibility to always-on by default
-- Removed toggle button completely
-- Made empty slots automatically display all available rooms
-- Compact badge design shows multiple rooms without overwhelming interface
-
-**Result:** One less click, immediate access to essential scheduling information.
-
-**Key Learning:** If a feature is used every time, make it default behavior and remove the toggle.
+**Key Learning:** Never call functions depending on state immediately after setState. Pass explicit values or use callbacks.
 
 ---
 
-### 8. Algorithm File Organization (December 2025)
+### 7. UX Simplifications (Dec 2025)
 
-**Issue Found:** Two "step5" files in algorithms folder causing confusion.
+**Always-On Classroom Visibility:**
+Users always clicked "Show Available Classrooms" every session. Removed toggle, made it always visible.
 
-**Files:**
-- step5_assign_teachers.js (old duplicate, simple logic, 141 lines)
-- step5_assign_classrooms.js (correct file for Step 5)
-- step6_assign_teachers.js (correct file for Step 6, complete implementation, 452 lines)
+**Academic Year Dropdown:**
+Text input allowed typos and inconsistent formats ("2024-25" vs "2024-2025"). Changed to dropdown with predefined options (2025-2026 through 2029-2030).
 
-**Problem:** Old duplicate remained from earlier refactoring when teacher assignment moved from Step 5 to Step 6.
+**Key Learning:** If a feature is used 100% of the time, make it default and remove the toggle.
 
-**Solution:** Deleted obsolete step5_assign_teachers.js file.
+---
+
+### 8. Algorithm File Organization (Dec 2025)
+
+**Issue:** Two "step5" files causing confusion:
+- step5_assign_teachers.js (old duplicate, 141 lines)
+- step5_assign_classrooms.js (correct file)
+- step6_assign_teachers.js (correct file, 452 lines)
+
+**Solution:** Deleted obsolete duplicate.
 
 **Correct Flow:**
 - Step 5: Assign classrooms to theory slots
 - Step 6: Assign teachers to lab sessions
 
-**Key Learning:** Clean up old files immediately during refactoring to prevent confusion later.
-
-**Problem:** Frontend state updates were not automatically persisted to database.
-- User drags slot in TimetableEditor
-- State updates in frontend (optimistic UI)
-- Changes only saved when user clicks "Save Changes" button
-- If user refreshes or navigates away, changes lost
-- Conflict detection could check stale database data
-
-**Solution: Automatic Database Sync**
-- Added `autoSaveAfterDrag()` function in TimetableEditor
-- Every drag operation now immediately saves to database via PUT API
-- Eliminates desync between frontend state and database
-- No manual save button needed for drag operations
-
-**Implementation:**
-```javascript
-const autoSaveAfterDrag = async () => {
-  try {
-    await axios.put(`/api/timetables/${timetable._id}/update-slots`, {
-      theory_slots: timetable.theory_slots,
-      breaks: timetable.breaks
-    })
-    console.log('✅ Auto-saved after drag operation')
-  } catch (error) {
-    console.error('❌ Auto-save failed:', error)
-  }
-}
-```
-
-**Result:** Seamless UX with automatic persistence, preventing data loss.
+**Key Learning:** Clean up old files immediately during refactoring.
 
 ---
 
-### 7. Metadata Calculation Fix (Dec 2025)
+### 9. Fixed Slots Flexibility (Dec 30, 2025)
 
-**Problem:** Viewer displayed incorrect "X/Y SCHEDULED" counts.
-- Step 4 algorithm calculates `total_scheduled` (subjects scheduled in Step 4)
-- Does NOT include `subjects_in_fixed_slots` (already scheduled in Step 2)
-- Viewer displays: `total_scheduled / total_subjects_found`
-- Example: Sem 7 showed "3/4" even though all 4 subjects were in timetable
-  - 4 total subjects
-  - 1 fixed slot (OEC/PEC external)
-  - 3 scheduled in Step 4
-  - Display: 3/4 ❌ Should be: 4/4 ✅
+**Problem:** OEC/PEC subjects had fixed time but also fixed classroom, which is impractical.
+
+**Solution:** Allow classroom changes for fixed slots while keeping time locked. Changed condition to include `cell.type === 'fixed'` in classroom assignment logic.
+
+**Result:** Fixed slots can now change classrooms, time remains immutable.
 
 **Solution: Include Fixed Slots in Count**
 - Updated summary calculation in `step4_schedule_theory_breaks.js`:
