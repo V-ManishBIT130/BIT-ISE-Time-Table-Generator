@@ -678,8 +678,9 @@ async function tryScheduleSessions(sessions, subject, teacher, timetable, constr
     let bestDay = null
     let bestScore = Infinity
     
-    // Try each day
-    for (const day of WORKING_DAYS) {
+    // Try each day in RANDOM order (prevents deterministic scheduling)
+    const shuffledDays = shuffleArray(WORKING_DAYS)
+    for (const day of shuffledDays) {
       // Apply constraints
       if (constraint === 'different_days_only' && usedDays.has(day)) {
         continue // Must use different days
@@ -712,9 +713,13 @@ async function tryScheduleSessions(sessions, subject, teacher, timetable, constr
           }
         }
         
-        // This slot is valid - check if it's the best
-        if (slot.gapScore < bestScore) {
-          bestScore = slot.gapScore
+        // This slot is valid - add randomness to selection
+        // Instead of always picking lowest score, add random factor
+        const randomFactor = Math.random() * 2 // Random value 0-2
+        const adjustedScore = slot.gapScore + randomFactor
+        
+        if (adjustedScore < bestScore) {
+          bestScore = adjustedScore
           bestSlot = slot
           bestDay = day
         }
@@ -1332,8 +1337,10 @@ export async function scheduleTheory(semType, academicYear) {
     console.log(`      - total_scheduled: ${aggregatedSummary.total_scheduled}\n`)
     
     // Calculate overall success rate
-    const overallSuccessRate = aggregatedSummary.subjects_to_schedule_step4 > 0
-      ? (aggregatedSummary.total_scheduled / aggregatedSummary.subjects_to_schedule_step4) * 100
+    // IMPORTANT: Divide by total_subjects_found (not subjects_to_schedule_step4)
+    // because total_scheduled includes both fixed + newly scheduled
+    const overallSuccessRate = aggregatedSummary.total_subjects_found > 0
+      ? Math.min(100, (aggregatedSummary.total_scheduled / aggregatedSummary.total_subjects_found) * 100)
       : 0
     
     return {

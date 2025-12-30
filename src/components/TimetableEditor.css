@@ -624,7 +624,7 @@
 
 .fixed-badge,
 .lab-badge {
-  font-size: 6px;
+  font-size: 16px;
   padding: 1px 3px;
   background: rgba(0, 0, 0, 0.15);
   border-radius: 2px;
@@ -1254,27 +1254,22 @@
 
 .rooms-list {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
+  max-width: 100%;
+  line-height: 1.2;
 }
 
 .room-badge {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: #10b981;
   color: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.7rem;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.65rem;
   font-weight: 600;
-}
-
-.room-more {
-  background: #6b7280;
-  color: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  font-weight: 600;
+  white-space: nowrap;
 }
 
 .editor-no-rooms {

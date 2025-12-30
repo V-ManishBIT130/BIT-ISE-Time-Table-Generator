@@ -1,0 +1,476 @@
+/* Classroom View - Unique Styling (No Conflicts) */
+
+.classroom-view-container {
+  padding: 4px 8px;
+  max-width: 100%;
+  margin: 0 auto;
+  width: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  --classroom-day-width: 86px;
+  --classroom-slot-width: 110px;
+  --classroom-slots-per-hour: 2;
+  --classroom-total-columns: 18;
+}
+
+/* Controls Panel - Compact */
+.classroom-controls-panel {
+  background: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  margin-bottom: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.classroom-loading-badge {
+  padding: 2px 6px;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 0.65rem;
+  margin-left: auto;
+}
+
+.classroom-control-item {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  align-items: center;
+}
+
+.classroom-control-item label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.65rem;
+  white-space: nowrap;
+}
+
+.classroom-control-dropdown,
+.classroom-control-textbox {
+  padding: 2px 6px;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  min-width: 130px;
+  transition: all 0.2s;
+}
+
+.classroom-control-dropdown:hover,
+.classroom-control-textbox:hover {
+  border-color: #f5576c;
+}
+
+.classroom-control-dropdown:focus,
+.classroom-control-textbox:focus {
+  outline: none;
+  border-color: #f5576c;
+  box-shadow: 0 0 0 2px rgba(245, 87, 108, 0.1);
+}
+
+/* Error Alert */
+.classroom-error-alert {
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 3px;
+  padding: 3px 6px;
+  color: #c33;
+  margin-bottom: 3px;
+  font-weight: 500;
+  font-size: 0.68rem;
+}
+
+/* Schedule Panel */
+.classroom-schedule-panel {
+  background: white;
+  padding: 4px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Timetable Grid - Ultra Compact */
+.classroom-timetable-grid {
+  background: white;
+  border-radius: 3px;
+  overflow: auto;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e0e0e0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  scrollbar-gutter: stable both-edges;
+}
+
+.classroom-grid-header {
+  display: grid;
+  grid-template-columns: var(--classroom-day-width) repeat(var(--classroom-total-columns), minmax(calc(var(--classroom-slot-width) / var(--classroom-slots-per-hour)), 1fr));
+  border-bottom: 2px solid #f093fb;
+  background: #f8f9fa;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+  min-height: 32px;
+}
+
+.classroom-corner-label {
+  padding: 4px 6px;
+  font-weight: 700;
+  color: white;
+  border-right: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  font-size: 0.58rem;
+  line-height: 1.1;
+  text-align: center;
+  width: var(--classroom-day-width);
+  box-sizing: border-box;
+}
+
+.classroom-time-label {
+  padding: 4px 6px;
+  text-align: center;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.3);
+  font-size: 0.58rem;
+  line-height: 1.1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.classroom-time-label:last-child {
+  border-right: none;
+}
+
+.classroom-day-row {
+  display: flex !important;
+  border-bottom: 1px solid #e0e0e0;
+  align-items: stretch;
+  min-height: 100px;
+  position: relative;
+}
+
+.classroom-day-row:last-child {
+  border-bottom: none;
+}
+
+.classroom-day-label {
+  padding: 6px 6px;
+  font-weight: 700;
+  color: #2c3e50;
+  border-right: 1px solid #d0d0d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  width: var(--classroom-day-width);
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.classroom-slots-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(var(--classroom-total-columns), 1fr);
+  position: relative;
+  align-items: stretch;
+  padding: 2px 0px;
+  column-gap: 0;
+  row-gap: 0;
+}
+
+/* Add vertical gridlines */
+.classroom-slots-grid::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(90deg,
+      transparent,
+      transparent calc((100% / var(--classroom-total-columns)) - 1px),
+      #e0e0e0 calc((100% / var(--classroom-total-columns)) - 1px),
+      #e0e0e0 calc(100% / var(--classroom-total-columns)));
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Schedule Blocks */
+.classroom-schedule-block {
+  padding: 4px 6px;
+  border-radius: 4px;
+  margin: 2px 2px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: left;
+  gap: 2px;
+  font-size: 0.58rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  transition: all 0.15s;
+  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+  border: 1px solid #f5a088;
+  position: relative;
+  z-index: 2;
+}
+
+.classroom-schedule-block:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
+}
+
+.classroom-schedule-block.fixed-slot {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  border: 2px solid #79d3d3;
+}
+
+.classroom-block-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.classroom-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 3px;
+}
+
+.classroom-section-label {
+  font-weight: 700;
+  color: #2c3e50;
+  font-size: 0.62rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.classroom-fixed-badge {
+  font-size: 0.5rem;
+  flex-shrink: 0;
+}
+
+.classroom-subject-label {
+  font-weight: 600;
+  color: #34495e;
+  font-size: 0.58rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.classroom-time-label-small {
+  color: #7f8c8d;
+  font-size: 0.52rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.classroom-teacher-label {
+  color: #555;
+  font-size: 0.55rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Statistics Panel */
+.classroom-stats-panel {
+  background: #f8f9fa;
+  padding: 8px 10px;
+  border-radius: 4px;
+  margin-top: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.classroom-stats-panel h3 {
+  font-size: 0.8rem;
+  color: #2c3e50;
+  margin: 0 0 6px 0;
+  font-weight: 700;
+}
+
+.classroom-stats-panel h4 {
+  font-size: 0.7rem;
+  color: #2c3e50;
+  margin: 8px 0 4px 0;
+  font-weight: 600;
+}
+
+.classroom-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.classroom-stat-card {
+  background: white;
+  padding: 6px 8px;
+  border-radius: 4px;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e9ecef;
+}
+
+.classroom-stat-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f5576c;
+  margin-bottom: 2px;
+}
+
+.classroom-stat-label {
+  font-size: 0.6rem;
+  color: #7f8c8d;
+  font-weight: 500;
+}
+
+/* Utilization Section */
+.classroom-utilization-section {
+  background: white;
+  padding: 6px 8px;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.classroom-utilization-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.classroom-util-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.classroom-util-day {
+  font-weight: 600;
+  font-size: 0.62rem;
+  color: #2c3e50;
+  width: 40px;
+  text-align: right;
+}
+
+.classroom-util-bar-container {
+  flex: 1;
+  height: 20px;
+  background: #ecf0f1;
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.classroom-util-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.3s ease;
+  min-width: 30px;
+}
+
+.classroom-util-text {
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Empty State */
+.classroom-empty-state {
+  background: #f8f9fa;
+  padding: 30px 20px;
+  border-radius: 6px;
+  text-align: center;
+  margin-top: 20px;
+  border: 2px dashed #dee2e6;
+}
+
+.classroom-empty-state p {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin: 6px 0;
+}
+
+.classroom-empty-state strong {
+  color: #f5576c;
+  font-weight: 600;
+}
+
+/* Prevent content overflow */
+.classroom-schedule-block,
+.classroom-schedule-block * {
+  box-sizing: border-box !important;
+  max-width: 100%;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1400px) {
+  .classroom-view-container {
+    --classroom-slot-width: 90px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .classroom-view-container {
+    --classroom-slot-width: 75px;
+  }
+  
+  .classroom-stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+}
+
+/* Scrollbar styling */
+.classroom-timetable-grid::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.classroom-timetable-grid::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.classroom-timetable-grid::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border-radius: 4px;
+}
+
+.classroom-timetable-grid::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+}

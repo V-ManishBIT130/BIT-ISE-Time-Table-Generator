@@ -96,33 +96,46 @@ Interactive timetable editor allowing manual adjustments through drag-and-drop f
 
 
 
-### 3. Auto-Save Functionality (NEW - December 2025)
+### 3. Auto-Save Functionality (December 2025)
 
 #### Automatic Database Persistence
-- ✅ **No Manual Save Required** - Changes saved immediately after drag
-- ✅ **Instant Sync** - Frontend and database always in sync
-- ✅ **Data Loss Prevention** - No lost changes on refresh/navigation
-- ✅ **Conflict Detection Accuracy** - Always checks current database state
+- ✅ **Zero Manual Saves** - All operations save immediately: drag-drop, classroom changes, breaks, undo, redo
+- ✅ **Instant Synchronization** - Frontend and database always match
+- ✅ **Data Loss Prevention** - No lost changes on page refresh or navigation
+- ✅ **Optimistic Updates** - Interface responds immediately while database updates in background
 
-#### How It Works
-```javascript
-// After every drag operation:
-1. Update frontend state (optimistic UI)
-2. Call autoSaveAfterDrag() automatically
-3. PUT request to /api/timetables/:id/update-slots
-4. Database updated immediately
-5. User sees success feedback
-```
+#### Operations with Auto-Save
+- Drag-and-drop slot movements
+- Classroom assignment changes
+- Break additions and deletions
+- Undo operations
+- Redo operations
 
 #### Benefits
-- **Seamless UX** - No extra button clicks needed
-- **Data Integrity** - State and database always match
-- **Reliable Conflicts** - Detection uses latest data
-- **Error Recovery** - Failed saves show immediate feedback
+- **Seamless Experience** - No manual save button clicks required
+- **Always Current** - Room availability displays reflect latest changes instantly
+- **Error Prevention** - Impossible to forget saving changes
+- **Modern UX Standard** - Matches behavior of contemporary web applications
 
+### 4. Always-On Classroom Visibility (December 2025)
 
+#### Automatic Display in Empty Slots
+- ✅ **Always Visible** - Available classrooms shown by default in every empty time slot
+- ✅ **No Toggle Required** - Removed \"Show Available Classrooms\" button completely
+- ✅ **Instant Feedback** - See room availability immediately without any clicks
+- ✅ **Compact Design** - Multiple rooms displayed in small badges
 
-### 4. Conflict Detection
+#### Visual Indicators
+- **Available Rooms** - Shows room numbers in green badges
+- **No Rooms Available** - Displays cross mark when all rooms occupied
+- **Loading State** - Hourglass icon while fetching availability
+
+#### Workflow Improvement
+- Previously required clicking toggle button every session
+- Now displays critical scheduling information automatically
+- Reduces clicks and accelerates manual timetable editing
+
+### 5. Conflict Detection
 
 #### Local Conflicts (Same Section)
 - Teacher time conflicts within same section

@@ -371,7 +371,7 @@ function TimetableGenerator() {
           alertMessage += `   Total Subjects Found: ${totalFound}\n`
           alertMessage += `   Already in Fixed Slots: ${fixedSlots}\n`
           alertMessage += `   Subjects to Schedule: ${totalToSchedule}\n`
-          alertMessage += `   Subjects Scheduled: ${totalScheduled}/${totalToSchedule}\n`
+          alertMessage += `   Subjects Scheduled: ${totalScheduled}/${totalFound}\n`
           alertMessage += `   Theory Slots Created: ${slotsScheduled}\n`
           alertMessage += `   Success Rate: ${successRate.toFixed(2)}%\n\n`
           

@@ -146,8 +146,7 @@ export async function blockFixedSlots(semType, academicYear) {
               teacher_id: null,
               teacher_name: '[Other Dept]',
               teacher_shortform: 'EXT',
-              classroom_id: null,
-              classroom_name: 'TBD',
+              // NO classroom assignment here - deferred to Step 5
               day: schedule.day,
               start_time: startTime24,
               end_time: endTime24,
@@ -193,8 +192,7 @@ export async function blockFixedSlots(semType, academicYear) {
                 teacher_id: assignment?.teacher_id?._id || null,
                 teacher_name: assignment?.teacher_id?.name || 'TBD',
                 teacher_shortform: assignment?.teacher_id?.teacher_shortform || 'TBD',
-                classroom_id: null,
-                classroom_name: 'TBD',
+                // NO classroom assignment here - deferred to Step 5
                 day: schedule.day,
                 start_time: startTime24,
                 end_time: endTime24,

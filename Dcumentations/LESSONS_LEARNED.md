@@ -96,7 +96,64 @@
 
 ---
 
-### 6. Auto-Save on Drag Implementation (Dec 2025)
+### 6. Automatic Database Persistence (December 2025)
+
+**User Pain Point:** Manual "Save Changes" button after every edit operation frustrated users.
+
+**Problem Analysis:**
+- Drag-and-drop only updated frontend React state
+- Database remained out of sync until explicit save
+- Room availability displays showed stale data from database
+- Users had to remember to save or lose changes
+
+**Solution: Instant Auto-Save**
+- Added automatic database save after every single operation
+- Drag-drop, classroom assignment, break operations, undo, redo all trigger immediate save
+- Eliminated manual save button requirement entirely
+- Room availability now reflects changes instantly
+
+**Result:** Seamless editing experience, zero data loss risk, instant visual feedback.
+
+**Key Learning:** Modern web applications should auto-save by default - manual saves are outdated UX.
+
+---
+
+### 7. Always-On Classroom Visibility (December 2025)
+
+**User Feedback:** Clicking "Show Available Classrooms" button every session was tedious.
+
+**Problem:** Critical information hidden behind toggle that users always enabled anyway.
+
+**Solution:**
+- Set classroom visibility to always-on by default
+- Removed toggle button completely
+- Made empty slots automatically display all available rooms
+- Compact badge design shows multiple rooms without overwhelming interface
+
+**Result:** One less click, immediate access to essential scheduling information.
+
+**Key Learning:** If a feature is used every time, make it default behavior and remove the toggle.
+
+---
+
+### 8. Algorithm File Organization (December 2025)
+
+**Issue Found:** Two "step5" files in algorithms folder causing confusion.
+
+**Files:**
+- step5_assign_teachers.js (old duplicate, simple logic, 141 lines)
+- step5_assign_classrooms.js (correct file for Step 5)
+- step6_assign_teachers.js (correct file for Step 6, complete implementation, 452 lines)
+
+**Problem:** Old duplicate remained from earlier refactoring when teacher assignment moved from Step 5 to Step 6.
+
+**Solution:** Deleted obsolete step5_assign_teachers.js file.
+
+**Correct Flow:**
+- Step 5: Assign classrooms to theory slots
+- Step 6: Assign teachers to lab sessions
+
+**Key Learning:** Clean up old files immediately during refactoring to prevent confusion later.
 
 **Problem:** Frontend state updates were not automatically persisted to database.
 - User drags slot in TimetableEditor
