@@ -17,7 +17,7 @@ function ClassroomView() {
   const [classrooms, setClassrooms] = useState([])
   const [selectedClassroom, setSelectedClassroom] = useState(null)
   const [semType, setSemType] = useState('odd')
-  const [academicYear, setAcademicYear] = useState('2024-2025')
+  const [academicYear, setAcademicYear] = useState('2025-2026')
   const [schedule, setSchedule] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -256,13 +256,17 @@ function ClassroomView() {
 
         <div className="classroom-control-item">
           <label>Academic Year:</label>
-          <input
-            type="text"
+          <select
             value={academicYear}
             onChange={(e) => setAcademicYear(e.target.value)}
-            placeholder="2024-2025"
             className="classroom-control-textbox"
-          />
+          >
+            <option value="2025-2026">2025-2026</option>
+            <option value="2026-2027">2026-2027</option>
+            <option value="2027-2028">2027-2028</option>
+            <option value="2028-2029">2028-2029</option>
+            <option value="2029-2030">2029-2030</option>
+          </select>
         </div>
 
         {loading && (

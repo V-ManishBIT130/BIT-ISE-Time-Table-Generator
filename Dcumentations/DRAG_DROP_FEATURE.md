@@ -1,603 +1,100 @@
-# 🎯 Drag & Drop Manual Timetable Editor# 🎯 Drag & Drop Manual Timetable Editor
+# 🎯 Drag & Drop Manual Timetable Editor
 
+## Overview
 
+Interactive timetable editor allowing manual adjustments through drag-and-drop functionality with Undo/Redo support, real-time conflict detection, and automatic database persistence.
 
-## Overview## Overview
-
-Interactive timetable editor allowing manual adjustments through drag-and-drop functionality with **Undo/Redo support**, real-time conflict detection, and database persistence.Interactive timetable editor allowing manual adjustments through drag-and-drop functionality with **Undo/Redo support**, real-time conflict detection, and database persistence.
-
-
-
-**Last Updated:** November 2025**Last Updated:** November 2025
-
-
-
-------
-
-
-
-## Features## Features
-
-
-
-### 1. Drag & Drop Functionality### 1. Drag & Drop Functionality
-
-- **Theory Slots:** Drag to new day/time positions- **Theory Slots:** Drag to new day/time positions
-
-- **Break Slots:** Click to add custom 30-minute breaks- **Break Slots:** Click to add custom 30-minute breaks
-
-- **Real-time Preview:** Visual feedback during drag operations- **Real-time Preview:** Visual feedback during drag operations
-
-- **Conflict Detection:** Automatic validation before saving- **Conflict Detection:** Automatic validation before saving
-
-
-
-### 2. ✨ Undo/Redo System (NEW - November 2025)### 2. ✨ Undo/Redo System (NEW - November 2025)
-
-
-
-#### Capabilities#### Capabilities
-
-- ✅ **Undo/Redo Actions** - Revert any accidental change- ✅ **Undo/Redo Actions** - Revert any accidental change
-
-- ✅ **Keyboard Shortcuts** - Ctrl+Z (undo), Ctrl+Y / Ctrl+Shift+Z (redo)- ✅ **Keyboard Shortcuts** - Ctrl+Z (undo), Ctrl+Y / Ctrl+Shift+Z (redo)
-
-- ✅ **UI Buttons** - Visual undo/redo buttons with action counts- ✅ **UI Buttons** - Visual undo/redo buttons with action counts
-
-- ✅ **5 Action Types** - move_slot, move_break, add_break, delete_break, remove_default_break- ✅ **5 Action Types** - move_slot, move_break, add_break, delete_break, remove_default_break
-
-
-
-#### Tracked Actions#### Tracked Actions
-
-```javascript```javascript
-
-// Each action stores complete state// Each action stores complete state
-
-{{
-
-  type: "move_slot",           // Action identifier  type: "move_slot",           // Action identifier
-
-  slotId: "slot123",           // Unique identifier  slotId: "slot123",           // Unique identifier
-
-  oldDay: "Monday",            // Previous state  oldDay: "Monday",            // Previous state
-
-  oldTime: "10:00-11:00",  oldTime: "10:00-11:00",
-
-  newDay: "Tuesday",           // New state  newDay: "Tuesday",           // New state
-
-  newTime: "14:00-15:00",  newTime: "14:00-15:00",
-
-  slot: { /* complete slot data */ }  // Full backup  slot: { /* complete slot data */ }  // Full backup
-
-}}
-
-``````
-
-
-
-#### Usage#### Usage
-
-**Keyboard:****Keyboard:**
-
-- `Ctrl + Z` - Undo last action- `Ctrl + Z` - Undo last action
-
-- `Ctrl + Y` or `Ctrl + Shift + Z` - Redo last undone action- `Ctrl + Y` or `Ctrl + Shift + Z` - Redo last undone action
-
-
-
-**UI Buttons:****UI Buttons:**
-
-- **Undo button** - Shows count of available undo actions- **Undo button** - Shows count of available undo actions
-
-- **Redo button** - Shows count of available redo actions- **Redo button** - Shows count of available redo actions
-
-- **Auto-disable** - Buttons disabled when stacks are empty
-
-
-
-### 3. Auto-Save Functionality (December 2025)
-
-#### Automatic Database Persistence
-- ✅ **Zero Manual Saves** - All operations save immediately: drag-drop, classroom changes, breaks, undo, redo
-- ✅ **Instant Synchronization** - Frontend and database always match
-- ✅ **Data Loss Prevention** - No lost changes on page refresh or navigation
-- ✅ **Optimistic Updates** - Interface responds immediately while database updates in background
-
-#### Operations with Auto-Save
-- Drag-and-drop slot movements
-- Classroom assignment changes
-- Break additions and deletions
-- Undo operations
-- Redo operations
-
-#### Benefits
-- **Seamless Experience** - No manual save button clicks required
-- **Always Current** - Room availability displays reflect latest changes instantly
-- **Error Prevention** - Impossible to forget saving changes
-- **Modern UX Standard** - Matches behavior of contemporary web applications
-
-### 4. Always-On Classroom Visibility (December 2025)
-
-#### Automatic Display in Empty Slots
-- ✅ **Always Visible** - Available classrooms shown by default in every empty time slot
-- ✅ **No Toggle Required** - Removed \"Show Available Classrooms\" button completely
-- ✅ **Instant Feedback** - See room availability immediately without any clicks
-- ✅ **Compact Design** - Multiple rooms displayed in small badges
-
-#### Visual Indicators
-- **Available Rooms** - Shows room numbers in green badges
-- **No Rooms Available** - Displays cross mark when all rooms occupied
-- **Loading State** - Hourglass icon while fetching availability
-
-#### Workflow Improvement
-- Previously required clicking toggle button every session
-- Now displays critical scheduling information automatically
-- Reduces clicks and accelerates manual timetable editing
-
-### 5. Conflict Detection
-
-#### Local Conflicts (Same Section)
-- Teacher time conflicts within same section
-- Room double-booking
-- Time slot overlaps
-- ✅ **Respects removed default breaks** - Won't show conflict for deleted breaks
-
-#### Global Conflicts (Cross-Section)
-- Teacher teaching in multiple sections simultaneously
-- Backend API validates across all timetables
-- Detailed conflict warnings with section information
-- ✅ **Fixed ObjectId Comparison** (Dec 2025) - Proper exclusion of current section
-- ✅ **Enhanced Logging** - Detailed conflict detection debugging
-
-
-
-### 5. Custom Break Management
-
-- **Add Breaks:** Click empty slot to add 30-minute break- **Add Breaks:** Click empty slot to add 30-minute break
-
-- **Delete Breaks:** Click "Delete" button on custom breaks- **Delete Breaks:** Click "Delete" button on custom breaks
-
-- **Remove Default Breaks:** Delete built-in breaks (11:00-11:30, 13:30-14:00)- **Remove Default Breaks:** Delete built-in breaks (11:00-11:30, 13:30-14:00)
-
-- **Persistence:** All break changes saved with `isRemoved` flag- **Persistence:** All break changes saved with `isRemoved` flag
-
-- **Conflict-Free:** Removed default breaks don't trigger false conflicts- **Conflict-Free:** Removed default breaks don't trigger false conflicts
-
-
-
-------
-
-
-
-## User Interface## User Interface
-
-
-
-### Edit Mode Features### Edit Mode Features
-
-- **Active Slot Highlight:** Selected slot highlighted in blue- **Active Slot Highlight:** Selected slot highlighted in blue
-
-- **Draggable Indicators:** Cursor changes to indicate draggable items- **Draggable Indicators:** Cursor changes to indicate draggable items
-
-- **Conflict Warnings:** Red border for slots with conflicts- **Conflict Warnings:** Red border for slots with conflicts
-
-- **Unsaved Changes:** Orange "Save Changes" button when modified- **Unsaved Changes:** Orange "Save Changes" button when modified
-
-- **Undo/Redo Controls:** Buttons with keyboard shortcut hints- **Undo/Redo Controls:** Buttons with keyboard shortcut hints
-
-- **Break Addition:** "Add Break" mode toggle- **Break Addition:** "Add Break" mode toggle
-
-
-
-### View Mode Features### View Mode Features
-
-- **Read-only Display:** No editing allowed- **Read-only Display:** No editing allowed
-
-- **Custom Breaks Shown:** Displays all breaks from database (excluding removed defaults)- **Custom Breaks Shown:** Displays all breaks from database (excluding removed defaults)
-
-- **Color-coded Subjects:** Visual distinction by subject type- **Color-coded Subjects:** Visual distinction by subject type
-
-- **Compact Layout:** Clean timetable grid- **Compact Layout:** Clean timetable grid
-
-
-
-------
-
-
-
-## Color Coding System## Color Coding System
-
-
-
-| Subject Type | Color | Example || Subject Type | Color | Example |
-
-|--------------|-------|---------||--------------|-------|---------|
-
-| **ISE Subjects** | Blue | Data Structures, DBMS || **ISE Subjects** | Blue | Data Structures, DBMS |
-
-| **Other Dept** | Purple | Mathematics, Physics || **Other Dept** | Purple | Mathematics, Physics |
-
-| **Fixed Slots (OEC/PEC)** | Teal | Open Elective, Prof Elective || **Fixed Slots (OEC/PEC)** | Teal | Open Elective, Prof Elective |
-
-| **Labs** | Orange | DSL Lab, DBMS Lab || **Labs** | Orange | DSL Lab, DBMS Lab |
-
-| **Breaks** | Yellow | Morning Break, Lunch || **Breaks** | Yellow | Morning Break, Lunch |
-
-
-
-------
-
-
-
-## Workflow## Workflow
-
-
-
-### Making Changes### Making Changes
-
-1. Select section from dropdown1. Select section from dropdown
-
-2. Toggle "Edit Mode"2. Toggle "Edit Mode"
-
-3. Click slot to select3. Click slot to select
-
-4. Drag to new position OR click "Add Break"4. Drag to new position OR click "Add Break"
-
-5. System validates conflicts (respects removed breaks)5. System validates conflicts (respects removed breaks)
-
-6. Use Ctrl+Z if you made a mistake6. Use Ctrl+Z if you made a mistake
-
-7. Click "Save Changes"7. Click "Save Changes"
-
-8. Confirm save operation8. Confirm save operation
-
-
-
-### Undo/Redo Workflow### Undo/Redo Workflow
-
-**Scenario: Accidental drag****Scenario: Accidental drag**
-
-``````
-
-1. Drag SEPM from Mon 10:00 → Tue 14:001. Drag SEPM from Mon 10:00 → Tue 14:00
-
-2. Realize it was wrong2. Realize it was wrong
-
-3. Press Ctrl+Z (or click Undo button)3. Press Ctrl+Z (or click Undo button)
-
-4. SEPM returns to Mon 10:004. SEPM returns to Mon 10:00
-
-5. Redo available if needed5. Redo available if needed
-
-``````
-
-
-
-### Conflict Resolution### Conflict Resolution
-
-When conflict detected:When conflict detected:
-
-- **Warning displayed** with conflict details- **Warning displayed** with conflict details
-
-- **Respects removed breaks** - No false warnings- **Respects removed breaks** - No false warnings
-
-- **Options:** Force save or cancel- **Options:** Force save or cancel
-
-- **Recommendation:** Resolve conflict or undo the change- **Recommendation:** Resolve conflict or undo the change
-
-- **Teacher conflicts:** Shows which section has the conflict- **Teacher conflicts:** Shows which section has the conflict
-
-
-
-------
-
-
-
-## Technical Implementation## Technical Implementation
-
-
-
-### Libraries Used### Libraries Used
-
-- `@dnd-kit/core`: Core drag-and-drop engine- `@dnd-kit/core`: Core drag-and-drop engine
-
-- `@dnd-kit/sortable`: Sortable grid functionality  - `@dnd-kit/sortable`: Sortable grid functionality  
-
-- `@dnd-kit/utilities`: Helper utilities- `@dnd-kit/utilities`: Helper utilities
-
-- `@dnd-kit/modifiers`: Constraint modifiers- `@dnd-kit/modifiers`: Constraint modifiers
-
-
-
-### Undo/Redo Architecture### Undo/Redo Architecture
-
-```javascript```javascript
-
-// State management// State management
-
-const [undoStack, setUndoStack] = useState([]);const [undoStack, setUndoStack] = useState([]);
-
-const [redoStack, setRedoStack] = useState([]);const [redoStack, setRedoStack] = useState([]);
-
-
-
-// Push action before making change// Push action before making change
-
-pushToUndoStack({pushToUndoStack({
-
-  type: "move_slot",  type: "move_slot",
-
-  slotId: slot._id,  slotId: slot._id,
-
-  oldDay: slot.day,  oldDay: slot.day,
-
-  oldTime: `${slot.start_time}-${slot.end_time}`,  oldTime: `${slot.start_time}-${slot.end_time}`,
-
-  newDay: targetDay,  newDay: targetDay,
-
-  newTime: targetTime,  newTime: targetTime,
-
-  slot: { ...slot }  slot: { ...slot }
-
-});});
-
-
-
-// Undo operation// Undo operation
-
-handleUndo() {handleUndo() {
-
-  const action = undoStack.pop();  const action = undoStack.pop();
-
-  // Restore previous state  // Restore previous state
-
-  applyAction(action, "reverse");  applyAction(action, "reverse");
-
-  // Move to redo stack  // Move to redo stack
-
-  redoStack.push(action);  redoStack.push(action);
-
-}}
-
-``````
-
-
-
-### Keyboard Event Handling### Keyboard Event Handling
-
-```javascript```javascript
-
-useEffect(() => {useEffect(() => {
-
-  const handleKeyDown = (e) => {  const handleKeyDown = (e) => {
-
-    // Ctrl+Z or Cmd+Z - Undo    // Ctrl+Z or Cmd+Z - Undo
-
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-
-      e.preventDefault();      e.preventDefault();
-
-      handleUndo();      handleUndo();
-
-    }    }
-
-    // Ctrl+Y or Ctrl+Shift+Z - Redo    // Ctrl+Y or Ctrl+Shift+Z - Redo
-
-    if ((e.ctrlKey || e.metaKey) &&     if ((e.ctrlKey || e.metaKey) && 
-
-        (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {        (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
-
-      e.preventDefault();      e.preventDefault();
-
-      handleRedo();      handleRedo();
-
-    }    }
-
-  };  };
-
-    
-
-  window.addEventListener('keydown', handleKeyDown);  window.addEventListener('keydown', handleKeyDown);
-
-  return () => window.removeEventListener('keydown', handleKeyDown);  return () => window.removeEventListener('keydown', handleKeyDown);
-
-}, [undoStack, redoStack]);}, [undoStack, redoStack]);
-
-``````
-
-
-
-### Sensor Configuration### Sensor Configuration
-
-- **Pointer Sensor:** 8px activation distance- **Pointer Sensor:** 8px activation distance
-
-- **Prevents:** Accidental drags from clicks- **Prevents:** Accidental drags from clicks
-
-- **Touch Support:** Works on mobile devices- **Touch Support:** Works on mobile devices
-
-
-
-### API Endpoints### API Endpoints
-
-- **PUT `/api/timetables/:id/update-slots`:** Save manual edits- **PUT `/api/timetables/:id/update-slots`:** Save manual edits
-
-- **GET `/api/timetables/check-teacher-conflict`:** Global conflict check- **GET `/api/timetables/check-teacher-conflict`:** Global conflict check
-
-
-
-------
-
-
-
-## Best Practices## Known Limitations
-
-
-
-### When to Use Manual Editor### Current
-
-✅ Fine-tuning generated timetables  - No undo/redo functionality
-
-✅ Adjusting for last-minute changes  - Alert/confirm dialogs (not custom modals)
-
-✅ Adding custom breaks  - No keyboard shortcuts
-
-✅ Resolving specific conflicts  - Classroom conflicts not detected in real-time
-
-✅ Removing default breaks to free slots
-
-### Future Enhancements
-
-### When NOT to Use- Toast notifications instead of alerts
-
-❌ Creating timetables from scratch  - Undo/redo history
-
-❌ Major restructuring (use regeneration)  - Keyboard shortcuts (Ctrl+Z, Ctrl+S)
-
-❌ Changing subject hours (update database instead)- Classroom conflict detection
-
-- Batch operations (move multiple slots)
-
-### Undo/Redo Best Practices
-
-✅ **Experiment freely** - You can always undo  ---
-
-✅ **Save only when satisfied** - Undo stack clears on save  
-
-✅ **Use keyboard shortcuts** - Faster than clicking buttons  ## Best Practices
-
-✅ **Check undo count** - Know how many actions are available  
-
-### When to Use Manual Editor
-
----✅ Fine-tuning generated timetables  
-
-✅ Adjusting for last-minute changes  
-
-## Testing Checklist✅ Adding custom breaks  
-
-✅ Resolving specific conflicts
-
-✅ Drag theory slots to different days/times  
-
-✅ **Undo drag operation with Ctrl+Z**  ### When NOT to Use
-
-✅ **Redo undone operation with Ctrl+Y**  ❌ Creating timetables from scratch  
-
-✅ Add custom breaks  ❌ Major restructuring (use regeneration)  
-
-✅ Delete custom breaks  ❌ Changing subject hours (update database instead)
-
-✅ **Undo break deletion**  
-
-✅ Remove default breaks  ---
-
-✅ **Verify no false conflicts from removed breaks**  
-
-✅ Save changes to database  ## Testing Checklist
-
-✅ View custom breaks in View Mode  
-
-✅ Test global teacher conflict detection  ✅ Drag theory slots to different days/times  
-
-✅ Test same-section conflicts  ✅ Add custom breaks  
-
-✅ Cancel unsaved changes  ✅ Delete breaks  
-
-✅ Save changes to database  
-
----✅ View custom breaks in View Mode  
-
-✅ Test global teacher conflict detection  
-
-## Known Limitations✅ Test same-section conflicts  
-
-✅ Cancel unsaved changes
-
-### Current
-
-- Alert/confirm dialogs (not custom modals)---
-
-- Classroom conflicts not detected in real-time
-
-- Undo stack clears on page refresh (not persisted)**Last Updated:** January 2025  
-
-- Limited to 50 undo actions (stack limit)**Related Files:**
-
-- `TimetableEditor.jsx` (main editor)
-
-### Future Enhancements- `TimetableViewer.jsx` (view mode)
-
-- Toast notifications instead of alerts- `backend_server/routes/timetables.js` (API endpoints)
-
-- Persistent undo/redo across sessions
-
-- Advanced keyboard shortcuts (Ctrl+S for save)
-
-- Classroom conflict detection## Overview
-
-- Batch operations (move multiple slots)Interactive timetable editor allowing manual adjustments through drag-and-drop functionality with real-time conflict detection and database persistence.
-
-- Visual undo/redo history timeline
-
----
+**Last Updated:** December 31, 2025
 
 ---
 
 ## Features
 
-**Last Updated:** November 2025  
+### 1. Drag & Drop Functionality
+- **Theory Slots:** Drag to new day/time positions
+- **Fixed Slots:** Can change classrooms but not time (OEC/PEC subjects)
+- **Break Slots:** Click to add custom 30-minute breaks
+- **Real-time Preview:** Visual feedback during drag operations
+- **Conflict Detection:** Automatic validation before saving
 
-**Related Files:**### 1. Drag & Drop Functionality
+### 2. Undo/Redo System (November 2025)
 
-- `TimetableEditor.jsx` (main editor with undo/redo)- **Theory Slots:** Drag to new day/time positions
+**Capabilities:**
+- ✅ Revert any accidental change
+- ✅ Keyboard shortcuts: Ctrl+Z (undo), Ctrl+Y (redo)
+- ✅ UI buttons with action counts
+- ✅ 6 action types tracked: move_slot, move_break, add_break, delete_break, remove_default_break, change_classroom
 
-- `TimetableEditor.css` (undo/redo button styling)- **Break Slots:** Click to add custom 30-minute breaks
+**Usage:**
+- `Ctrl+Z` - Undo last action
+- `Ctrl+Y` or `Ctrl+Shift+Z` - Redo
+- Buttons auto-disable when stacks empty
 
-- `TimetableViewer.jsx` (view mode)- **Real-time Preview:** Visual feedback during drag operations
+### 3. Auto-Save Functionality (December 2025)
 
-- `backend_server/routes/timetables.js` (API endpoints)- **Conflict Detection:** Automatic validation before saving
+**Automatic Database Persistence:**
+- All operations save immediately: drag-drop, classroom changes, breaks, undo, redo
+- Frontend and database always synchronized
+- No data loss on page refresh or navigation
+- Optimistic UI updates with background database sync
 
-- `backend_server/models/timetable_model.js` (breaks schema with isRemoved)
+**Benefits:** Zero manual saves required, impossible to forget saving, modern UX standard.
 
-### 2. Conflict Detection
+### 4. Always-On Classroom Visibility (December 2025)
 
-#### Local Conflicts (Same Section)
-- Teacher time conflicts within same section
+**Automatic Display:**
+- Available classrooms shown by default in every empty time slot
+- No toggle button required
+- Compact green badges for multiple rooms
+- Cross mark when no rooms available
+- Hourglass while loading
+
+**Impact:** Removed one extra click per session, instant access to critical scheduling information.
+
+### 5. Break Management
+
+**Operations:**
+- Add 30-minute breaks by clicking empty slots
+- Delete custom breaks
+- Remove default breaks (11:00-11:30, 13:30-14:00)
+- All changes persist with `isRemoved` flag
+- Respects removed breaks in conflict detection
+
+### 6. Conflict Detection
+
+**Local Conflicts (Same Section):**
+- Teacher time conflicts
 - Room double-booking
 - Time slot overlaps
+- Respects removed default breaks
 
-#### Global Conflicts (Cross-Section)
-- Teacher teaching in multiple sections simultaneously
-- Backend API validates across all timetables
-- Detailed conflict warnings with section information
-
-### 3. Custom Breaks
-- **Click-based system:** Click empty slot to add break
-- **Duration:** 30 minutes per break
-- **Limit:** Maximum 2 breaks per day
-- **Persistence:** Saved to database for viewing
+**Global Conflicts (Cross-Section):**
+- Teacher teaching multiple sections simultaneously
+- Backend validates across all timetables
+- Detailed warnings with section information
+- Fixed ObjectId comparison for proper exclusion (December 2025)
 
 ---
 
 ## User Interface
 
 ### Edit Mode Features
-- **Active Slot Highlight:** Selected slot highlighted in blue
-- **Draggable Indicators:** Cursor changes to indicate draggable items
-- **Conflict Warnings:** Red border for slots with conflicts
-- **Unsaved Changes:** Orange "Save Changes" button when modified
-- **Break Addition:** "Add Break" mode toggle
+- Active slot highlighted in blue
+- Cursor changes to indicate draggable items
+- Red border for conflict warnings
+- Unsaved changes counter
+- Undo/Redo buttons with keyboard shortcut hints
+- "Add Break" mode toggle
 
 ### View Mode Features
-- **Read-only Display:** No editing allowed
-- **Custom Breaks Shown:** Displays all breaks from database
-- **Color-coded Subjects:** Visual distinction by subject type
-- **Compact Layout:** Clean timetable grid
+- Read-only display
+- Custom breaks shown (excluding removed defaults)
+- Color-coded subjects
+- Compact layout
 
 ---
 
-## Color Coding System
+## Color Coding
 
 | Subject Type | Color | Example |
 |--------------|-------|---------|
@@ -616,324 +113,99 @@ useEffect(() => {useEffect(() => {
 2. Toggle "Edit Mode"
 3. Click slot to select
 4. Drag to new position OR click "Add Break"
-5. System validates conflicts
-6. Click "Save Changes"
-7. Confirm save operation
+5. System validates conflicts (respects removed breaks)
+6. Use Ctrl+Z if mistake made
+7. Changes auto-save immediately
+8. No manual save button needed
+
+### Undo/Redo Workflow
+**Scenario: Accidental drag**
+1. Drag SEPM from Mon 10:00 → Tue 14:00
+2. Realize it was wrong
+3. Press Ctrl+Z (or click Undo button)
+4. SEPM returns to Mon 10:00
+5. Auto-saves the undo operation
 
 ### Conflict Resolution
 When conflict detected:
-- **Warning displayed** with conflict details
-- **Options:** Force save or cancel
-- **Recommendation:** Resolve conflict by choosing different time
-- **Teacher conflicts:** Shows which section has the conflict
+- Warning displayed with conflict details
+- Respects removed breaks (no false warnings)
+- Options: Force save or cancel
+- Recommendation: Resolve conflict or undo
+- Teacher conflicts show which section has the conflict
 
 ---
 
-## Technical Implementation
+## Critical Fixes (December 2025)
 
-### Libraries Used
-- `@dnd-kit/core`: Core drag-and-drop engine
-- `@dnd-kit/sortable`: Sortable grid functionality  
-- `@dnd-kit/utilities`: Helper utilities
-- `@dnd-kit/modifiers`: Constraint modifiers
+### Break Persistence Fix
+**Problem:** Breaks appeared in UI but didn't persist to database.
 
-### Sensor Configuration
-- **Pointer Sensor:** 8px activation distance
-- **Prevents:** Accidental drags from clicks
-- **Touch Support:** Works on mobile devices
+**Root Cause:** React state updates are asynchronous. `autoSave()` was called immediately after `setTimetable()` but read old state.
 
-### API Endpoints
-- **PUT `/api/timetables/:id/update-slots`:** Save manual edits
-- **GET `/api/timetables/check-teacher-conflict`:** Global conflict check
+**Solution:** Pass fresh data directly to autoSave instead of relying on state closure.
 
----
+### Cache Invalidation Fix
+**Problem:** Moving slots cleared only specific cache keys. Other empty slots showed stale "✗ No rooms" even when rooms were free.
 
-## Known Limitations
+**Solution:** Clear entire cache on any change. All EmptyCells refetch fresh data.
 
-### Current
-- No undo/redo functionality
-- Alert/confirm dialogs (not custom modals)
-- No keyboard shortcuts
-- Classroom conflicts not detected in real-time
+### Fixed Slots Classroom Editing
+**Problem:** OEC/PEC subjects couldn't change classrooms even though time was fixed.
 
-### Future Enhancements
-- Toast notifications instead of alerts
-- Undo/redo history
-- Keyboard shortcuts (Ctrl+Z, Ctrl+S)
-- Classroom conflict detection
-- Batch operations (move multiple slots)
+**Solution:** Allow classroom changes for `cell.type === 'fixed'` while keeping time locked.
+
+### Classroom Assignment Overwrites
+**Problem:** Drag slot (auto-saves) → Assign classroom via PATCH (saves) → Auto-save runs with stale state (overwrites).
+
+**Solution:** Remove redundant auto-save after PATCH. Backend already saved.
 
 ---
 
-## Best Practices
+## API Endpoints
 
-### When to Use Manual Editor
-✅ Fine-tuning generated timetables  
-✅ Adjusting for last-minute changes  
-✅ Adding custom breaks  
-✅ Resolving specific conflicts
-
-### When NOT to Use
-❌ Creating timetables from scratch  
-❌ Major restructuring (use regeneration)  
-❌ Changing subject hours (update database instead)
-
----
-
-## Testing Checklist
-
-✅ Drag theory slots to different days/times  
-✅ Add custom breaks  
-✅ Delete breaks  
-✅ Save changes to database  
-✅ View custom breaks in View Mode  
-✅ Test global teacher conflict detection  
-✅ Test same-section conflicts  
-✅ Cancel unsaved changes
-
----
-
-**Last Updated:** January 2025  
-**Related Files:**
-- `TimetableEditor.jsx` (main editor)
-- `TimetableViewer.jsx` (view mode)
-- `backend_server/routes/timetables.js` (API endpoints)
-
-
-## ✅ What's Been Implemented (Phase 1)
-
-### **1. Core Infrastructure**
-- ✅ Installed `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
-- ✅ Created `TimetableEditor.jsx` component (500+ lines)
-- ✅ Created `TimetableEditor.css` stylesheet (comprehensive styling)
-- ✅ Added navigation link in Dashboard sidebar (✏️ Edit TT)
-- ✅ Added route `/dashboard/editor` in App.jsx
-
-### **2. UI Components Built**
-
-#### **Draggable Theory Slots**
-- Only **theory classes** are draggable (blue gradient)
-- **Fixed slots** (teal) and **lab slots** (orange) are locked 🔒
-- Visual drag handle indicator (⋮⋮)
-- Smooth grab cursor on hover
-- Transform animation while dragging
-
-#### **Droppable Time Zones**
-- Empty time slots show "Drop here" placeholder
-- Hover effects (border color changes to blue)
-- Active drag-over state (green border + glow animation)
-- 30-minute interval grid (8:00 AM - 5:00 PM)
-
-#### **Grid Layout**
-- 6 days (Mon-Sat) × 18 time slots (30-min each)
-- Sticky headers (days + times)
-- Responsive overflow scrolling
-- Color-coded slots by type
-
-### **3. Features Working**
-
-✅ **Visual Feedback**
-- Drag preview overlay (semi-transparent blue card)
-- Cursor changes (grab → grabbing)
-- Slot opacity reduces while dragging
-- Drop zones highlight on hover
-
-✅ **Conflict Detection Logic** (in code, not yet fully wired)
-- Teacher conflict checking
-- Time slot overlap checking
-- Break time validation
-- Day length constraint checking
-
-✅ **Change Tracking**
-- Unsaved changes counter (⚠️ badge)
-- Change history array
-- Save/Revert buttons (styled, ready for API)
-
-✅ **Controls**
-- Semester type toggle (Odd/Even)
-- Section dropdown
-- Real-time section filtering
-
----
-
-## 🚧 Phase 2: Backend Integration (Next Steps)
-
-### **Tasks Remaining**
-
-#### **1. Backend API Endpoint**
-Create `PUT /api/timetables/:id/slots/:slotId` to update slot position:
-
-```javascript
-// backend_server/routes/timetables.js
-router.put('/:timetableId/slots/:slotId', async (req, res) => {
-  const { timetableId, slotId } = req.params
-  const { day, start_time, end_time, forced } = req.body
-
-  // 1. Find timetable
-  const timetable = await Timetable.findById(timetableId)
-  
-  // 2. Find slot in theory_slots array
-  const slot = timetable.theory_slots.id(slotId)
-  
-  // 3. Run conflict checks
-  const conflicts = await checkConflicts(slot, day, start_time, end_time)
-  
-  // 4. If forced=false and conflicts exist, return 409
-  if (!forced && conflicts.length > 0) {
-    return res.status(409).json({ conflicts })
-  }
-  
-  // 5. Update slot position
-  slot.day = day
-  slot.start_time = start_time
-  slot.end_time = end_time
-  
-  // 6. Save and return
-  await timetable.save()
-  res.json({ success: true, data: timetable })
-})
+### Update Theory Slots and Breaks
+```
+PUT /api/timetables/:timetableId/update-slots
+Body: { theory_slots, breaks }
 ```
 
-#### **2. Wire Up Save/Revert**
-- **Save**: Batch-update all changes via API
-- **Revert**: Re-fetch original timetable from DB
-
-#### **3. Real-Time Conflict Modal**
-- Show conflict details in a modal (not browser `confirm()`)
-- Options: "Revert" or "Force Update"
-- Visual red/yellow indicators
-
-#### **4. Undo/Redo Stack** (optional enhancement)
-- Implement undo functionality
-- Limit to last 10 actions
-
----
-
-## 📋 Phase 3: Polish & Testing (After Phase 2)
-
-### **UI Enhancements**
-- [ ] Add loading spinner during drag operations
-- [ ] Toast notifications (success/error)
-- [ ] Keyboard shortcuts (Ctrl+Z for undo, Ctrl+S for save)
-- [ ] Mobile responsiveness improvements
-
-### **Conflict Visualization**
-- [ ] Red border around conflicting slots
-- [ ] Warning icon on drop zone if conflict detected
-- [ ] Conflict summary panel (permanent sidebar)
-
-### **Testing**
-- [ ] Test all conflict scenarios:
-  - Teacher double-booking
-  - Section overlap
-  - Break time violations
-  - Day length violations
-  - Max hours per day exceeded
-- [ ] Test edge cases:
-  - Dragging to same position (no-op)
-  - Dragging lab slots (should fail)
-  - Dragging fixed slots (should fail)
-  - Multiple rapid drags
-  - Network failures during save
-
----
-
-## 🎨 Current UI Design
-
-### **Color Scheme**
-- **Theory (Draggable)**: Blue gradient (#3b82f6 → #2563eb)
-- **Fixed Slots**: Teal gradient (#14b8a6 → #0d9488)
-- **Lab Slots**: Orange gradient (#f97316 → #ea580c)
-- **Drop Zones**: Light gray with dashed border
-- **Drag-Over**: Green border with glow animation
-- **Unsaved Changes**: Yellow/orange gradient pulsing
-
-### **Icons & Badges**
-- ⋮⋮ Drag handle
-- 🔒 Fixed badge
-- 🧪 Lab badge
-- ⚠️ Unsaved changes warning
-- 💾 Save button
-- ↩️ Revert button
-
----
-
-## 🚀 How to Test (Phase 1)
-
-1. **Start frontend**:
-   ```powershell
-   npm run dev
-   ```
-
-2. **Login** to dashboard
-
-3. **Click "✏️ Edit TT"** in sidebar
-
-4. **Select section** with generated timetable
-
-5. **Try dragging** a blue theory slot:
-   - Hover over slot → cursor becomes grab
-   - Click and drag → preview appears
-   - Drop on empty zone → (Phase 2 will update DB)
-
-6. **Observe locked slots**:
-   - Teal slots (Fixed) → cursor: not-allowed
-   - Orange slots (Labs) → cursor: not-allowed
-
----
-
-## 📊 Code Statistics
-
-- **Lines Added**: ~1,200 lines
-  - TimetableEditor.jsx: ~500 lines
-  - TimetableEditor.css: ~600 lines
-  - Route config: ~10 lines
-  - Dashboard nav: ~5 lines
-
-- **Dependencies**: 
-  - @dnd-kit/core: ^8.0.0
-  - @dnd-kit/sortable: ^9.0.0
-  - @dnd-kit/utilities: ^3.2.2
-
----
-
-## 🎯 Success Criteria (All Phases)
-
-- [x] Phase 1: Drag & drop UI works visually
-- [ ] Phase 2: Backend saves slot changes to MongoDB
-- [ ] Phase 3: Real-time conflict detection with modal
-- [ ] Phase 4: Undo/Revert fully functional
-- [ ] Phase 5: Production-ready polish
-
-**Estimated Timeline**: 
-- Phase 1: ✅ Complete (2-3 days)
-- Phase 2: 3-4 days (backend API + wiring)
-- Phase 3: 2-3 days (conflict modal + UI polish)
-- **Total**: ~10 days for full feature
-
----
-
-## 🛠️ Next Immediate Action
-
-**Create Backend API Endpoint** in `backend_server/routes/timetables.js`:
-
-```javascript
-// PUT /api/timetables/:timetableId/slots/:slotId
-router.put('/:timetableId/slots/:slotId', async (req, res) => {
-  // Implementation needed
-})
+### Update Single Slot Classroom
+```
+PATCH /api/timetables/:timetableId/theory-slot/:slotId/classroom
+Body: { classroom_id, classroom_name, current_day, current_start_time }
 ```
 
-This will enable saving drag-drop changes to the database.
+### Check Teacher Conflict
+```
+GET /api/timetables/check-teacher-conflict
+Params: { teacher_id, day, start_time, end_time, exclude_timetable_id }
+```
+
+### Get Available Rooms
+```
+GET /api/timetables/available-rooms
+Params: { day, start_time, end_time, exclude_timetable_id, exclude_slot_id }
+```
 
 ---
 
-## 📝 Notes
+## Implementation Notes
 
-- Only **theory classes generated by Step 4** are editable
-- **Labs and fixed slots remain locked** (as per design)
-- Conflict detection logic already written (needs backend integration)
-- UI designed for 1920×1080 monitors (responsive down to tablets)
-- Change history tracks all moves (for future undo feature)
+### Cache Strategy
+- `availableClassroomsCache` - React state for caching room availability
+- `bypassCacheKeys` - useRef for synchronous tracking during state updates
+- `timetableVersion` - Counter to trigger global EmptyCell refetch
+- Full cache clearing on any slot/classroom change
 
-**Status**: Phase 1 Complete ✅ | Phase 2 Ready to Start 🚀
+### State Management
+- Optimistic UI updates for immediate feedback
+- Auto-save after every operation
+- Undo/Redo stacks track complete action history
+- No manual save button required
+
+### Conflict Detection
+- Local checks scan current timetable state
+- Global checks query backend for other sections
+- Proper ObjectId comparison using `.toString()`
+- Excludes current timetable from backend checks

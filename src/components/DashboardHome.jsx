@@ -248,7 +248,7 @@ function DashboardHome() {
           <div className="constraint-card critical">
             <div className="constraint-header">
               <span className="constraint-icon">🔄</span>
-              <h4>Batch Rotation (Rule 4.7)</h4>
+              <h4>Batch Rotation</h4>
             </div>
             <p>Every batch rotates through all labs using fixed formula for fair distribution</p>
           </div>

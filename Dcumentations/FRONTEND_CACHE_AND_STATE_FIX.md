@@ -1,153 +1,136 @@
 # Frontend Cache and State Management Fix
 
-**Last Updated:** December 30, 2025
+**Last Updated:** December 31, 2025
 
 ## 📋 Overview
 
-This document consolidates all frontend cache invalidation, state management, and automatic persistence fixes implemented to resolve room availability display issues and eliminate manual save operations in the Timetable Editor. The fixes transform the user experience from a five-step manual process requiring explicit saves to instant, real-time updates with automatic database synchronization.
+This document explains frontend cache invalidation and state management fixes implemented to resolve room availability display issues and break persistence problems in the Timetable Editor.
 
 ---
 
-## 🎯 The Core Problem
+## 🎯 Critical Issues Fixed
 
-### User Experience Before Fix (5 Steps) ❌
+### Issue 1: Stale Cache After Slot Changes (December 30, 2025)
 
-When admin moves a slot with an assigned classroom:
-1. Drag DSA from Monday 8:00 (Room 617) → Monday 10:00 (Room 726)
-2. Click "Save Changes" button and wait
-3. Reload entire page (F5)
-4. Toggle "Show Available Classrooms" checkbox again
-5. **Finally** see Room 617 available at old position
-
-**Result:** 30+ seconds, 5 manual steps, frustrating experience
-
-### User Experience After Fix ✅
-
-1. Drag DSA from Monday 8:00 → Monday 10:00
-2. **Room 617 appears instantly at 8:00!** (<1 second)
-
----
-
-## 💡 Root Causes Identified
-
-### Issue 1: React State Batching Race Condition
-
-**The Problem:**
-- Cache clearing and state updates happen asynchronously
-- EmptyCell might refetch BEFORE cache is actually cleared
-- Results in stale cached data being displayed
-
-**Example Flow:**
-```
-1. User moves slot
-2. Code calls: setAvailableClassroomsCache(prev => {...})  ← Queued
-3. Code calls: setTimetableVersion(v => v + 1)            ← Queued
-4. EmptyCell detects version change immediately
-5. EmptyCell calls fetchAvailableClassrooms()
-6. Cache lookup happens BEFORE Step 2 completes!
-7. Returns stale cached data → Shows "NONE ❌"
-```
-
-### Issue 2: Two Sources of Truth Conflict
-
-**The Problem:**
-- Frontend state reflects unsaved changes (optimistic updates)
-- Backend API only knows about saved database state
-- API returns wrong availability based on stale database
+**Problem:** 
+When a slot was moved or classroom assigned, only 1-2 cache keys were cleared. Other empty slots kept stale cached data showing "✗ No rooms available" even though rooms were actually free.
 
 **Example:**
+- Move DSA from Tuesday 2:00 PM (Room 605) to Thursday 2:00 PM
+- Cache cleared ONLY for: `Tuesday_2:00 PM` and `Thursday_2:00 PM`
+- Friday 12:00 PM cache still says "Room 605 occupied" (stale)
+- User sees ✗ at Friday 12:00 PM but can still assign Room 605
+- Only refreshing page shows correct availability
+
+**Root Cause:**
+Partial cache invalidation. Code cleared specific keys but when Room 605 freed up, ALL time slots needed fresh data to show it's available.
+
+**Solution:**
+Full cache clearing on any change:
+```javascript
+// OLD (buggy): Clear only specific keys
+delete newCache[oldStartCacheKey]
+delete newCache[midCacheKey]
+
+// NEW (fixed): Clear entire cache
+setAvailableClassroomsCache({})  // Empty object = all gone
+bypassCacheKeys.current.clear()
 ```
-Frontend State (after drag-drop):
-  Monday 10:00: DSA with Room 726
-  Monday 8:00: EMPTY (no slot)
 
-Database State (not saved yet):
-  Monday 8:00: DSA with Room 617
-  Monday 10:00: EMPTY
-
-API Query: "What rooms are available at Monday 8:00?"
-Backend checks database → Sees Room 617 occupied
-Backend returns: 0 available rooms ❌
-
-Expected: Room 617 should be available!
-```
+**Result:** All EmptyCells refetch fresh data after any change. Slight increase in API calls but guaranteed accuracy.
 
 ---
 
-## ✅ Complete Solution: Three-Part Fix
+### Issue 2: Break Changes Not Persisting (December 31, 2025)
 
-### Part 1: Bypass Cache Mechanism (Race Condition Fix)
+**Problem:**
+User adds/deletes break → it appears in UI → navigate away and return → break disappeared.
 
-**Strategy:** Synchronous tracking of just-cleared cache keys to prevent race conditions.
-
-**Implementation:**
-- Added `bypassCacheKeys` ref (Set) - synchronous, not part of React state
-- Before clearing cache, add key to bypass list
-- When fetching rooms, check bypass list FIRST before cache lookup
-- If in bypass list, skip cache and fetch from API directly
-
-**Flow:**
-```
-1. Slot moved → Need to clear "Monday_8:00 AM" cache
-2. Add "Monday_8:00 AM" to bypassCacheKeys.current  ← INSTANT
-3. Clear cache via setAvailableClassroomsCache()    ← Queued
-4. Increment version via setTimetableVersion()      ← Queued
-5. EmptyCell detects version change
-6. EmptyCell calls fetchAvailableClassrooms()
-7. Check: Is "Monday_8:00 AM" in bypass list? YES!
-8. Skip cache lookup, fetch from API
-9. Remove from bypass list
-10. Cache new data
+**Root Cause:**
+React state updates are asynchronous and batched. Code called `autoSave()` immediately after `setTimetable()`, but state hadn't updated yet:
+```javascript
+const updatedBreaks = [...timetable.breaks, newBreak]
+setTimetable({ ...prev, breaks: updatedBreaks })  // Queued, not instant
+autoSave()  // Reads timetable.breaks - still has OLD value!
 ```
 
-**Key Insight:** Using `useRef()` provides synchronous state that's immediately available, bypassing React's async state batching.
+**Solution:**
+Pass fresh data directly to autoSave instead of reading stale state:
+```javascript
+const autoSave = async (overrideData = {}) => {
+  // Use override if provided, otherwise use current state
+  const breaks = overrideData.breaks !== undefined 
+    ? overrideData.breaks 
+    : (timetable.breaks || [])
+  
+  await axios.put('/api/timetables/${id}/update-slots', { breaks })
+}
 
-### Part 2: Local State Awareness (Database Staleness Fix)
-
-**Strategy:** Check frontend's current state BEFORE trusting API results, then filter accordingly.
-
-**Implementation:**
-- Added `getLocallyOccupiedRooms()` helper function
-- Scans current timetable state for room occupancy at target time
-- Filters API results to exclude locally occupied rooms
-- Provides instant feedback without waiting for database save
-
-**Flow:**
-```
-1. User moves DSA from Monday 8:00 → 10:00
-2. Frontend state updates instantly
-3. EmptyCell at 8:00 asks for available rooms
-4. LOCAL CHECK: Scan timetable.theory_slots for Monday 8:00
-   → Result: No slots at 8:00 in current state
-5. API CHECK: Query backend for other sections
-   → Returns: Room 617, 726 (based on database)
-6. FILTER: Remove rooms occupied in local state
-   → Result: [617, 726] (no filtering needed, both free locally)
-7. DISPLAY: Show Room 617 and 726 immediately!
+// Usage:
+const updatedBreaks = [...timetable.breaks, newBreak]
+setTimetable({ ...prev, breaks: updatedBreaks })
+autoSave({ breaks: updatedBreaks })  // Pass fresh data directly
 ```
 
-**Algorithm:**
-```
-For each 30-minute window (e.g., Monday 8:00):
-  1. Create empty Set: locallyOccupiedRooms
-  2. Loop through all theory_slots in current timetable:
-     - Check if slot.day matches target day
-     - Check if slot has classroom_id assigned
-     - Check if slot's time overlaps with target 30-min window
-     - If overlap: Add classroom_id to Set
-  3. Fetch rooms from API (checks other sections)
-  4. Filter: rooms.filter(r => !locallyOccupiedRooms.has(r._id))
-  5. Return filtered list
-```
+**Fixed Operations:**
+- Add break
+- Delete custom break
+- Remove default break
 
-### Part 3: Backend Exclusion of Current Timetable
+**Result:** Breaks persist correctly to database every time.
 
-**Strategy:** Backend API should not check the current section's database state when determining availability.
+---
 
-**Implementation:**
-- Frontend passes `exclude_timetable_id` parameter to API
-- Backend excludes current timetable from conflict checks
-- Only checks OTHER sections for room occupancy
+### Issue 3: Fixed Slots Classroom Editing (December 30, 2025)
+
+**Problem:**
+OEC/PEC subjects have fixed time slots but need flexible classroom assignment. UI didn't allow clicking classroom badge on fixed slots.
+
+**Solution:**
+Changed condition from `cell.type === 'theory'` to `(cell.type === 'theory' || cell.type === 'fixed')` in classroom assignment modal trigger.
+
+**Result:** Fixed slots can now change classrooms while time remains locked.
+
+---
+
+### Issue 4: Classroom Assignment Overwrites (December 30, 2025)
+
+**Problem:**
+1. Drag slot to new position (auto-saves position ✅)
+2. Assign classroom via PATCH endpoint (saves classroom ✅)
+3. Auto-save runs with stale state (overwrites classroom ❌)
+
+**Solution:**
+Removed redundant auto-save after PATCH request. Backend already saved, just update local state.
+
+---
+
+## ✅ Current Cache Strategy
+
+### Bypass Mechanism (Prevents Race Conditions)
+- `bypassCacheKeys` ref tracks keys being cleared (synchronous)
+- Before fetching, check bypass list first
+- If key in bypass list, skip cache and fetch from API
+- Prevents reading stale cache during state update batching
+
+### Full Cache Clearing (Guarantees Accuracy)
+- Any slot move or classroom change clears ALL cache entries
+- All EmptyCells refetch fresh availability data
+- No partial updates that leave stale data
+
+### Local State Awareness
+- Check current frontend timetable state before trusting API
+- Filter out rooms occupied in local state but not yet saved
+- Provides instant visual feedback without database lag
+
+---
+
+## 🔑 Key Learnings
+
+1. **Partial cache invalidation is unreliable** - When room availability changes affect multiple slots, clear everything
+2. **React state is asynchronous** - Never call functions depending on state immediately after setState
+3. **Pass fresh data explicitly** - Don't rely on state closure in async operations
+4. **Auto-save everything** - Manual save buttons are outdated UX that lead to data loss
 
 **Flow:**
 ```

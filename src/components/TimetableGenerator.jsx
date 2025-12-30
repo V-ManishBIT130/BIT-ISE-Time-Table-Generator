@@ -6,7 +6,7 @@ import './TimetableGenerator.css'
 
 function TimetableGenerator() {
   const [semType, setSemType] = useState('odd')
-  const [academicYear, setAcademicYear] = useState('2024-2025')
+  const [academicYear, setAcademicYear] = useState('2025-2026')
   const [generating, setGenerating] = useState(false)
   const [currentStep, setCurrentStep] = useState(null)
   const [result, setResult] = useState(null)
@@ -532,14 +532,18 @@ function TimetableGenerator() {
 
         <div className="control-group">
           <label htmlFor="academic-year">Academic Year:</label>
-          <input
+          <select
             id="academic-year"
-            type="text"
             value={academicYear}
             onChange={(e) => setAcademicYear(e.target.value)}
-            placeholder="2024-2025"
             disabled={generating}
-          />
+          >
+            <option value="2025-2026">2025-2026</option>
+            <option value="2026-2027">2026-2027</option>
+            <option value="2027-2028">2027-2028</option>
+            <option value="2028-2029">2028-2029</option>
+            <option value="2029-2030">2029-2030</option>
+          </select>
         </div>
 
         <div className="action-buttons">
