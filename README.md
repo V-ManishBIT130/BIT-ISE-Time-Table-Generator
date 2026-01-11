@@ -43,10 +43,11 @@ npm install
 # Install backend dependencies
 cd backend_server
 npm install
-cd ..
 
-# Configure MongoDB connection
-# Edit backend_server/db.js with your MongoDB Atlas URI
+# Setup environment variables
+cp .env.example .env
+# Edit .env file with your MongoDB connection string
+# Choose MongoDB Atlas (cloud) or local MongoDB
 ```
 
 ### Running the Application
@@ -65,33 +66,30 @@ npm run dev
 
 ## 📚 Documentation
 
-Comprehensive documentation available in [`Dcumentations/`](./Dcumentations/) folder:
+Comprehensive documentation available in [`Documentation/`](./Documentation/) folder:
 
 **Start Here:**
-- [**README.md**](./Dcumentations/README.md) - Complete documentation index
-- [**ALGORITHM_STRATEGY.md**](./Dcumentations/ALGORITHM_STRATEGY.md) - 7-step algorithm explanation
+- [**README.md**](./Documentation/README.md) - Complete documentation index
+- [**ALGORITHM_STRATEGY.md**](./Documentation/ALGORITHM_STRATEGY.md) - 7-step algorithm explanation
 
-**Recent Updates (Nov 12, 2025):**
-- [**FRONTEND_CACHE_AND_STATE_FIX.md**](./Dcumentations/FRONTEND_CACHE_AND_STATE_FIX.md) - Instant update implementation
-- [**CHANGELOG.md**](./Dcumentations/CHANGELOG.md) - All fixes and improvements
+**Recent Updates (Dec 2025):**
+- [**FRONTEND_CACHE_AND_STATE_FIX.md**](./Documentation/FRONTEND_CACHE_AND_STATE_FIX.md) - Cache invalidation and break persistence fixes
+- [**LESSONS_LEARNED.md**](./Documentation/LESSONS_LEARNED.md) - React async state handling and UX improvements
 
 ## 🎨 Key Achievements
 
-### November 12, 2025: UX Transformation
-**Before:** 30-second, 5-step process to see room updates  
-**After:** <1 second instant visual feedback ⚡
+### December 2025: Cache & State Management
+- ✅ **Full cache clearing** on slot changes (prevents stale room availability)
+- ✅ **Break persistence fix** (React async state handling)
+- ✅ **Fixed slots classroom editing** (OEC/PEC flexibility)
+- ✅ **Academic year dropdown** (prevents input errors)
 
-Implemented three-part solution:
-1. Bypass cache mechanism (prevents React state batching race conditions)
-2. Local state awareness (frontend checks its own state first)
-3. Backend exclusion logic (API excludes current section from checks)
-
-### November 11, 2025: Zero Conflicts
+### November 2025: Zero Conflicts
 - ✅ Fixed multi-segment time slot handling (1h, 1.5h, any duration)
-- ✅ Zero classroom conflicts (down from 4)
-- ✅ Zero teacher conflicts
+- ✅ Zero classroom conflicts
+- ✅ Zero teacher conflicts across all sections
 - ✅ 100% fixed slot assignment success
-- ✅ 90.78% overall assignment success
+- ✅ Instant visual feedback (<1s room availability updates)
 
 ## 🏗️ Architecture
 
