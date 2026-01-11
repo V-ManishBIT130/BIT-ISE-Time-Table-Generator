@@ -253,7 +253,7 @@ Conflict Response (409):
 4. `src/components/TimetableEditor.css` - Added modal and badge styles
 
 ### Documentation
-1. `Dcumentations/STEP5_CLASSROOM_EDITING.md` - **NEW FILE**
+1. `Documentation/STEP5_CLASSROOM_EDITING.md` - **NEW FILE**
 2. `IMPLEMENTATION_SUMMARY.md` - **THIS FILE**
 
 ## Next Steps (Future Enhancements)

@@ -31,7 +31,7 @@
 ## How to Delete (PowerShell)
 
 ```powershell
-cd "C:\Users\V Manish\Desktop\BIT-ISE-Time-Table-Generator\backend_server\algorithms"
+cd backend_server/algorithms
 Remove-Item step5_assign_teachers.js
 Remove-Item step6_assign_classrooms.js
 Remove-Item step6_validate.js

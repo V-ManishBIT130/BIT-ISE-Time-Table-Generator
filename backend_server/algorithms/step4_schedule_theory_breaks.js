@@ -103,7 +103,6 @@ function getAdjustedBreaks(day, labSlots) {
     } else {
       console.log(`      ⚠️  ${day}: Default ${breakSlot.type} break conflicts with lab, will adjust`)
       // For now, skip this break (can be enhanced to find alternative)
-      // TODO: Implement findAlternativeBreakTime()
     }
   }
   

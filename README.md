@@ -184,4 +184,4 @@ V Manish - BIT ISE Department
 
 ---
 
-**For detailed technical documentation, see [`Documentation\README.md`](./Dcumentations/README.md)**
+**For detailed technical documentation, see [`Documentation\README.md`](./Documentation/README.md)**
