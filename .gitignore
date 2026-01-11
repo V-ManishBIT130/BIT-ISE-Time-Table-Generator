@@ -1,5 +1,27 @@
+# Environment Variables (CRITICAL - Never commit these!)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.env
+**/.env
+backend_server/.env
+
+# Dependencies
+node_modules/
+**/node_modules/
+backend_server/node_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+.vite/
+*.local
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,18 +29,33 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# MongoDB Playground & Database files
+playground.mongodb.js
+*.mongodb.js
+*.dump
+*.sql
+*.bak
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
