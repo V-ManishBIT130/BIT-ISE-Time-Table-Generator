@@ -33,22 +33,60 @@ An intelligent, automated timetable generation system for the BIT ISE Department
 ### Installation
 
 ```bash
-# Clone repository
+# 1. Clone repository
 git clone https://github.com/V-ManishBIT130/BIT-ISE-Time-Table-Generator.git
 cd BIT-ISE-Time-Table-Generator
 
-# Install frontend dependencies
+# 2. Install frontend dependencies
 npm install
 
-# Install backend dependencies
+# 3. Install backend dependencies
 cd backend_server
 npm install
-
-# Setup environment variables
-cp .env.example .env
-# Edit .env file with your MongoDB connection string
-# Choose MongoDB Atlas (cloud) or local MongoDB
 ```
+
+### Database Setup
+
+#### Option A: MongoDB Atlas (Cloud - Recommended)
+1. Create free account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Create a new cluster (512MB free tier)
+3. Create database user with password
+4. Whitelist your IP (or use `0.0.0.0/0` for development)
+5. Get connection string from "Connect" → "Connect your application"
+
+#### Option B: Local MongoDB
+1. Install [MongoDB Community Server](https://www.mongodb.com/try/download/community)
+2. Start MongoDB service
+3. Use connection string: `mongodb://localhost:27017/timetable_db`
+
+### Environment Configuration
+
+```bash
+# In backend_server folder
+cp .env.example .env
+
+# Edit .env file and add your MongoDB connection string:
+# For Atlas: mongodb+srv://username:password@cluster.mongodb.net/dbname
+# For Local: mongodb://localhost:27017/timetable_db
+```
+
+### First-Time Setup (Create Admin User)
+
+**Option 1: Run Seed Script (Recommended)**
+```bash
+cd backend_server
+node seed.js
+```
+This creates the default HOD admin account.
+
+**Option 2: Automatic Creation**  
+If you skip the seed script, the admin user will be auto-created when you first start the backend server.
+
+**Default Login Credentials:**
+- Username: `HOD`
+- Password: `ise@hod`
+
+⚠️ **Important:** These are default test credentials. You can change them later as needed.
 
 ### Running the Application
 
@@ -58,11 +96,15 @@ cd backend_server
 npm start
 
 # Terminal 2: Start Frontend (Port 5173)
+cd ..
 npm run dev
-
-# Open browser: http://localhost:5173
-# Login: HOD / ise@hod
 ```
+
+Open browser at **http://localhost:5173**
+
+**Login with:**
+- Username: `HOD`
+- Password: `ise@hod`
 
 ## 📚 Documentation
 
@@ -130,7 +172,7 @@ Comprehensive documentation available in [`Documentation/`](./Documentation/) fo
 
 ## 🧪 Testing
 
-See [TESTING_GUIDE.md](./Dcumentations/TESTING_GUIDE.md) for comprehensive test cases.
+See [TESTING_GUIDE.md](Documentation\TESTING_GUIDE.md) for comprehensive test cases.
 
 ## 📝 License
 
@@ -142,4 +184,4 @@ V Manish - BIT ISE Department
 
 ---
 
-**For detailed technical documentation, see [`Dcumentations/README.md`](./Dcumentations/README.md)**
+**For detailed technical documentation, see [`Documentation\README.md`](./Dcumentations/README.md)**
