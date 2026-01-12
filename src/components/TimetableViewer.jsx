@@ -10,6 +10,7 @@ function TimetableViewer() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [semType, setSemType] = useState('odd')
+  const [academicYear, setAcademicYear] = useState('2025-2026')
   const [theorySummaryExpanded, setTheorySummaryExpanded] = useState(false)
 
   // Time slots: 8:00 AM to 4:30 PM in 30-minute intervals
@@ -86,6 +87,13 @@ function TimetableViewer() {
     fetchSections()
   }, [semType])
 
+  // Refetch timetable when academic year changes
+  useEffect(() => {
+    if (selectedSection) {
+      fetchTimetable(selectedSection)
+    }
+  }, [academicYear])
+
   const fetchSections = async () => {
     try {
       const response = await axios.get('/api/sections', {
@@ -108,7 +116,10 @@ function TimetableViewer() {
 
     try {
       const response = await axios.get(`/api/timetables/${sectionId}`, {
-        params: { sem_type: semType }
+        params: { 
+          sem_type: semType,
+          academic_year: academicYear
+        }
       })
 
       if (response.data.success) {
@@ -519,6 +530,21 @@ function TimetableViewer() {
                   Semester {section.sem} - {section.section_name}
                 </option>
               ))}
+            </select>
+          </div>
+
+          <div className="viewer-control-group">
+            <label htmlFor="academic-year-select">Academic Year:</label>
+            <select
+              id="academic-year-select"
+              value={academicYear}
+              onChange={(e) => setAcademicYear(e.target.value)}
+            >
+              <option value="2025-2026">2025-2026</option>
+              <option value="2026-2027">2026-2027</option>
+              <option value="2027-2028">2027-2028</option>
+              <option value="2028-2029">2028-2029</option>
+              <option value="2029-2030">2029-2030</option>
             </select>
           </div>
         </div>

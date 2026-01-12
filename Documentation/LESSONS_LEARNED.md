@@ -1,6 +1,6 @@
 # 📚 Lessons Learned & Critical Fixes
 
-**Last Updated:** December 31, 2025
+**Last Updated:** January 12, 2026
 
 ---
 
@@ -97,6 +97,120 @@ Drag slot (auto-saves ✅) → Assign classroom via PATCH (saves ✅) → Auto-s
 
 **Always-On Classroom Visibility:**
 Users always clicked "Show Available Classrooms" every session. Removed toggle, made it always visible.
+
+---
+
+### 8. Hierarchical Teacher Assignment (Jan 2026)
+
+**Problem:** Single-teacher assignments and deterministic results caused workload imbalances.
+
+**Evolution:**
+
+**Phase 1: Basic Algorithm**
+- Original round-robin approach
+- One teacher per lab batch
+- No hierarchy consideration
+- Result: Even distribution but no rank respect
+
+**Phase 2: Hierarchical Priority**
+- Professors → Associates → Assistants priority
+- Workload limits by position
+- Result: Hierarchy respected but still 1 teacher/batch
+
+**Phase 3: Two-Teacher Requirement**
+- Each lab needs 2 supervisors
+- Assign teacher1, then teacher2 (must be different)
+- Track both independently toward limits
+- Result: 96.30% success (78/81 with 2 teachers)
+
+**Phase 4: Randomization for Variety**
+- Fisher-Yates shuffle within equal-workload groups
+- Each Step 6 run produces different pairings
+- Maintains hierarchy and fairness
+- Result: Variety without sacrificing constraints
+
+**Key Insights:**
+
+1. **Three-Phase Degradation Works Best**
+   - Phase 1: Strict (respect all limits) - covers ~70% of batches
+   - Phase 2: Fallback (allow assistant overflow) - covers ~25% more
+   - Phase 3: Balance (minimize imbalance) - optimizes final 5%
+
+2. **Individual Tracking Critical**
+   - Each teacher assignment must count separately
+   - Both T1 and T2 increment their own counters
+   - Prevents "sharing" one slot between two teachers
+
+3. **Randomization Must Preserve Constraints**
+   - Only shuffle teachers with SAME workload count
+   - Maintain hierarchy order (never promote assistants over professors)
+   - Least-loaded still gets priority, randomness only breaks ties
+
+4. **Time Conflicts Are Hard Constraints**
+   - No teacher can be in two places at once
+   - Global schedule tracking prevents this
+   - May result in partial assignments (1 teacher instead of 2)
+
+5. **Imbalance ≤ 2 is Acceptable**
+   - Perfect balance is NP-hard with all constraints
+   - Difference of 2 assignments among assistants is reasonable
+   - Human schedulers should focus on extremes (imbalance > 5)
+
+**Success Metrics:**
+```
+✅ Batches with 2 Teachers: 96.30% (target: >90%)
+✅ Hierarchy Respected: 100% (Professors/Associates never exceeded)
+✅ Assistant Overflow: +1 to +4 (expected and acceptable)
+✅ Randomization: Different pairings each run
+```
+
+---
+
+### 9. Edit Mode Control Based on Steps (Jan 2026)
+
+**Problem:** Users could drag slots after teacher assignment, breaking schedules.
+
+**Solution:** Conditional rendering of DndContext based on `current_step`.
+
+**Implementation:**
+```jsx
+{current_step >= 6 ? (
+  // Static grid - no drag/drop
+  <div className="editor-grid">
+    <table>...</table>
+  </div>
+) : current_step === 5 ? (
+  // Interactive grid with drag/drop
+  <DndContext sensors={sensors} ...>
+    <div className="editor-grid">
+      <table>...</table>
+    </div>
+    <DragOverlay>...</DragOverlay>
+  </DndContext>
+) : (
+  // Locked message for steps < 5
+  <div>Run Step 5 first</div>
+)}
+```
+
+**Key Learning:** UI should guide users through correct workflow, not just allow any action anytime.
+
+---
+
+### 10. Step Clearing and Data Integrity (Jan 2026)
+
+**Problem:** Re-running Step 6 left old teacher assignments, creating conflicts.
+
+**Solution:** Automatic clearing of future steps and previous assignments.
+
+**Process:**
+1. Identify steps to clear (7 in this case)
+2. Clear future step results
+3. Clear previous teacher assignments from all timetables
+4. Reset global tracking (schedules, batch counts)
+5. Generate fresh assignments with randomization
+
+**Key Learning:** Each step should be idempotent - running multiple times should produce consistent, valid results without manual cleanup.
 
 **Academic Year Dropdown:**
 Text input allowed typos and inconsistent formats ("2024-25" vs "2024-2025"). Changed to dropdown with predefined options (2025-2026 through 2029-2030).

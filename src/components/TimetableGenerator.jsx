@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import DepartmentHeader from './DepartmentHeader'
 import './TimetableGenerator.css'
 
@@ -21,14 +21,12 @@ function TimetableGenerator() {
     step7: null
   })
   const navigate = useNavigate()
+  const location = useLocation()
 
   // Fetch existing timetables to check which steps were completed
-  useEffect(() => {
-    fetchExistingStepStatus()
-  }, [semType, academicYear])
-
-  const fetchExistingStepStatus = async () => {
+  const fetchExistingStepStatus = useCallback(async () => {
     try {
+      console.log('🔍 [FETCH] Fetching step status for:', { semType, academicYear })
       // Fetch all timetables for current semester
       const response = await axios.get('/api/timetables', {
         params: {
@@ -235,8 +233,9 @@ function TimetableGenerator() {
             })
           })
           
+          // Success rate = % of batches with 2 teachers (the goal)
           const successRate = totalBatches > 0 
-            ? ((batchesWithTwoTeachers + batchesWithOneTeacher) / totalBatches * 100).toFixed(2) 
+            ? ((batchesWithTwoTeachers / totalBatches) * 100).toFixed(2) 
             : 0
           
           reconstructedResults.step6 = {
@@ -262,6 +261,9 @@ function TimetableGenerator() {
             message: 'Validation completed',
             data: metadata.step7_summary
           }
+          console.log('✅ [STEP 7 RESULT] Created step7 result:', reconstructedResults.step7)
+        } else if (metadata?.current_step >= 7) {
+          console.log('⚠️ [STEP 7 CHECK] current_step >= 7 but no step7_summary in metadata')
         }
 
         setStepResults(reconstructedResults)
@@ -283,7 +285,24 @@ function TimetableGenerator() {
       console.error('❌ [LOAD STATUS] Error fetching step status:', err)
       // Don't show error to user - just means no timetables exist yet
     }
-  }
+  }, [semType, academicYear])
+
+  // Load step status on mount and when dependencies change
+  useEffect(() => {
+    console.log('🔄 [MOUNT] Component mounted or location changed - loading step status')
+    fetchExistingStepStatus()
+  }, [fetchExistingStepStatus, location.pathname])
+
+  // Refresh data when window regains focus (user navigates back from another tab)
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('🔄 [FOCUS] Window focused - refreshing step status')
+      fetchExistingStepStatus()
+    }
+    
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [fetchExistingStepStatus])
 
   const handleStepExecution = async (stepNumber, stepName) => {
     if (!confirm(`⚠️ WARNING: This will clear existing timetables and execute ${stepName}.\n\nAre you sure you want to continue?`)) {
@@ -752,8 +771,37 @@ function TimetableGenerator() {
               {generating && currentStep === 7 ? '⏳ Running...' : '▶️ Run Step 7'}
             </button>
             {stepResults.step7 && (
-              <div className="step-result">
-                ✅ Validation complete
+              <div className={`step-result ${stepResults.step7.data.validation_status === 'passed' ? 'success' : 'warning'}`}>
+                <div className="validation-header">
+                  {stepResults.step7.data.validation_status === 'passed' ? '✅' : '⚠️'} Validation {stepResults.step7.data.validation_status === 'passed' ? 'Passed' : 'Warnings'}
+                </div>
+                <div className="validation-details">
+                  <div className="validation-summary">
+                    Total Issues: {stepResults.step7.data.total_issues}
+                  </div>
+                  {stepResults.step7.data.total_issues > 0 && (
+                    <div className="issue-breakdown">
+                      {stepResults.step7.data.issues.teacher_conflicts > 0 && (
+                        <div className="issue-item">❌ Teacher Conflicts: {stepResults.step7.data.issues.teacher_conflicts}</div>
+                      )}
+                      {stepResults.step7.data.issues.classroom_conflicts > 0 && (
+                        <div className="issue-item">❌ Classroom Conflicts: {stepResults.step7.data.issues.classroom_conflicts}</div>
+                      )}
+                      {stepResults.step7.data.issues.lab_room_conflicts > 0 && (
+                        <div className="issue-item">❌ Lab Room Conflicts: {stepResults.step7.data.issues.lab_room_conflicts}</div>
+                      )}
+                      {stepResults.step7.data.issues.consecutive_labs > 0 && (
+                        <div className="issue-item">⚠️ Consecutive Labs: {stepResults.step7.data.issues.consecutive_labs}</div>
+                      )}
+                      {stepResults.step7.data.issues.hours_per_week > 0 && (
+                        <div className="issue-item">⚠️ Hour Discrepancies: {stepResults.step7.data.issues.hours_per_week}</div>
+                      )}
+                      {stepResults.step7.data.issues.teacher_assignments > 0 && (
+                        <div className="issue-item">⚠️ Incomplete Assignments: {stepResults.step7.data.issues.teacher_assignments}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

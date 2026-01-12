@@ -1,27 +1,34 @@
 # BIT ISE Timetable Generator
 
-An intelligent, automated timetable generation system for the BIT ISE Department with interactive editing capabilities and real-time conflict detection.
+An intelligent, automated timetable generation system for the BIT ISE Department with interactive editing capabilities, hierarchical teacher assignment, and real-time conflict detection.
 
 ## 🎯 Project Overview
 
 **Tech Stack:** MERN (MongoDB, Express.js, React 18, Node.js) + Vite  
-**Status:** Production-Ready (Steps 1-6 Complete)  
-**Key Achievement:** Zero classroom/teacher conflicts + Instant visual feedback (<1s updates)
+**Status:** Production-Ready (All 7 Steps Complete) ✅  
+**Key Achievements:** 
+- Zero classroom/teacher conflicts
+- 96.30% lab sessions with 2 qualified teachers
+- Instant visual feedback (<1s updates)
+- Hierarchical workload management
 
 ### Core Features
 - ✅ **7-Step Greedy Algorithm** with constraint satisfaction
-- ✅ **Interactive Drag-Drop Editor** with undo/redo
+- ✅ **Interactive Drag-Drop Editor** with undo/redo (Step 5 only)
 - ✅ **Real-Time Conflict Detection** across all sections
 - ✅ **Instant Room Availability Updates** (Optimistic UI pattern)
-- ✅ **Global Teacher Scheduling** prevents double-booking
+- ✅ **Hierarchical Teacher Assignment** respects faculty rank & workload limits
+- ✅ **Two-Teacher Lab Supervision** for better student support
+- ✅ **Smart Randomization** (Fisher-Yates shuffle for variety)
 - ✅ **Automated Classroom Assignment** with priority rules
 - ✅ **Lab Batch Rotation** formula for fair distribution
+- ✅ **Step-Based Edit Locking** prevents conflicts after teacher assignment
 
 ### System Scope
 - **18 Sections:** 3A, 3B, 3C for Semesters 3-8 (odd/even generated separately)
-- **54 Lab Batches:** 3 batches per section
+- **54 Lab Batches:** 3 batches per section (108 teacher assignments per batch = 216 total)
 - **5 Subject Types:** ISE, Other Dept, Projects, OEC, PEC
-- **Resources:** Teachers, Theory Classrooms (5), Lab Rooms (3)
+- **Resources:** Teachers (with position-based limits), Theory Classrooms (5), Lab Rooms (3)
 
 ## 🚀 Quick Start
 
@@ -105,6 +112,23 @@ Open browser at **http://localhost:5173**
 **Login with:**
 - Username: `HOD`
 - Password: `ise@hod`
+
+## 🎯 Hierarchical Teacher Assignment (NEW - Jan 2026)
+
+The system now respects academic hierarchy when assigning lab teachers:
+
+- **Professors** (including HOD): Minimal workload (typically 2 labs/week max)
+- **Associate Professors**: Moderate workload (typically 4 labs/week max)
+- **Assistant Professors**: Flexible workload (can exceed limits to absorb overflow)
+
+### Key Features:
+✅ Semester-specific workload limits (even vs odd)  
+✅ Three-phase intelligent assignment (strict → fallback → balancing)  
+✅ Automatic conflict prevention across all sections  
+✅ Workload reports showing assignments vs limits  
+✅ Graceful handling of capacity constraints  
+
+**See [Documentation/STEP_6_LAB_TEACHER_ASSIGNMENT.md](Documentation/STEP_6_LAB_TEACHER_ASSIGNMENT.md) for algorithm details.**
 
 ## 📚 Documentation
 

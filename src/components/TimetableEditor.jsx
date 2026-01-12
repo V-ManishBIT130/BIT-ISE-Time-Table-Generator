@@ -2120,7 +2120,13 @@ function TimetableEditor() {
 
       <div className="editor-header">
         {/* Instructions */}
-        {timetable && timetable.generation_metadata?.current_step >= 5 ? (
+        {timetable && timetable.generation_metadata?.current_step >= 6 ? (
+          <p className="warning-message">
+            🔒 <strong>Editing Locked:</strong> Teacher assignments have been made (Step 6 completed). 
+            Manual edits could create teacher conflicts and workload imbalances. 
+            To make changes, please re-run the generation from an earlier step.
+          </p>
+        ) : timetable && timetable.generation_metadata?.current_step === 5 ? (
           <>
             <p>✏️ Drag theory slots to reschedule. <strong>Note:</strong> Moving a slot will clear its classroom assignment - you'll need to reassign a room.</p>
             <p className="info-message" style={{padding: '8px', marginTop: '8px'}}>
@@ -2268,64 +2274,101 @@ function TimetableEditor() {
       )}
 
       {timetable && (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          modifiers={[restrictToWindowEdges]}
-        >
-          <div className="editor-grid">
-            <table className="editor-timetable-grid">
-              <thead>
-                <tr>
-                  <th className="editor-day-header">Day / Time</th>
-                  {timeSlots.map((time, idx) => {
-                    const [startTime, endTime] = time.split(' - ')
+        <>
+          {timetable.generation_metadata?.current_step >= 6 ? (
+            // Editing locked after Step 6 - show static grid
+            <div className="editor-grid">
+              <table className="editor-timetable-grid">
+                <thead>
+                  <tr>
+                    <th className="editor-day-header">Day / Time</th>
+                    {timeSlots.map((time, idx) => {
+                      const [startTime, endTime] = time.split(' - ')
+                      return (
+                        <th key={idx} className="editor-time-header">
+                          <div className="time-start">{startTime}</div>
+                          <div className="time-to">to</div>
+                          <div className="time-end">{endTime}</div>
+                        </th>
+                      )
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {weekDays.map((day) => {
+                    const dayCells = buildDayGrid(day)
                     return (
-                      <th key={idx} className="editor-time-header">
-                        <div className="time-start">{startTime}</div>
-                        <div className="time-to">to</div>
-                        <div className="time-end">{endTime}</div>
-                      </th>
+                      <tr key={day}>
+                        <td className="editor-day-label">{day}</td>
+                        {dayCells.map((cell, timeIndex) => renderCell(cell, day, timeIndex))}
+                      </tr>
                     )
                   })}
-                </tr>
-              </thead>
-              <tbody>
-                {weekDays.map((day) => {
-                  const dayCells = buildDayGrid(day)
-                  return (
-                    <tr key={day}>
-                      <td className="editor-day-label">{day}</td>
-                      {dayCells.map((cell, timeIndex) => renderCell(cell, day, timeIndex))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            // Step 5 - enable drag and drop
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              modifiers={[restrictToWindowEdges]}
+            >
+              <div className="editor-grid">
+                <table className="editor-timetable-grid">
+                  <thead>
+                    <tr>
+                      <th className="editor-day-header">Day / Time</th>
+                      {timeSlots.map((time, idx) => {
+                        const [startTime, endTime] = time.split(' - ')
+                        return (
+                          <th key={idx} className="editor-time-header">
+                            <div className="time-start">{startTime}</div>
+                            <div className="time-to">to</div>
+                            <div className="time-end">{endTime}</div>
+                          </th>
+                        )
+                      })}
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <DragOverlay>
-            {activeSlot && (
-              <div className="drag-preview">
-                <div className="slot-content">
-                  {activeSlot.isBreak ? (
-                    <>
-                      <span className="slot-subject">☕ {activeSlot.label || 'Break'}</span>
-                      <span className="slot-time">{convertTo12Hour(activeSlot.start_time)} - {convertTo12Hour(activeSlot.end_time)}</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="slot-subject">{activeSlot.subject_shortform}</span>
-                      <span className="slot-teacher">{activeSlot.teacher_name}</span>
-                    </>
-                  )}
-                </div>
+                  </thead>
+                  <tbody>
+                    {weekDays.map((day) => {
+                      const dayCells = buildDayGrid(day)
+                      return (
+                        <tr key={day}>
+                          <td className="editor-day-label">{day}</td>
+                          {dayCells.map((cell, timeIndex) => renderCell(cell, day, timeIndex))}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </DragOverlay>
-        </DndContext>
+
+              <DragOverlay>
+                {activeSlot && (
+                  <div className="drag-preview">
+                    <div className="slot-content">
+                      {activeSlot.isBreak ? (
+                        <>
+                          <span className="slot-subject">☕ {activeSlot.label || 'Break'}</span>
+                          <span className="slot-time">{convertTo12Hour(activeSlot.start_time)} - {convertTo12Hour(activeSlot.end_time)}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="slot-subject">{activeSlot.subject_shortform}</span>
+                          <span className="slot-teacher">{activeSlot.teacher_name}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </DragOverlay>
+            </DndContext>
+          )}
+        </>
       )}
 
       {conflicts.length > 0 && (
@@ -2364,7 +2407,7 @@ function TimetableEditor() {
                 border: '1px solid #2196f3'
               }}>
                 <p style={{ margin: '0', fontSize: '14px', color: '#1565c0' }}>
-                  ℹ️ <strong>Note:</strong> Rooms shown below are available for the <strong>FULL {selectedSlotForRoom.duration_hours}-hour duration</strong>
+                  ℹ️ <strong>Note:</strong> Rooms shown below are available for the <strong>FULL {selectedSlotForRoom.duration_hours}-hour duration </strong>
                   ({convertTo12Hour(selectedSlotForRoom.start_time)} - {convertTo12Hour(selectedSlotForRoom.end_time)}).
                   {selectedSlotForRoom.duration_hours === 1 && (
                     <span> This includes BOTH 30-minute halves: {convertTo12Hour(selectedSlotForRoom.start_time)} - {convertTo12Hour(addHours(selectedSlotForRoom.start_time, 0.5))}

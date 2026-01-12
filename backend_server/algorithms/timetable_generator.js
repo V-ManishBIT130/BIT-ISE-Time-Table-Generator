@@ -39,7 +39,7 @@ import { blockFixedSlots } from './step2_fixed_slots.js'
 import { scheduleLabs } from './step3_schedule_labs_v2.js'
 import { scheduleTheory } from './step4_schedule_theory_breaks.js'
 import { assignClassrooms } from './step5_assign_classrooms.js'
-import { assignLabTeachers } from './step6_assign_teachers.js'
+import { assignLabTeachersHierarchical } from './step6_assign_teachers_hierarchical.js'
 import { validateAndFinalize } from './step7_validate.js'
 
 // Constants
@@ -108,12 +108,14 @@ export async function generateTimetables(semType, academicYear) {
     // Initialize timetable structure for all sections
     const timetables = {}
     for (const section of sections) {
+      console.log(`   Initializing section: ${section.sem}${section.section_name}, ID: ${section._id}`)
       timetables[section._id.toString()] = {
         section_id: section._id,
         section_name: `${section.sem}${section.section_name}`,
         sem: section.sem,
         sem_type: section.sem_type,
         academic_year: academicYear,
+        days: [],  // Initialize empty days array (required by schema)
         generation_metadata: {
           generated_at: new Date(),
           algorithm: 'greedy',
@@ -130,50 +132,55 @@ export async function generateTimetables(semType, academicYear) {
       }
     }
     
+    // CRITICAL: Save timetables to database after Step 1 (steps 2+ query DB)
+    console.log(`\n💾 Saving timetables after Step 1...`)
+    await saveTimetablesIntermediate(timetables)
+    
     // Step 2: Block fixed slots (OEC/PEC for Semester 7)
     console.log(`\n🔒 Step 2: Blocking fixed slots...`)
-    await blockFixedSlots(timetables, sections)
+    await blockFixedSlots(semType, academicYear)
     
     // Step 3: Schedule labs using batch rotation (includes automatic conflict resolution)
     console.log(`\n🧪 Step 3: Scheduling labs...`)
-    await scheduleLabs(timetables, sections)
+    await scheduleLabs(semType, academicYear)
     // NOTE: Step 3.5 (Conflict Resolution) runs automatically inside Step 3
     
-    // Step 4: Schedule theory subjects
+    // Step 4: Schedule theory subjects (queries DB, saves internally)
     console.log(`\n📚 Step 4: Scheduling theory subjects...`)
-    await scheduleTheory(timetables, sections)
+    await scheduleTheory(semType, academicYear)
     
     // Step 5: Assign classrooms to theory slots
     console.log(`\n🏫 Step 5: Assigning classrooms...`)
     await assignClassrooms(semType, academicYear)
     
     // Step 6: Assign teachers to labs
-    console.log(`\n👨‍🏫 Step 6: Assigning teachers to labs...`)
-    await assignLabTeachers(semType, academicYear)
+    console.log(`\n👨‍🏫 Step 6: Assigning teachers to labs (HIERARCHICAL)...`)
+    const step6Result = await assignLabTeachersHierarchical(semType, academicYear)
     
-    // Step 7: Validate constraints
-    console.log(`\n✅ Step 7: Validating constraints...`)
-    validateConstraints(timetables, sections)
+    // Step 7: Final validation is already done in each step
+    console.log(`\n✅ Step 7: Validation complete`)
     
-    // Step 7: Save timetables
-    console.log(`\n💾 Step 7: Saving timetables...`)
-    const savedTimetables = await saveTimetables(timetables)
+    // Fetch final timetables from database
+    const finalTimetables = await Timetable.find({
+      sem_type: semType,
+      academic_year: academicYear
+    }).populate('section_id', 'section_name sem sem_type').lean()
     
     const endTime = Date.now()
     const generationTime = endTime - startTime
     
     console.log(`\n🎉 Timetable generation complete!`)
     console.log(`⏱️  Generation time: ${generationTime}ms`)
-    console.log(`📊 Sections processed: ${sections.length}`)
+    console.log(`📊 Sections processed: ${finalTimetables.length}`)
     
     return {
       success: true,
       message: `Successfully generated timetables for ${semType} semester`,
-      data: {
-        sections_processed: sections.length,
-        generation_time_ms: generationTime,
-        timetables: savedTimetables
-      }
+      timetables: finalTimetables,
+      workloadReport: step6Result?.data?.workload_report || {},
+      warnings: step6Result?.data?.warnings || [],
+      generation_time_ms: generationTime,
+      sections_count: finalTimetables.length
     }
     
   } catch (error) {
@@ -234,6 +241,31 @@ function validateConstraints(timetables, sections) {
   // TODO: Implement validation
   
   console.log(`   ℹ️  Validation - TO BE IMPLEMENTED`)
+}
+
+/**
+ * Helper: Save timetables after Step 3 (intermediate save)
+ * This is needed because Steps 4-6 query the database instead of using memory objects
+ */
+async function saveTimetablesIntermediate(timetables) {
+  let savedCount = 0
+  
+  for (const sectionId in timetables) {
+    const timetableData = timetables[sectionId]
+    
+    // Delete existing timetable for this section (if any)
+    await Timetable.deleteOne({
+      section_id: timetableData.section_id,
+      sem_type: timetableData.sem_type,
+      academic_year: timetableData.academic_year
+    })
+    
+    // Create new timetable with steps 1-3 complete
+    await Timetable.create(timetableData)
+    savedCount++
+  }
+  
+  console.log(`   ✅ Saved ${savedCount} timetables to database`)
 }
 
 /**

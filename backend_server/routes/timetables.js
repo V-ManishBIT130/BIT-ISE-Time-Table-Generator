@@ -7,7 +7,7 @@ import { blockFixedSlots } from '../algorithms/step2_fixed_slots.js'
 import { scheduleLabs } from '../algorithms/step3_schedule_labs_v2.js'
 import { scheduleTheory } from '../algorithms/step4_schedule_theory_breaks.js'
 import { assignClassrooms } from '../algorithms/step5_assign_classrooms.js'
-import { assignLabTeachers } from '../algorithms/step6_assign_teachers.js'
+import { assignLabTeachersHierarchical } from '../algorithms/step6_assign_teachers_hierarchical.js'
 import { validateAndFinalize } from '../algorithms/step7_validate.js'
 
 const router = express.Router()
@@ -761,7 +761,7 @@ router.post('/step5', async (req, res) => {
 
 /**
  * POST /api/timetables/step6
- * Step 6: Assign teachers to labs (MOVED from Step 5)
+ * Step 6: Assign teachers to labs using HIERARCHICAL algorithm (respects position & limits)
  * Body: { sem_type: 'odd' | 'even', academic_year: '2024-2025' }
  */
 router.post('/step6', async (req, res) => {
@@ -775,7 +775,7 @@ router.post('/step6', async (req, res) => {
       })
     }
     
-    const result = await assignLabTeachers(sem_type, academic_year)
+    const result = await assignLabTeachersHierarchical(sem_type, academic_year)
     res.json(result)
     
   } catch (error) {

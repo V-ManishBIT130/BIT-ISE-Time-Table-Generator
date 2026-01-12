@@ -6,16 +6,17 @@
  * Validation Checks:
  * - No teacher conflicts (global)
  * - No classroom conflicts (global)
+ * - No lab room conflicts (global)
  * - No consecutive labs for sections
- * - Batch synchronization maintained
- * - Break constraints satisfied (30 min, max 2/day)
  * - Hours per week requirements met
+ * - Teacher assignment completeness
  * 
  * Input: sem_type, academic_year
- * Output: Validated timetables with flagged_sessions (if any)
+ * Output: Validated timetables with validation report
  */
 
 import Timetable from '../models/timetable_model.js'
+import Subject from '../models/subjects_model.js'
 
 /**
  * Helper: Convert time to minutes since midnight
@@ -366,10 +367,23 @@ function validateConsecutiveLabs(timetables) {
 }
 
 /**
- * Helper: Check hours per week for each subject
+ * Helper: Check hours per week for each subject against required hours
  */
-function validateHoursPerWeek(timetables) {
+async function validateHoursPerWeek(timetables) {
   const issues = []
+  
+  // Load all subjects for comparison
+  const subjects = await Subject.find({}).lean()
+  const subjectMap = new Map()
+  subjects.forEach(sub => {
+    subjectMap.set(sub._id.toString(), {
+      name: sub.subject_name,
+      code: sub.subject_code,
+      required: sub.hrs_per_week || 0,
+      isProject: sub.is_project || false,
+      requiresTeacher: sub.requires_teacher_assignment
+    })
+  })
   
   for (const tt of timetables) {
     const subjectHours = {}
@@ -388,8 +402,81 @@ function validateHoursPerWeek(timetables) {
       }
     }
     
-    // TODO: Compare with required hrs_per_week from subject model
-    // For now, just log what was scheduled
+    // Compare scheduled vs required
+    for (const [subjectId, data] of Object.entries(subjectHours)) {
+      const subjectInfo = subjectMap.get(subjectId)
+      if (!subjectInfo) continue // Subject not found in DB
+      
+      const required = subjectInfo.required
+      const scheduled = data.scheduled
+      
+      if (scheduled !== required) {
+        issues.push({
+          section: tt.section_name,
+          subject: data.name,
+          code: subjectInfo.code,
+          required: required,
+          scheduled: scheduled,
+          difference: scheduled - required,
+          severity: Math.abs(scheduled - required) > 1 ? 'high' : 'low'
+        })
+      }
+    }
+  }
+  
+  return issues
+}
+
+/**
+ * Helper: Validate teacher assignments are complete
+ */
+function validateTeacherAssignments(timetables) {
+  const issues = []
+  
+  for (const tt of timetables) {
+    // Check theory slots
+    for (const slot of (tt.theory_slots || [])) {
+      if (!slot.is_project && !slot.teacher_id) {
+        issues.push({
+          section: tt.section_name,
+          type: 'theory',
+          subject: slot.subject_name,
+          day: slot.day,
+          time: `${slot.start_time}-${slot.end_time}`,
+          issue: 'No teacher assigned'
+        })
+      }
+    }
+    
+    // Check lab slots
+    for (const labSlot of (tt.lab_slots || [])) {
+      for (const batch of (labSlot.batches || [])) {
+        const hasTeacher1 = !!batch.teacher1_id
+        const hasTeacher2 = !!batch.teacher2_id
+        
+        if (!hasTeacher1 && !hasTeacher2) {
+          issues.push({
+            section: tt.section_name,
+            type: 'lab',
+            batch: batch.batch_name,
+            lab: batch.lab_name,
+            day: labSlot.day,
+            time: `${labSlot.start_time}-${labSlot.end_time}`,
+            issue: 'No teachers assigned (expected 2)'
+          })
+        } else if (!hasTeacher1 || !hasTeacher2) {
+          issues.push({
+            section: tt.section_name,
+            type: 'lab',
+            batch: batch.batch_name,
+            lab: batch.lab_name,
+            day: labSlot.day,
+            time: `${labSlot.start_time}-${labSlot.end_time}`,
+            issue: `Only 1 teacher assigned (expected 2) - Missing: ${!hasTeacher1 ? 'Teacher 1' : 'Teacher 2'}`
+          })
+        }
+      }
+    }
   }
   
   return issues
@@ -464,15 +551,52 @@ export async function validateAndFinalize(semType, academicYear) {
     }
     
     console.log(`\n   5️⃣  Checking hours per week...`)
-    const hoursIssues = validateHoursPerWeek(timetables)
-    console.log(`      ℹ️  Hours validation (basic check)`)
+    const hoursIssues = await validateHoursPerWeek(timetables)
+    if (hoursIssues.length > 0) {
+      console.log(`      ⚠️  Found ${hoursIssues.length} hour discrepancies`)
+      hoursIssues.forEach(issue => {
+        const symbol = issue.difference > 0 ? '➕' : '➖'
+        const severity = issue.severity === 'high' ? '🔴' : '🟡'
+        console.log(`         ${severity} ${issue.section} - ${issue.subject} (${issue.code}): Required ${issue.required}h, Scheduled ${issue.scheduled}h ${symbol}${Math.abs(issue.difference)}h`)
+      })
+    } else {
+      console.log(`      ✅ All subjects meet hour requirements`)
+    }
     
-    const totalIssues = teacherConflicts.length + classroomConflicts.length + labRoomConflicts.length + consecutiveLabViolations.length + hoursIssues.length
+    console.log(`\n   6️⃣  Checking teacher assignment completeness...`)
+    const teacherAssignmentIssues = validateTeacherAssignments(timetables)
+    if (teacherAssignmentIssues.length > 0) {
+      console.log(`      ⚠️  Found ${teacherAssignmentIssues.length} incomplete teacher assignments`)
+      teacherAssignmentIssues.forEach(issue => {
+        console.log(`         - ${issue.section} ${issue.type === 'lab' ? `(${issue.batch})` : ''}: ${issue.issue}`)
+        console.log(`           ${issue.day} ${issue.time} - ${issue.type === 'lab' ? issue.lab : issue.subject}`)
+      })
+    } else {
+      console.log(`      ✅ All slots have teachers assigned`)
+    }
+    
+    const totalIssues = teacherConflicts.length + classroomConflicts.length + labRoomConflicts.length + consecutiveLabViolations.length + hoursIssues.length + teacherAssignmentIssues.length
     const validationStatus = totalIssues === 0 ? 'passed' : 'warnings'
     
+    // Prepare validation summary for metadata
+    const validationSummary = {
+      sections_processed: timetables.length,
+      validation_status: validationStatus,
+      total_issues: totalIssues,
+      issues: {
+        teacher_conflicts: teacherConflicts.length,
+        classroom_conflicts: classroomConflicts.length,
+        lab_room_conflicts: labRoomConflicts.length,
+        consecutive_labs: consecutiveLabViolations.length,
+        hours_per_week: hoursIssues.length,
+        teacher_assignments: teacherAssignmentIssues.length
+      }
+    }
+    
     // Update metadata - mark as complete
+    console.log('\n💾 Saving validation metadata to database...')
     for (const timetable of timetables) {
-      await Timetable.updateOne(
+      const updateResult = await Timetable.updateOne(
         { _id: timetable._id },
         {
           $set: {
@@ -487,15 +611,24 @@ export async function validateAndFinalize(semType, academicYear) {
               'validate_and_finalize'
             ],
             'generation_metadata.is_complete': true,
-            'generation_metadata.validation_status': validationStatus
+            'generation_metadata.validation_status': validationStatus,
+            'generation_metadata.step7_summary': validationSummary
           }
         }
       )
+      console.log(`   ✅ Updated ${timetable.section_name}: matched=${updateResult.matchedCount}, modified=${updateResult.modifiedCount}`)
     }
+    console.log(`   ✅ Saved metadata for ${timetables.length} timetables\n`)
     
     console.log(`\n✅ Step 7 Complete!`)
     console.log(`   📊 Validation Status: ${validationStatus.toUpperCase()}`)
     console.log(`   📊 Total Issues: ${totalIssues}`)
+    
+    if (totalIssues === 0) {
+      console.log(`   🎉 PERFECT TIMETABLE - All validations passed!\n`)
+    } else {
+      console.log(`   ⚠️  Review issues above before finalizing\n`)
+    }
     
     // Fetch final timetables
     const finalTimetables = await Timetable.find({
@@ -507,13 +640,14 @@ export async function validateAndFinalize(semType, academicYear) {
       success: true,
       message: `Step 7 complete: Validation ${validationStatus}`,
       data: {
-        sections_processed: timetables.length,
-        validation_status: validationStatus,
-        issues: {
-          teacher_conflicts: teacherConflicts.length,
-          classroom_conflicts: classroomConflicts.length,
-          lab_room_conflicts: labRoomConflicts.length,
-          consecutive_labs: consecutiveLabViolations.length
+        ...validationSummary,
+        details: {
+          teacher_conflicts: teacherConflicts,
+          classroom_conflicts: classroomConflicts,
+          lab_room_conflicts: labRoomConflicts,
+          consecutive_lab_violations: consecutiveLabViolations,
+          hours_discrepancies: hoursIssues,
+          teacher_assignment_issues: teacherAssignmentIssues
         },
         timetables: finalTimetables
       }

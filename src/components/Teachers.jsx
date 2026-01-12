@@ -25,7 +25,9 @@ function Teachers() {
     teacher_shortform: '',
     canTeach_subjects: [],
     labs_handled: [],
-    teacher_position: ''
+    teacher_position: '',
+    max_lab_assign_even: '',
+    max_lab_assign_odd: ''
   })
   const [error, setError] = useState('')
 
@@ -61,7 +63,30 @@ function Teachers() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
+    
+    // If position changes, set smart default limits
+    if (name === 'teacher_position') {
+      let defaultLimits = { max_lab_assign_even: 6, max_lab_assign_odd: 6 } // Default for Assistant
+      
+      if (value === 'Professor') {
+        defaultLimits = { max_lab_assign_even: 2, max_lab_assign_odd: 2 }
+      } else if (value === 'Associate Professor') {
+        defaultLimits = { max_lab_assign_even: 4, max_lab_assign_odd: 4 }
+      } else if (value === 'Assistant Professor') {
+        defaultLimits = { max_lab_assign_even: 6, max_lab_assign_odd: 6 }
+      } else if (value === 'Guest Faculty') {
+        defaultLimits = { max_lab_assign_even: 4, max_lab_assign_odd: 4 }
+      }
+      
+      setFormData({ 
+        ...formData, 
+        [name]: value,
+        max_lab_assign_even: formData.max_lab_assign_even || defaultLimits.max_lab_assign_even,
+        max_lab_assign_odd: formData.max_lab_assign_odd || defaultLimits.max_lab_assign_odd
+      })
+    } else {
+      setFormData({ ...formData, [name]: value })
+    }
   }
 
   const handleSubjectToggle = (subjectId) => {
@@ -107,7 +132,9 @@ function Teachers() {
       teacher_shortform: '',
       canTeach_subjects: [],
       labs_handled: [],
-      teacher_position: ''
+      teacher_position: '',
+      max_lab_assign_even: '',
+      max_lab_assign_odd: ''
     })
     setShowModal(true)
     setError('')
@@ -122,7 +149,9 @@ function Teachers() {
       teacher_shortform: teacher.teacher_shortform,
       canTeach_subjects: teacher.canTeach_subjects?.map(s => s._id || s) || [],
       labs_handled: teacher.labs_handled?.map(l => l._id || l) || [],
-      teacher_position: teacher.teacher_position
+      teacher_position: teacher.teacher_position,
+      max_lab_assign_even: teacher.max_lab_assign_even || '',
+      max_lab_assign_odd: teacher.max_lab_assign_odd || ''
     })
     setShowModal(true)
     setError('')
@@ -185,6 +214,8 @@ function Teachers() {
               <th>Teacher ID</th>
               <th>Name</th>
               <th>Position</th>
+              <th>Max Labs (Even)</th>
+              <th>Max Labs (Odd)</th>
               <th>Can Teach</th>
               <th>Labs Handled</th>
               <th>Actions</th>
@@ -193,7 +224,7 @@ function Teachers() {
           <tbody>
             {teachers.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', padding: '40px' }}>
+                <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
                   No teachers added yet. Click "Add Teacher" to get started.
                 </td>
               </tr>
@@ -207,7 +238,17 @@ function Teachers() {
                       <span className="teacher-shortform"> ({teacher.teacher_shortform})</span>
                     )}
                   </td>
-                  <td>{teacher.teacher_position}</td>
+                  <td>
+                    <span className={`position-badge ${teacher.teacher_position?.toLowerCase().replace(/ /g, '-')}`}>
+                      {teacher.teacher_position || 'N/A'}
+                    </span>
+                  </td>
+                  <td>
+                    <span className="limit-badge">{teacher.max_lab_assign_even || 'N/A'}</span>
+                  </td>
+                  <td>
+                    <span className="limit-badge">{teacher.max_lab_assign_odd || 'N/A'}</span>
+                  </td>
                   <td>
                     {teacher.canTeach_subjects?.length > 0 ? (
                       <div className="subjects-list">
@@ -324,6 +365,37 @@ function Teachers() {
                     <option value="Assistant Professor">Assistant Professor</option>
                     <option value="Guest Faculty">Guest Faculty</option>
                   </select>
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Max Lab Batches (Even Semester) *</label>
+                  <input
+                    type="number"
+                    name="max_lab_assign_even"
+                    value={formData.max_lab_assign_even}
+                    onChange={handleInputChange}
+                    placeholder="Default: 2 (Prof), 4 (Assoc), 6 (Asst)"
+                    required
+                    min="0"
+                    max="30"
+                  />
+                  <small className="form-hint">Maximum lab batches per week for even semesters (4th, 6th, 8th)</small>
+                </div>
+                <div className="form-group">
+                  <label>Max Lab Batches (Odd Semester) *</label>
+                  <input
+                    type="number"
+                    name="max_lab_assign_odd"
+                    value={formData.max_lab_assign_odd}
+                    onChange={handleInputChange}
+                    placeholder="Default: 2 (Prof), 4 (Assoc), 6 (Asst)"
+                    required
+                    min="0"
+                    max="30"
+                  />
+                  <small className="form-hint">Maximum lab batches per week for odd semesters (3rd, 5th, 7th)</small>
                 </div>
               </div>
 

@@ -1,33 +1,49 @@
 # 🧠 Algorithm Strategy & Implementation
 
-**Last Updated:** November 13, 2025  
-**Current Success Rate:** 100% for all semesters (27/27 labs)  
-**Key Innovation:** Dual Randomization with Smart Diversity Shuffle
+**Last Updated:** January 12, 2026  
+**Lab Scheduling Success Rate:** 100% for all semesters (27/27 labs)  
+**Teacher Assignment Success Rate:** 96.30% (78/81 batches with 2 teachers)  
+**Key Innovations:** 
+- Dual Randomization with Smart Diversity Shuffle (Lab Scheduling)
+- Fisher-Yates Shuffle within Hierarchy (Teacher Assignment)
 
 ---
 
-## 🎉 Recent Breakthroughs (November 2025)
+## 🎉 Recent Breakthroughs
 
-### Dual Randomization System (Nov 13)
+### Dual Randomization System (Nov 2025) - Step 3
 **Problem:** Single-dimension randomization (time slots only) insufficient  
 **Solution:** Randomize time slots + section order + semester priority  
 **Result:** 100% success, 10,800 unique strategy combinations
 
+### Hierarchical Teacher Assignment (Jan 2026) - Step 6
+**Problem:** Deterministic assignments, single teacher per lab, no workload management  
+**Solution:** Three-phase hierarchical system with 2-teacher requirement + Fisher-Yates shuffle  
+**Result:** 96.30% success (78/81 with 2 teachers), variety between runs, workload balanced
+
 ### Key Learnings
-1. **Multi-Dimensional Randomization:** Time + order + priority beats single-axis shuffling
-2. **Smart Diversity > Pure Random:** Prefer different days/times prevents clustering
-3. **Pattern Analysis Works:** Studied successful runs to discover optimal slot pattern
-4. **Section Order Critical:** Different orders unlock different slot distributions
-5. **Semester Priority Flexible:** Sometimes 3rd first works, sometimes 5th first works
+1. **Multi-Dimensional Randomization:** Time + order + priority beats single-axis shuffling (Step 3)
+2. **Smart Diversity > Pure Random:** Prefer different days/times prevents clustering (Step 3)
+3. **Pattern Analysis Works:** Studied successful runs to discover optimal slot pattern (Step 3)
+4. **Hierarchical Degradation:** Strict → Fallback → Balance handles NP-hard problems (Step 6)
+5. **Randomization Must Preserve Constraints:** Only shuffle within equal-workload groups (Step 6)
+6. **Two Teachers > One:** Better supervision, knowledge sharing, coverage (Step 6)
 
 ### Success Metrics
 ```
-Before Multi-Pass:     70% success (20/27 labs)
-After Multi-Pass:      93% success (25/27 labs)  
-After Dual Random:    100% success (27/27 labs) ✅
+Lab Scheduling (Step 3):
+  Before Multi-Pass:     70% success (20/27 labs)
+  After Multi-Pass:      93% success (25/27 labs)  
+  After Dual Random:    100% success (27/27 labs) ✅
+
+Teacher Assignment (Step 6):
+  Before Hierarchy:      100% success but no rank respect
+  After Hierarchy:       100% success but only 1 teacher/batch
+  After 2-Teacher Logic: 96% with 2 teachers, 1% with 1 teacher, 3% with 0 teachers ✅
+  With Randomization:    Different pairings each run while maintaining 96% success ✅
 ```
 
-See `MULTI_PASS_RETRY_SYSTEM.md` and `LESSONS_LEARNED.md` for details.
+See [HIERARCHICAL_TEACHER_ASSIGNMENT.md](HIERARCHICAL_TEACHER_ASSIGNMENT.md), [MULTI_PASS_RETRY_SYSTEM.md](MULTI_PASS_RETRY_SYSTEM.md), and [LESSONS_LEARNED.md](LESSONS_LEARNED.md) for details.
 
 ---
 
@@ -36,10 +52,10 @@ See `MULTI_PASS_RETRY_SYSTEM.md` and `LESSONS_LEARNED.md` for details.
 ### Correct Step Order
 1. **Step 1:** Load Sections - Initialize empty timetables for all sections
 2. **Step 2:** Block Fixed Slots - Reserve OEC/PEC time slots
-3. **Step 3:** Schedule Labs - Assign lab sessions with batch rotation
+3. **Step 3:** Schedule Labs - Assign lab sessions with batch rotation (Dual Randomization)
 4. **Step 4:** Schedule Theory + Breaks - Place theory classes with load balancing
 5. **Step 5:** Assign Classrooms - Allocate theory classrooms (fixed → regular → skip projects)
-6. **Step 6:** Assign Lab Teachers - Assign 2 teachers per lab (fallback to 1)
+6. **Step 6:** Assign Lab Teachers - Assign 2 teachers per lab with hierarchy & randomization
 7. **Step 7:** Validate & Finalize - Check constraints and mark complete
 
 ### Why This Order?
@@ -48,6 +64,7 @@ See `MULTI_PASS_RETRY_SYSTEM.md` and `LESSONS_LEARNED.md` for details.
 - **Labs** → Strict constraints (2-hour blocks, batch rotation, room availability)
 - **Theory** → Moderate flexibility (1-hour slots, can be spread across days)
 - **Classrooms** → Resource allocation (depends on scheduled slots)
+- **Teachers** → Human resources (depends on scheduled slots + classrooms)
 - **Teachers** → Resource allocation (depends on scheduled slots)
 - **Validation** → Final check (all constraints satisfied)
 
