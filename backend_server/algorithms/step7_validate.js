@@ -429,14 +429,54 @@ async function validateHoursPerWeek(timetables) {
 
 /**
  * Helper: Validate teacher assignments are complete
+ * IMPORTANT: Skips subjects that don't require ISE teacher assignment:
+ * - Other department subjects (Math, Physics, etc.)
+ * - Open Elective Courses (OEC)
+ * - Projects (Mini/Major projects)
  */
-function validateTeacherAssignments(timetables) {
+async function validateTeacherAssignments(timetables) {
   const issues = []
   
+  // First, we need to get all subject IDs from theory slots to check their flags
+  const subjectIds = new Set()
   for (const tt of timetables) {
-    // Check theory slots
     for (const slot of (tt.theory_slots || [])) {
-      if (!slot.is_project && !slot.teacher_id) {
+      if (slot.subject_id) {
+        subjectIds.add(slot.subject_id.toString())
+      }
+    }
+  }
+  
+  // Fetch all subjects to check requires_teacher_assignment flag
+  const Subject = (await import('../models/subjects_model.js')).default
+  const subjects = await Subject.find({
+    _id: { $in: Array.from(subjectIds) }
+  }).lean()
+  
+  // Create a map for quick lookup
+  const subjectRequiresTeacher = new Map()
+  subjects.forEach(subject => {
+    subjectRequiresTeacher.set(
+      subject._id.toString(), 
+      subject.requires_teacher_assignment !== false // Default to true if undefined
+    )
+  })
+  
+  for (const tt of timetables) {
+    // Check theory slots - ONLY if subject requires teacher assignment
+    for (const slot of (tt.theory_slots || [])) {
+      // Skip if project (already has is_project flag in slot)
+      if (slot.is_project) continue
+      
+      // Skip if subject doesn't require ISE teacher (Other Dept, OEC, etc.)
+      const requiresTeacher = subjectRequiresTeacher.get(slot.subject_id?.toString())
+      if (requiresTeacher === false) {
+        // This is Other Dept, OEC, or Project - skip validation
+        continue
+      }
+      
+      // Only flag if it's an ISE subject that needs a teacher but doesn't have one
+      if (!slot.teacher_id) {
         issues.push({
           section: tt.section_name,
           type: 'theory',
@@ -448,7 +488,7 @@ function validateTeacherAssignments(timetables) {
       }
     }
     
-    // Check lab slots
+    // Check lab slots - ALWAYS require 2 teachers
     for (const labSlot of (tt.lab_slots || [])) {
       for (const batch of (labSlot.batches || [])) {
         const hasTeacher1 = !!batch.teacher1_id
@@ -564,7 +604,7 @@ export async function validateAndFinalize(semType, academicYear) {
     }
     
     console.log(`\n   6️⃣  Checking teacher assignment completeness...`)
-    const teacherAssignmentIssues = validateTeacherAssignments(timetables)
+    const teacherAssignmentIssues = await validateTeacherAssignments(timetables)
     if (teacherAssignmentIssues.length > 0) {
       console.log(`      ⚠️  Found ${teacherAssignmentIssues.length} incomplete teacher assignments`)
       teacherAssignmentIssues.forEach(issue => {
@@ -590,6 +630,14 @@ export async function validateAndFinalize(semType, academicYear) {
         consecutive_labs: consecutiveLabViolations.length,
         hours_per_week: hoursIssues.length,
         teacher_assignments: teacherAssignmentIssues.length
+      },
+      details: {
+        teacher_conflicts: teacherConflicts,
+        classroom_conflicts: classroomConflicts,
+        lab_room_conflicts: labRoomConflicts,
+        consecutive_lab_violations: consecutiveLabViolations,
+        hours_discrepancies: hoursIssues,
+        teacher_assignment_issues: teacherAssignmentIssues
       }
     }
     

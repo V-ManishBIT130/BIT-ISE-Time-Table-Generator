@@ -255,15 +255,47 @@ function TimetableGenerator() {
         }
 
         // Step 7: Validate
+        console.log('🔍 [STEP 7 DEBUG] Checking Step 7 metadata:', {
+          current_step: metadata?.current_step,
+          has_step7_summary: !!metadata?.step7_summary,
+          step7_summary: metadata?.step7_summary,
+          metadata_keys: metadata ? Object.keys(metadata) : []
+        })
+        
         if (metadata?.current_step >= 7 && metadata.step7_summary) {
           reconstructedResults.step7 = {
             success: true,
             message: 'Validation completed',
-            data: metadata.step7_summary
+            data: metadata.step7_summary,
+            details: metadata.step7_summary.details || {} // Extract details from metadata
           }
-          console.log('✅ [STEP 7 RESULT] Created step7 result:', reconstructedResults.step7)
+          console.log('✅ [STEP 7 RESULT] Created step7 result with details:', {
+            has_details: !!metadata.step7_summary.details,
+            details_object: metadata.step7_summary.details,
+            teacher_assignment_issues_count: metadata.step7_summary.details?.teacher_assignment_issues?.length || 0,
+            all_keys: metadata.step7_summary.details ? Object.keys(metadata.step7_summary.details) : []
+          })
         } else if (metadata?.current_step >= 7) {
-          console.log('⚠️ [STEP 7 CHECK] current_step >= 7 but no step7_summary in metadata')
+          // Step 7 was run but metadata not saved (old version)
+          // Show a placeholder result prompting re-run
+          reconstructedResults.step7 = {
+            success: true,
+            message: 'Validation completed (legacy)',
+            data: {
+              validation_status: 'unknown',
+              total_issues: 0,
+              issues: {
+                teacher_conflicts: 0,
+                classroom_conflicts: 0,
+                lab_room_conflicts: 0,
+                consecutive_labs: 0,
+                hours_per_week: 0,
+                teacher_assignments: 0
+              },
+              legacy: true
+            }
+          }
+          console.log('⚠️ [STEP 7 CHECK] current_step >= 7 but no step7_summary in metadata - showing placeholder. Re-run Step 7 to see full validation results.')
         }
 
         setStepResults(reconstructedResults)
@@ -332,11 +364,29 @@ function TimetableGenerator() {
       })
 
       if (response.data.success) {
+        // Store the result with details
+        const stepResult = {
+          ...response.data,
+          // For Step 7, include the detailed issues in a separate property for easy access
+          ...(stepNumber === 7 && response.data.data?.details && {
+            details: response.data.data.details
+          })
+        }
+        
         setStepResults(prev => ({
           ...prev,
-          [`step${stepNumber}`]: response.data
+          [`step${stepNumber}`]: stepResult
         }))
         setResult(response.data.data)
+        
+        // For Step 7, force refetch after a short delay to ensure database has committed
+        if (stepNumber === 7) {
+          console.log('🔄 [STEP 7] Validation complete, fetching fresh data from database...')
+          setTimeout(async () => {
+            await fetchExistingStepStatus()
+            console.log('✅ [STEP 7] Fresh data loaded')
+          }, 500) // 500ms delay to ensure database write is committed
+        }
         
         // Special handling for Step 3 - show detailed report
         if (stepNumber === 3 && response.data.data) {
@@ -770,38 +820,81 @@ function TimetableGenerator() {
             >
               {generating && currentStep === 7 ? '⏳ Running...' : '▶️ Run Step 7'}
             </button>
-            {stepResults.step7 && (
-              <div className={`step-result ${stepResults.step7.data.validation_status === 'passed' ? 'success' : 'warning'}`}>
-                <div className="validation-header">
-                  {stepResults.step7.data.validation_status === 'passed' ? '✅' : '⚠️'} Validation {stepResults.step7.data.validation_status === 'passed' ? 'Passed' : 'Warnings'}
-                </div>
-                <div className="validation-details">
-                  <div className="validation-summary">
-                    Total Issues: {stepResults.step7.data.total_issues}
+            {stepResults.step7 && stepResults.step7.data && (
+              <div className={`step-result ${
+                stepResults.step7.data.legacy ? 'warning' : 
+                stepResults.step7.data.validation_status === 'passed' ? 'success' : 'warning'
+              }`}>
+                {stepResults.step7.data.legacy ? (
+                  <div className="legacy-validation">
+                    <div className="validation-header">
+                      ⚠️ Step 7 Previously Completed (Legacy)
+                    </div>
+                    <div className="validation-details">
+                      <p style={{ fontSize: '12px', marginTop: '8px' }}>
+                        This timetable was validated before detailed reporting was added.
+                        <br />
+                        <strong>Please re-run Step 7 to see full validation results.</strong>
+                      </p>
+                    </div>
                   </div>
-                  {stepResults.step7.data.total_issues > 0 && (
-                    <div className="issue-breakdown">
-                      {stepResults.step7.data.issues.teacher_conflicts > 0 && (
-                        <div className="issue-item">❌ Teacher Conflicts: {stepResults.step7.data.issues.teacher_conflicts}</div>
-                      )}
-                      {stepResults.step7.data.issues.classroom_conflicts > 0 && (
-                        <div className="issue-item">❌ Classroom Conflicts: {stepResults.step7.data.issues.classroom_conflicts}</div>
-                      )}
-                      {stepResults.step7.data.issues.lab_room_conflicts > 0 && (
-                        <div className="issue-item">❌ Lab Room Conflicts: {stepResults.step7.data.issues.lab_room_conflicts}</div>
-                      )}
-                      {stepResults.step7.data.issues.consecutive_labs > 0 && (
-                        <div className="issue-item">⚠️ Consecutive Labs: {stepResults.step7.data.issues.consecutive_labs}</div>
-                      )}
-                      {stepResults.step7.data.issues.hours_per_week > 0 && (
-                        <div className="issue-item">⚠️ Hour Discrepancies: {stepResults.step7.data.issues.hours_per_week}</div>
-                      )}
-                      {stepResults.step7.data.issues.teacher_assignments > 0 && (
-                        <div className="issue-item">⚠️ Incomplete Assignments: {stepResults.step7.data.issues.teacher_assignments}</div>
+                ) : (
+                  <>
+                    <div className="validation-header">
+                      {stepResults.step7.data.validation_status === 'passed' ? '✅' : '⚠️'} Validation {stepResults.step7.data.validation_status === 'passed' ? 'Passed' : 'Warnings'}
+                    </div>
+                    <div className="validation-details">
+                      <div className="validation-summary">
+                        Total Issues: {stepResults.step7.data.total_issues}
+                      </div>
+                      {stepResults.step7.data.total_issues > 0 && stepResults.step7.data.issues && (
+                        <div className="issue-breakdown">
+                          {stepResults.step7.data.issues.teacher_conflicts > 0 && (
+                            <div className="issue-item">❌ Teacher Conflicts: {stepResults.step7.data.issues.teacher_conflicts}</div>
+                          )}
+                          {stepResults.step7.data.issues.classroom_conflicts > 0 && (
+                            <div className="issue-item">❌ Classroom Conflicts: {stepResults.step7.data.issues.classroom_conflicts}</div>
+                          )}
+                          {stepResults.step7.data.issues.lab_room_conflicts > 0 && (
+                            <div className="issue-item">❌ Lab Room Conflicts: {stepResults.step7.data.issues.lab_room_conflicts}</div>
+                          )}
+                          {stepResults.step7.data.issues.consecutive_labs > 0 && (
+                            <div className="issue-item">⚠️ Consecutive Labs: {stepResults.step7.data.issues.consecutive_labs}</div>
+                          )}
+                          {stepResults.step7.data.issues.hours_per_week > 0 && (
+                            <div className="issue-item">⚠️ Hour Discrepancies: {stepResults.step7.data.issues.hours_per_week}</div>
+                          )}
+                          {stepResults.step7.data.issues.teacher_assignments > 0 && (
+                            <div className="issue-item-expandable">
+                              <div className="issue-title">⚠️ Incomplete Assignments: {stepResults.step7.data.issues.teacher_assignments}</div>
+                              {stepResults.step7.details?.teacher_assignment_issues && stepResults.step7.details.teacher_assignment_issues.length > 0 && (
+                                <div className="issue-details-list">
+                                  {stepResults.step7.details.teacher_assignment_issues.map((issue, idx) => (
+                                    <div key={idx} className="issue-detail-item">
+                                      {issue.type === 'lab' ? (
+                                        <>
+                                          <strong>{issue.section} ({issue.batch}):</strong> {issue.issue}
+                                          <br />
+                                          <span className="issue-time">{issue.day} {issue.time} - {issue.lab}</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <strong>{issue.section}:</strong> {issue.issue}
+                                          <br />
+                                          <span className="issue-time">{issue.day} {issue.time} - {issue.subject}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
+                  </>
+                )}
               </div>
             )}
           </div>

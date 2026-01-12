@@ -1,16 +1,101 @@
 # Frontend Cache and State Management Fix
 
-**Last Updated:** December 31, 2025
+**Last Updated:** January 12, 2026
 
 ## 📋 Overview
 
-This document explains frontend cache invalidation and state management fixes implemented to resolve room availability display issues and break persistence problems in the Timetable Editor.
+This document explains frontend cache invalidation and state management fixes implemented to resolve room availability display issues, break persistence problems, and Step 7 validation details persistence in the Timetable application.
 
 ---
 
 ## 🎯 Critical Issues Fixed
 
-### Issue 1: Stale Cache After Slot Changes (December 30, 2025)
+### Issue 1: Step 7 Validation Details Not Persisting (January 12, 2026)
+
+**Problem:**
+Step 7 validation showed detailed issue information (which lab sessions need teachers, which slots have conflicts) when first run, but details disappeared when navigating to other pages and returning. Only issue counts remained, not the actual problem details.
+
+**Example:**
+- Run Step 7 → See "⚠️ Incomplete Assignments: 3" with expandable list showing:
+  - 7B (7B3): No teachers assigned - Monday 08:00-10:00 - Parallel Computing Lab
+  - 7C (7C2): Only 1 teacher assigned - Friday 10:00-12:00 - Big Data Analytics Lab
+  - 7C (7C3): Only 1 teacher assigned - Friday 10:00-12:00 - Parallel Computing Lab
+- Navigate to View page and back → Details gone, only "⚠️ Incomplete Assignments: 3" remains
+
+**Root Cause Analysis:**
+
+1. **Missing Schema Field:** The `timetable_model.js` schema didn't include a `details` field in `step7_summary`. MongoDB was silently dropping the details object when saving.
+
+2. **Incorrect Schema Definition:** Initially added nested object arrays with explicit types like `[{section: String, batch: String, ...}]` but Mongoose couldn't cast the validation arrays to this strict schema, causing CastError.
+
+3. **Frontend Not Extracting Details:** When reloading from database metadata, the frontend reconstructed step results but didn't extract the `details` property from `metadata.step7_summary.details`.
+
+**Solution (3-Part Fix):**
+
+**Part 1 - Update Schema (`timetable_model.js`):**
+```javascript
+step7_summary: {
+  sections_processed: Number,
+  validation_status: String,
+  total_issues: Number,
+  issues: {
+    teacher_conflicts: Number,
+    classroom_conflicts: Number,
+    // ... counts only
+  },
+  details: mongoose.Schema.Types.Mixed  // Flexible object storage
+}
+```
+
+Using `mongoose.Schema.Types.Mixed` allows storing any complex object structure without strict type validation.
+
+**Part 2 - Backend Saves Details (`step7_validate.js`):**
+```javascript
+const validationSummary = {
+  // ... counts ...
+  details: {
+    teacher_conflicts: teacherConflicts,              // Full array
+    classroom_conflicts: classroomConflicts,          // Full array
+    teacher_assignment_issues: teacherAssignmentIssues // Full array with section, batch, time, issue
+  }
+}
+
+// Save to database
+await Timetable.updateOne(
+  { _id: timetable._id },
+  { $set: { 'generation_metadata.step7_summary': validationSummary } }
+)
+```
+
+**Part 3 - Frontend Extracts Details (`TimetableGenerator.jsx`):**
+```javascript
+// When reconstructing from database
+if (metadata?.current_step >= 7 && metadata.step7_summary) {
+  reconstructedResults.step7 = {
+    success: true,
+    message: 'Validation completed',
+    data: metadata.step7_summary,
+    details: metadata.step7_summary.details || {}  // Extract from metadata
+  }
+}
+
+// When displaying issues
+{stepResults.step7.details?.teacher_assignment_issues?.map((issue, idx) => (
+  <div key={idx}>
+    <strong>{issue.section} ({issue.batch}):</strong> {issue.issue}
+    <br />
+    <span>{issue.day} {issue.time} - {issue.lab}</span>
+  </div>
+))}
+```
+
+**Key Lesson:** Mongoose schemas must be defined before first use. Schema changes require server restart. For flexible nested data, use `Schema.Types.Mixed` instead of strict nested object definitions.
+
+**Result:** Validation details now persist across page navigations. Users can see exactly which lab sessions need teachers, which time slots have conflicts, etc.
+
+---
+
+### Issue 2: Stale Cache After Slot Changes (December 30, 2025)
 
 **Problem:** 
 When a slot was moved or classroom assigned, only 1-2 cache keys were cleared. Other empty slots kept stale cached data showing "✗ No rooms available" even though rooms were actually free.

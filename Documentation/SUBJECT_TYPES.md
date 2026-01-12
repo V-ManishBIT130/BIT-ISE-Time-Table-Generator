@@ -7,13 +7,15 @@ Subjects are categorized into 5 types based on teaching and scheduling requireme
 
 ## Summary Table
 
-| Subject Type | ISE Teacher? | Classroom? | Time Slot? | Workload Count? | Fixed Slot? |
-|--------------|-------------|------------|------------|-----------------|-------------|
-| **Regular Theory** | ✅ Yes | ✅ Yes | ✅ Yes (flexible) | ✅ Yes | ❌ No |
-| **Other Dept** | ❌ No | ✅ Yes (reserved) | ✅ Yes (flexible) | ❌ No | ❌ No |
-| **Project** | ❌ No | ❌ No | ✅ Yes (flexible) | ❌ No | ❌ No |
-| **OEC (Sem 7)** | ❌ No | ✅ Yes (reserved) | ✅ Yes (FIXED) | ❌ No | ✅ Yes |
-| **PEC (Sem 7)** | ✅ Yes | ✅ Yes | ✅ Yes (FIXED) | ✅ Yes | ✅ Yes |
+| Subject Type | ISE Teacher? | Classroom? | Time Slot? | Workload Count? | Fixed Slot? | `requires_teacher_assignment` |
+|--------------|-------------|------------|------------|-----------------|-------------|------------------------------|
+| **Regular Theory** | ✅ Yes | ✅ Yes | ✅ Yes (flexible) | ✅ Yes | ❌ No | ✅ `true` |
+| **Other Dept** | ❌ No | ✅ Yes (reserved) | ✅ Yes (flexible) | ❌ No | ❌ No | ❌ `false` |
+| **Project** | ❌ No | ❌ No | ✅ Yes (flexible) | ❌ No | ❌ No | ❌ `false` |
+| **OEC (Sem 7)** | ❌ No | ✅ Yes (reserved) | ✅ Yes (FIXED) | ❌ No | ✅ Yes | ❌ `false` |
+| **PEC (Sem 7)** | ✅ Yes | ✅ Yes | ✅ Yes (FIXED) | ✅ Yes | ✅ Yes | ✅ `true` |
+
+**Note on Step 7 Validation:** The `requires_teacher_assignment` flag is used during Step 7 validation to determine which subjects should be checked for teacher assignment completeness. Only subjects with `requires_teacher_assignment = true` are validated. This prevents false positives for subjects like Math, OEC, and Projects that don't need ISE teacher assignment.
 
 ---
 

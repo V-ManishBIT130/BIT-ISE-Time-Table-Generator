@@ -340,48 +340,6 @@ function ClassroomView() {
               </div>
             ))}
           </div>
-
-          {/* Statistics Summary */}
-          {statistics && (
-            <div className="classroom-stats-panel">
-              <h3>Weekly Summary for {selectedClassroom}</h3>
-              <div className="classroom-stats-grid">
-                <div className="classroom-stat-card">
-                  <div className="classroom-stat-value">{statistics.totalClasses}</div>
-                  <div className="classroom-stat-label">Total Classes</div>
-                </div>
-                <div className="classroom-stat-card">
-                  <div className="classroom-stat-value">{statistics.totalHours} hrs</div>
-                  <div className="classroom-stat-label">Total Hours</div>
-                </div>
-                <div className="classroom-stat-card">
-                  <div className="classroom-stat-value">{statistics.averagePerDay}</div>
-                  <div className="classroom-stat-label">Avg/Day</div>
-                </div>
-              </div>
-              
-              <div className="classroom-utilization-section">
-                <h4>Daily Utilization</h4>
-                <div className="classroom-utilization-bars">
-                  {DAYS.map(day => (
-                    <div key={day} className="classroom-util-row">
-                      <div className="classroom-util-day">{day.substring(0, 3)}</div>
-                      <div className="classroom-util-bar-container">
-                        <div 
-                          className="classroom-util-bar-fill"
-                          style={{ width: `${statistics.utilizationByDay[day].percentage}%` }}
-                        >
-                          <span className="classroom-util-text">
-                            {statistics.utilizationByDay[day].hours}h ({statistics.utilizationByDay[day].percentage}%)
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 

@@ -27,16 +27,63 @@
 **Scope:** Within each section  
 **Method:** Checks if lab end_time = next lab start_time
 
-### 5. Hours Per Week (Per Subject) ✨ NEW
+### 5. Hours Per Week (Per Subject)
 **Check:** Scheduled hours match subject's `hrs_per_week` requirement  
 **Scope:** Theory slots  
 **Method:** Sums slot durations, compares with subject model  
 **Severity:** High (difference > 1 hour) or Low (difference = 1 hour)
 
-### 6. Teacher Assignments (Completeness) ✨ NEW
+### 6. Teacher Assignments (Completeness) ✨ ENHANCED
 **Check:** All slots have required teachers assigned  
 **Scope:** Theory slots (1 teacher) + Lab batches (2 teachers expected)  
-**Method:** Validates teacher_id presence
+**Filtering:** Now SKIPS subjects that don't require ISE teacher assignment:
+  - Other Department subjects (Math, Physics, EVS)
+  - Open Elective Courses (OEC)
+  - Projects
+**Method:** 
+  1. Fetches subject details from database
+  2. Checks `requires_teacher_assignment` flag
+  3. Only validates slots where `requires_teacher_assignment === true`
+  4. Returns detailed issue list with section, batch, time, and specific problem
+
+**Fix Applied (January 12, 2026):**
+Previously validation flagged 27 issues including non-ISE subjects. Now correctly identifies only 3 real issues (lab sessions genuinely missing teachers).
+
+---
+
+## 🎨 Frontend Display Features
+
+### Detailed Issue Reporting
+
+Step 7 now shows **expandable detailed issue lists** instead of just counts:
+
+**Before (Just Counts):**
+```
+⚠️ Validation Warnings
+Total Issues: 3
+⚠️ Incomplete Assignments: 3
+```
+
+**After (Detailed List):**
+```
+⚠️ Validation Warnings
+Total Issues: 3
+⚠️ Incomplete Assignments: 3
+  7B (7B3): No teachers assigned (expected 2)
+  Monday 08:00-10:00 - Parallel Computing Lab
+  
+  7C (7C2): Only 1 teacher assigned (expected 2) - Missing: Teacher 2
+  Friday 10:00-12:00 - Big Data Analytics Lab
+  
+  7C (7C3): Only 1 teacher assigned (expected 2) - Missing: Teacher 2
+  Friday 10:00-12:00 - Parallel Computing Lab
+```
+
+**Implementation:**
+- Details stored in `metadata.step7_summary.details` using `mongoose.Schema.Types.Mixed`
+- Frontend extracts and displays `teacher_assignment_issues` array
+- Each issue shows: section, batch, day, time, lab name, and specific problem
+- Persists across page navigation and browser refreshes
 
 ---
 

@@ -26,6 +26,7 @@ function TeacherAssignments() {
   const [selectedSection, setSelectedSection] = useState(null)
   const [selectedSubject, setSelectedSubject] = useState(null)
   const [selectedTeacher, setSelectedTeacher] = useState('')
+  const [semesterTypeFilter, setSemesterTypeFilter] = useState('odd') // 'odd' or 'even'
   
   // Existing assignments
   const [existingAssignments, setExistingAssignments] = useState([])
@@ -265,9 +266,37 @@ function TeacherAssignments() {
 
       {/* Section Selector */}
       <div className="selector-card">
-        <h3>Step 1: Select Section</h3>
+        <div className="section-header">
+          <h3>Step 1: Select Section</h3>
+          <div className="semester-type-toggle">
+            <button
+              className={`toggle-btn ${semesterTypeFilter === 'odd' ? 'active' : ''}`}
+              onClick={() => {
+                setSemesterTypeFilter('odd')
+                setSelectedSection(null) // Reset selection when switching
+              }}
+            >
+              Odd Semesters
+            </button>
+            <button
+              className={`toggle-btn ${semesterTypeFilter === 'even' ? 'active' : ''}`}
+              onClick={() => {
+                setSemesterTypeFilter('even')
+                setSelectedSection(null) // Reset selection when switching
+              }}
+            >
+              Even Semesters
+            </button>
+          </div>
+        </div>
         <div className="section-grid">
-          {sections.map(section => (
+          {sections
+            .filter(section => {
+              // Filter based on odd/even semester type
+              const isOdd = section.sem % 2 !== 0
+              return semesterTypeFilter === 'odd' ? isOdd : !isOdd
+            })
+            .map(section => (
             <button
               key={section._id}
               className={`section-btn ${selectedSection?._id === section._id ? 'selected' : ''}`}

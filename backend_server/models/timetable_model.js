@@ -88,6 +88,22 @@ const TimetableSchema = new mongoose.Schema(
         total_scheduled: Number,
         success_rate: String
       },
+      step7_summary: {
+        sections_processed: Number,
+        validation_status: String,
+        total_issues: Number,
+        issues: {
+          teacher_conflicts: Number,
+          classroom_conflicts: Number,
+          lab_room_conflicts: Number,
+          consecutive_labs: Number,
+          hours_per_week: Number,
+          teacher_assignments: Number
+        },
+        details: mongoose.Schema.Types.Mixed  // Store all validation details as flexible object
+      },
+      is_complete: Boolean,
+      validation_status: String,
       current_step: Number,
       steps_completed: [String]
     },

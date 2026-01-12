@@ -120,7 +120,6 @@
 .classroom-grid-header {
   display: grid;
   grid-template-columns: var(--classroom-day-width) repeat(var(--classroom-total-columns), minmax(calc(var(--classroom-slot-width) / var(--classroom-slots-per-hour)), 1fr));
-  border-bottom: 2px solid #f093fb;
   background: #f8f9fa;
   position: sticky;
   top: 0;
@@ -137,7 +136,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   font-size: 0.58rem;
   line-height: 1.1;
   text-align: center;
@@ -150,7 +149,7 @@
   text-align: center;
   font-weight: 700;
   color: white;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-right: 1px solid rgba(255, 255, 255, 0.3);
   font-size: 0.58rem;
   line-height: 1.1;
@@ -268,7 +267,7 @@
 .classroom-section-label {
   font-weight: 700;
   color: #2c3e50;
-  font-size: 0.62rem;
+  font-size: 0.71rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -282,23 +281,23 @@
 .classroom-subject-label {
   font-weight: 600;
   color: #34495e;
-  font-size: 0.58rem;
+  font-size: 0.69rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .classroom-time-label-small {
-  color: #7f8c8d;
-  font-size: 0.52rem;
+  color: #000000;
+  font-size: 0.6rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .classroom-teacher-label {
-  color: #555;
-  font-size: 0.55rem;
+  color: #000000;
+  font-size: 0.8rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -467,7 +466,7 @@
 }
 
 .classroom-timetable-grid::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: #f1f1f1;
   border-radius: 4px;
 }
 

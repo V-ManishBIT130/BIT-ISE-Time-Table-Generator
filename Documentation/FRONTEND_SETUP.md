@@ -1,5 +1,7 @@
 # Frontend Setup Complete! 🎉
 
+**Last Updated:** January 12, 2026
+
 ## ✅ What's Working Now:
 
 ### 1. Login Page (`/`)
@@ -114,9 +116,33 @@ src/
    - Simple CRUD forms
    - Lab room with supported labs selection
 
-Would you like me to:
-- **A) Start building the Teachers Management page** (form + table)?
-- **B) Show you the current UI first** and get feedback?
-- **C) Build all Phase 1 forms at once**?
+---
+
+## 🎨 Recent UX Improvements (January 12, 2026)
+
+### Teacher Assignments Page - Semester Type Filter
+
+**Problem:** Displaying all 9 sections (Semester 3A, 3B, 3C, 4A, 4B... through 8C) simultaneously was visually overwhelming for users.
+
+**Solution:** Added Odd/Even semester toggle at the top of the section selector:
+- 📚 **Odd Semesters** button - Shows only Semesters 3, 5, 7 (9 sections → 3-6 sections)
+- 📘 **Even Semesters** button - Shows only Semesters 4, 6, 8 (9 sections → 3-6 sections)
+
+**Benefits:**
+- Reduced cognitive load - users see only relevant sections
+- Cleaner interface - better visual hierarchy
+- Faster selection - less scrolling and searching
+- Selection automatically resets when switching between odd/even to prevent confusion
+
+**Implementation:**
+- Added `semesterTypeFilter` state ('odd' or 'even')
+- Filter logic: `section.sem % 2 !== 0` for odd, opposite for even
+- Styled toggle buttons with gradient active state
+- Mobile-responsive design with proper wrapping
+
+**Files Modified:**
+- `src/components/TeacherAssignments.jsx` - Filter logic and toggle UI
+- `src/components/TeacherAssignments.css` - Toggle button styling
+
 
 Let me know! 🎯
